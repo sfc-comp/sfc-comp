@@ -32,12 +32,12 @@ jobs:
     - name: Create an archive.
       run: |
         if [ "$RUNNER_OS" == "Linux" ]; then
-          mv cmake/bin .
-          rm -r cmake
+          mv build/bin .
+          rm -r build
           tar cf - * | xz -z > ${{ env.tool }}.tar.xz
         elif [ "$RUNNER_OS" == "Windows" ]; then
-          mv cmake/bin .
-          rm -r cmake
+          mv build/bin .
+          rm -r build
           7z a ${{ env.tool }}.7z *
         else
           echo "Not a supported os: $RUNNER_OS"
