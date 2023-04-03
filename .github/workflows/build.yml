@@ -12,11 +12,27 @@ jobs:
             generator: "MinGW Makefiles"
           - os: ubuntu-latest
             generator: "Unix Makefiles"
+    env:
+      tool: sfc-comp
     steps:
     - uses: actions/checkout@v1
+    
     - name: Build
       run: | 
         mkdir build
         cd build
         cmake .. -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release
         cmake --build .
+        
+    - name: Create an archive.
+      run: |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          mv cmake/bin .
+          rm -r cmake
+          tar cf - * | xz -z > ${{ env.tool }}.tar.xz
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          Move-Item cmake\bin .\bin
+          Remove-Item cmake
+          7z a ${{ env.tool }}.7z *
+        else
+        fi
