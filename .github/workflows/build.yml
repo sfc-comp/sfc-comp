@@ -1,45 +1,75 @@
 name: build
 
-on: [push]
+on:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
+    name: Create Release
+
     runs-on: ${{ matrix.os }}
+
+    env:
+      toolname: sfc-comp
+
     strategy:
       matrix:
         include:
           - os: windows-latest
             generator: "MinGW Makefiles"
+            filename: ${{ env.toolname }}-windows.7z
+
           - os: ubuntu-latest
             generator: "Unix Makefiles"
-    env:
-      tool: sfc-comp
+            filename: ${{ env.toolname }}-linux.tar.xz
 
     defaults:
       run:
         shell: bash
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v1
 
-    - name: Build
-      run: |
-        mkdir build
-        cd build
-        cmake .. -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release
-        cmake --build .
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake .. -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release
+          cmake --build .
 
-    - name: Create an archive.
-      run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          mv build/bin .
-          rm -r build
-          tar cf - * | xz -z > ${{ env.tool }}.tar.xz
-        elif [ "$RUNNER_OS" == "Windows" ]; then
-          mv build/bin .
-          rm -r build
-          7z a ${{ env.tool }}.7z *
-        else
-          echo "Not a supported os: $RUNNER_OS"
-          exit 1
-        fi
+      - name: Create an archive
+        run: |
+          mkdir ${{ env.tool }}
+          mv build/bin doc LICENSE README.md ${{ env.tool }}
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            tar cf - ${{ env.toolname }} | xz -z > ${{ matrix.filename }}
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            7z a ${{ matrix.filename }} ${{ env.toolname }}
+          else
+            echo "Not a supported os: $RUNNER_OS"
+            exit 1
+          fi
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ matrix.filename }}
+          asset_name: ${{ matrix.filename }}
+          asset_content_type: application/octet-stream
