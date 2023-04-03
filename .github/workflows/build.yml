@@ -23,13 +23,12 @@ jobs:
 
       - name: Save URL
         run: |
-          mkdir artifact
-          echo ${{ steps.create_release.outputs.upload_url }} > artifact/url.txt
+          echo ${{ steps.create_release.outputs.upload_url }} > url.txt
 
       - uses: actions/upload-artifact@v3
         with:
-          name: artifact
-          path: artifact/url.txt
+          name: url
+          path: url.txt
 
   release-binary:
     name: Release Binary
@@ -58,12 +57,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: artifact
+          name: url
 
       - name: Get URL
         id: get_url
         run: |
-          url=$(cat artifact/url.txt)
+          url=$(cat url.txt)
           echo "##[set-output name=upload_url;]$url"
 
       - uses: actions/checkout@v3
