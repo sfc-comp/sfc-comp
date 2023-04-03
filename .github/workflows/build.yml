@@ -36,8 +36,8 @@ jobs:
           rm -r cmake
           tar cf - * | xz -z > ${{ env.tool }}.tar.xz
         elif [ "$RUNNER_OS" == "Windows" ]; then
-          Move-Item cmake\bin .\bin
-          Remove-Item cmake
+          mv cmake/bin .
+          rm -r cmake
           7z a ${{ env.tool }}.7z *
         else
           echo "Not a supported os: $RUNNER_OS"
