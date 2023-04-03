@@ -1,15 +1,92 @@
 name: build
 
-on: [push]
+on:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
-  build:
+  release:
+    name: Create Release
     runs-on: ubuntu-latest
+
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
     steps:
-    - uses: actions/checkout@v1
-    - name: Build
-      run: | 
-        mkdir build
-        cd build
-        cmake ..
-        make
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+  release-binary:
+    name: Release Binary
+    needs: release
+
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            generator: "MinGW Makefiles"
+            file_suffix: windows.7z
+
+          - os: ubuntu-latest
+            generator: "Unix Makefiles"
+            file_suffix: linux.tar.xz
+
+    env:
+      toolname: sfc-comp
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Set Name
+        run: |
+          echo "archive_name=${{ env.toolname }}-${{ github.ref_name }}-${{ matrix.file_suffix }}" >> $GITHUB_ENV
+          echo "dir_name=${{ env.toolname }}-${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake .. -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release
+          cmake --build .
+
+      - name: Create an archive
+        run: |
+          mkdir ${{ env.dir_name }}
+          mv build/bin doc LICENSE README.md ${{ env.dir_name }}
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            tar cf - ${{ env.dir_name }} | xz -z > ${{ env.archive_name }}
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            7z a ${{ env.archive_name }} ${{ env.dir_name }}
+          else
+            echo "Not a supported os: $RUNNER_OS"
+            exit 1
+          fi
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./${{ env.archive_name }}
+          asset_name: ${{ env.archive_name }}
+          asset_content_type: application/octet-stream
