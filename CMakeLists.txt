@@ -30,7 +30,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 
   if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+    set(CMAKE_EXE_LINKER_FLAGS "-static")
   endif()
 else()
   message(FATAL_ERROR "Not a supported compiler: ${CMAKE_CXX_COMPILER}")
