@@ -9,14 +9,14 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            generator: "-G MinGW Makefiles"
+            generator: "MinGW Makefiles"
           - os: ubuntu-latest
-            generator: ""
+            generator: "Unix Makefiles"
     steps:
     - uses: actions/checkout@v1
     - name: Build
       run: | 
         mkdir build
         cd build
-        cmake .. ${{ matrix.generator }} -DCMAKE_BUILD_TYPE=Release
+        cmake .. -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Release
         cmake --build .
