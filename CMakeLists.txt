@@ -101,8 +101,10 @@ include_directories("${CMAKE_SOURCE_DIR}/include")
 add_library(objlibsfccomp OBJECT ${sfc_comp_src})
 set_property(TARGET objlibsfccomp PROPERTY POSITION_INDEPENDENT_CODE 1)
 
-add_library(${lib_sfc_comp_static} STATIC $<TARGET_OBJECTS:objlibsfccomp>)
 add_library(${lib_sfc_comp_shared} SHARED $<TARGET_OBJECTS:objlibsfccomp>)
+add_library(${lib_sfc_comp_static} STATIC $<TARGET_OBJECTS:objlibsfccomp>)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_executable(bench bench.cpp)
 target_link_libraries(bench ${lib_sfc_comp_static})
