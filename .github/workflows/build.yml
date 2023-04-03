@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Create Release
         id: create_release
@@ -21,9 +21,18 @@ jobs:
           draft: false
           prerelease: false
 
-  release_asset:
-    name: Release Asset
+      - name: Save URL
+        run: |
+          mkdir artifact
+          echo ${{ steps.create_release.outputs.upload_url }} > artifact/url.txt
 
+      - uses: actions/upload-artifact@v3
+        with:
+          name: artifact
+          path: artifact/url.txt
+
+  release-binary:
+    name: Release Binary
     needs: [release]
 
     strategy:
@@ -47,7 +56,17 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+
+      - name: Get URL
+        id: get_url
+        run: |
+          url=$(cat artifact/url.txt)
+          echo "##[set-output name=upload_url;]$url"
+
+      - uses: actions/checkout@v3
 
       - name: Set Name
         run: |
@@ -80,7 +99,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.get_url.outputs.upload_url }}
           asset_path: ./${{ env.archive_name }}
           asset_name: ${{ env.archive_name }}
           asset_content_type: application/octet-stream
