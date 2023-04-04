@@ -1,6 +1,6 @@
-# SFC Comp
+# SFC Compress
 
-A collection of implementation of compressions mainly used in SFC Games.
+A collection of implementation of compressions mainly used in SFC/SNES Games.
 
 Please see [GameList.md](doc/GameList.md) for supported Games.
 

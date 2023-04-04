@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.0
+  VERSION 0.1.1
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -30,7 +30,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 
   if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+    set(CMAKE_EXE_LINKER_FLAGS "-static")
   endif()
 else()
   message(FATAL_ERROR "Not a supported compiler: ${CMAKE_CXX_COMPILER}")
@@ -101,8 +101,10 @@ include_directories("${CMAKE_SOURCE_DIR}/include")
 add_library(objlibsfccomp OBJECT ${sfc_comp_src})
 set_property(TARGET objlibsfccomp PROPERTY POSITION_INDEPENDENT_CODE 1)
 
-add_library(${lib_sfc_comp_static} STATIC $<TARGET_OBJECTS:objlibsfccomp>)
 add_library(${lib_sfc_comp_shared} SHARED $<TARGET_OBJECTS:objlibsfccomp>)
+add_library(${lib_sfc_comp_static} STATIC $<TARGET_OBJECTS:objlibsfccomp>)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_executable(bench bench.cpp)
 target_link_libraries(bench ${lib_sfc_comp_static})
