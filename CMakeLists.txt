@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.1
+  VERSION 0.1.2
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -48,6 +48,7 @@ set(sfc_comp_src
   src/diet_comp.cpp
   src/dokapon_comp.cpp
   src/doom_comp.cpp
+  src/doraemon_comp.cpp
   src/dq12_comp.cpp
   src/dq6_comp.cpp
   src/dragon_knight_4_comp.cpp
@@ -117,6 +118,7 @@ set(comp_ext_list
   dokapon_comp comp
   doom_comp_1 comp
   doom_comp_2 comp
+  doraemon_comp comp
   dq12_comp comp
   dq6_comp comp
   dragon_knight_4_comp_1 comp

@@ -146,7 +146,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         dp1[i].cost = dp1.default_cost;
       }
 
-      auto bit_cost = [](size_t b) -> size_t {
+      constexpr auto bit_cost = [](size_t b) -> size_t {
         return (b == 0) ? 0 : (b - 1);
       };
 

@@ -89,7 +89,7 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
   static constexpr size_t lz_huff_offset = 0x0100 - lz_min_len;
 
   std::vector<size_t> lz_lens(max_code - 0x100 + 1);
-  std::iota(lz_lens.begin(), lz_lens.end(), 3);
+  std::iota(lz_lens.begin(), lz_lens.end(), lz_min_len);
 
   // [Todo] Find a reasonable initialization.
   std::vector<size_t> huff_bitsizes(max_code + 1, 9);

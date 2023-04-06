@@ -30,6 +30,7 @@ void benchmark(const std::string& path) {
     P(dokapon_comp),
     P(doom_comp_1),
     P(doom_comp_2),
+    P(doraemon_comp),
     P(dq12_comp),
     P(dq6_comp),
     P(dragon_knight_4_comp_1),

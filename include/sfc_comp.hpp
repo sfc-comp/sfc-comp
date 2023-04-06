@@ -21,6 +21,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t>);
 std::vector<uint8_t> dokapon_comp(std::span<const uint8_t>);
 std::vector<uint8_t> doom_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> doom_comp_2(std::span<const uint8_t>);
+std::vector<uint8_t> doraemon_comp(std::span<const uint8_t>);
 std::vector<uint8_t> dq12_comp(std::span<const uint8_t>);
 std::vector<uint8_t> dq6_comp(std::span<const uint8_t>);
 std::vector<uint8_t> dragon_knight_4_comp_1(std::span<const uint8_t>);
