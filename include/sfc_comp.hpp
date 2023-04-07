@@ -56,6 +56,7 @@ std::vector<uint8_t> sd_gundam_gnext_comp(std::span<const uint8_t>);
 std::vector<uint8_t> sd_gundam_gx_comp(std::span<const uint8_t>);
 std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t>);
 std::vector<uint8_t> seiken_densetsu_2_comp(std::span<const uint8_t>);
+std::vector<uint8_t> shima_kousaku_comp(std::span<const uint8_t>);
 std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t>);
 std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t>);
 std::vector<uint8_t> slayers_comp(std::span<const uint8_t>);
@@ -70,6 +71,7 @@ std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t>);
 std::vector<uint8_t> vortex_comp(std::span<const uint8_t>);
 std::vector<uint8_t> wizardry5_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> wizardry5_comp_2(std::span<const uint8_t>);
+std::vector<uint8_t> yatterman_comp(std::span<const uint8_t>);
 std::vector<uint8_t> zelda_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> zelda_comp_2(std::span<const uint8_t>);
 

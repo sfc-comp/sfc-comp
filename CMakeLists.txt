@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.2
+  VERSION 0.1.3
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -153,6 +153,7 @@ set(comp_ext_list
   sd_gundam_gx_comp comp
   sd_gundam_x_comp comp
   seiken_densetsu_2_comp comp
+  shima_kousaku_comp comp
   shin_megami_tensei2_comp comp
   slap_stick_comp comp
   slayers_comp comp
@@ -167,6 +168,7 @@ set(comp_ext_list
   vortex_comp comp
   wizardry5_comp_1 comp
   wizardry5_comp_2 comp
+  yatterman_comp comp
   zelda_comp_1 comp
   zelda_comp_2 comp
 )

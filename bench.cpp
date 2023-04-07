@@ -65,6 +65,7 @@ void benchmark(const std::string& path) {
     P(sd_gundam_gx_comp),
     P(sd_gundam_x_comp),
     P(seiken_densetsu_2_comp),
+    P(shima_kousaku_comp),
     P(shin_megami_tensei2_comp),
     P(slap_stick_comp),
     P(slayers_comp),
@@ -79,6 +80,7 @@ void benchmark(const std::string& path) {
     P(vortex_comp),
     P(wizardry5_comp_1),
     P(wizardry5_comp_2),
+    P(yatterman_comp),
     P(zelda_comp_1),
     P(zelda_comp_2)
   };
