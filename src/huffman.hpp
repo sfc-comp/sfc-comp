@@ -31,6 +31,8 @@ struct huffman_result {
 
 huffman_result huffman(std::span<const size_t> counts, bool zero_to_one);
 
+huffman_result length_limited_huffman(std::span<const size_t> counts, size_t limit, bool zero_to_one);
+
 } // namespace encode
 
 } // namespace sfc_comp

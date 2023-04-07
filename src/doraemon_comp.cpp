@@ -191,7 +191,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
       }();
 
       const auto encode_codes = [&](std::span<const size_t> counts, bool codes) {
-        auto ret = encode::huffman(counts, true);
+        auto ret = (codes) ? encode::length_limited_huffman(counts, config.code_max_bits, true)
+                           : encode::huffman(counts, true);
         if (ret.words.size() == 1) {
           if (!use_zero_bits(codes, ret.words[0])) {
             ret.codewords[ret.words[0]].bit_count += 1;
@@ -336,7 +337,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
               assert(l == 0);
             } else {
               if (table[i] > config.code_max_bits) {
-                throw std::runtime_error("This algorithm cannot compress the given data.");
+                // this should not happen.
+                throw std::logic_error("This algorithm cannot compress the given data.");
               }
               const auto c = enc.bits.codewords[table[i] + 2];
               ret.write<b8hn_h>({size_t(c.bit_count), c.val});
@@ -441,10 +443,7 @@ std::vector<uint8_t> shima_kousaku_comp(std::span<const uint8_t> input) {
   // Caution: The decompressor seems have a bug.
   //          It may not work if some codeword has more than 12 bits.
   config.code_max_bits = 0x0c;
-
-  // [TODO]
-  // This limit is not enough to avoid runtime errors.
-  config.command_limit = 0x1000;
+  config.command_limit = 0x8000;
 
   auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
     return true;
@@ -465,10 +464,7 @@ std::vector<uint8_t> yatterman_comp(std::span<const uint8_t> input) {
   // Caution: The decompressor seems have a bug.
   //          It may not work if some codeword has more than 13 bits. (cf. $80:b407, $80:b40a)
   config.code_max_bits = 0x0d;
-
-  // [TODO]
-  // This limit is not enough to avoid runtime errors.
-  config.command_limit = 0x2000;
+  config.command_limit = 0x8000;
 
   auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
     return false;

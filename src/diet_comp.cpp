@@ -170,13 +170,14 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   }
   assert(adr == input.size());
 
-  static constexpr uint8_t header[] = {
-    0xb4, 0x4c, 0xcd, 0x21, 0x9d, 0x89, 0x64, 0x6c, 0x7a, 0x00
+  std::array<uint8_t, 9> header = {
+    0xb4, 0x4c, 0xcd, 0x21, 0x9d, 0x89, 0x64, 0x6c, 0x7a
   };
-  for (size_t i = 0; i < 10; ++i) ret.out[i] = header[i];
-  write16(ret.out, 10, ret.size() - 17);
+  for (size_t i = 0; i < header.size(); ++i) ret.out[i] = header[i];
+  ret[9] = ((ret.size() - 0x11) >> 16) & 0x0f;
+  write16(ret.out, 10, ret.size() - 0x11);
   write16(ret.out, 12, utility::crc16(ret.out, 0x11, ret.size() - 0x11));
-  ret.out[14] = 0;
+  ret.out[14] = ((input.size() >> 16) & 0x3f) << 2;
   write16(ret.out, 15, input.size());
 
   return ret.out;

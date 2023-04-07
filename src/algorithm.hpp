@@ -425,7 +425,7 @@ class sssp_solver {
     ptrdiff_t adr = size() - 1;
     while (adr > start) {
       auto cmd = (*this)[adr];
-      assert(cmd.len > 0);
+      if (cmd.len == 0) throw std::logic_error("cmd.len == 0");
       adr -= cmd.len;
       ret.emplace_back(cmd);
     }

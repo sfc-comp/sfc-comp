@@ -62,7 +62,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
 
     for (size_t k = 0; k < 10; ++k) {
       const size_t min_len = uncomp_len_tab[k][0];
-      if (i + min_len >= input.size()) break;
+      if (i + min_len > input.size()) break;
       const size_t max_len = uncomp_len_tab[k + 1][0] - 1;
       const size_t len_bitsize = uncomp_len_tab[k][2];
       const size_t total_cost = cost + len_bitsize;
