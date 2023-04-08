@@ -44,6 +44,7 @@ set(sfc_comp_src
 
   src/bahamut_lagoon_comp.cpp
   src/bokujou_monogatari_comp.cpp
+  src/cb_chara_wars_comp.cpp
   src/chrono_trigger_comp.cpp
   src/diet_comp.cpp
   src/dokapon_comp.cpp
@@ -86,11 +87,13 @@ set(sfc_comp_src
   src/slap_stick_comp.cpp
   src/soul_and_sword_comp.cpp
   src/super_donkey_kong_comp.cpp
+  src/super_jinsei_game_comp.cpp
   src/super_mario_rpg_comp.cpp
   src/super_robot_wars_comp.cpp
   src/syndicate_comp.cpp
   src/tactics_ogre_comp_1.cpp
   src/tails_of_phantasia_comp.cpp
+  src/tenchi_wo_kurau_comp.cpp
   src/vortex_comp.cpp
   src/wizardry5_comp_1.cpp
   src/wizardry5_comp_2.cpp
@@ -113,6 +116,7 @@ target_link_libraries(bench ${lib_sfc_comp_static})
 set(comp_ext_list
   bahamut_lagoon_comp comp
   bokujou_monogatari_comp comp
+  cb_chara_wars_comp comp
   chrono_trigger_comp comp
   diet_comp comp
   dokapon_comp comp
@@ -159,12 +163,14 @@ set(comp_ext_list
   slayers_comp comp
   soul_and_sword_comp comp
   super_donkey_kong_comp comp
+  super_jinsei_game_comp comp
   super_mario_rpg_comp comp
   super_robot_wars_comp comp
   syndicate_comp comp
   tactics_ogre_comp_1 comp
   tactics_ogre_comp_2 comp
   tales_of_phantasia_comp comp
+  tenchi_wo_kurau_comp comp
   vortex_comp comp
   wizardry5_comp_1 comp
   wizardry5_comp_2 comp
