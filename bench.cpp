@@ -80,6 +80,7 @@ void benchmark(const std::string& path) {
     P(tactics_ogre_comp_2),
     P(tales_of_phantasia_comp),
     P(tenchi_wo_kurau_comp),
+    P(time_cop_comp),
     P(vortex_comp),
     P(wizardry5_comp_1),
     P(wizardry5_comp_2),

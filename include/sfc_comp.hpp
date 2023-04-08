@@ -71,6 +71,7 @@ std::vector<uint8_t> tactics_ogre_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> tactics_ogre_comp_2(std::span<const uint8_t>);
 std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t>);
 std::vector<uint8_t> tenchi_wo_kurau_comp(std::span<const uint8_t>);
+std::vector<uint8_t> time_cop_comp(std::span<const uint8_t>);
 std::vector<uint8_t> vortex_comp(std::span<const uint8_t>);
 std::vector<uint8_t> wizardry5_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> wizardry5_comp_2(std::span<const uint8_t>);

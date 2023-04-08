@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.4
+  VERSION 0.1.5
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -171,6 +171,7 @@ set(comp_ext_list
   tactics_ogre_comp_2 comp
   tales_of_phantasia_comp comp
   tenchi_wo_kurau_comp comp
+  time_cop_comp comp
   vortex_comp comp
   wizardry5_comp_1 comp
   wizardry5_comp_2 comp

@@ -40,8 +40,9 @@ constexpr CostType default_cost() { return CostType(default_cost<size_t>()); }
 
 struct lha_config {
   bool use_old_encoding = true;
+  bool allow_empty = true;
   size_t header_size = 0;
-  size_t command_limit = 0x4000;
+  size_t command_limit = 0x8000;
   size_t code_max_bits = 0x10;
   size_t lz_ofs_bits = 0x0d;
 };
@@ -261,6 +262,14 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
           auto bits = bits_table(huff);
           if (bits.size() > lim) std::runtime_error("This algorithm cannot compress the given data.");
 
+          if (!config.allow_empty) {
+            if (huff.words.size() == 0) {
+              ret.write<b8hn_h>({s, 1});
+              ret.write<b8hn_h>({3, 0});
+              return;
+            }
+          }
+
           if (config.use_old_encoding) {
             if (huff.words.size() == 0) {
               ret.write<b8hn_h>({s, 1});
@@ -299,10 +308,11 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
 
           const auto& words = enc.code.words;
 
+          if (words.size() == 0) {
+            std::logic_error("This should not happen");
+          }
+
           if (config.use_old_encoding) {
-            if (words.size() == 0) {
-              std::logic_error("This should not happen");
-            }
             if (words.size() == 1) {
               if (use_zero_bits(true, words[0])) {
                 // Caution: These codes might not work on the original LHA algorithm.
@@ -398,6 +408,7 @@ std::vector<uint8_t> doraemon_comp(std::span<const uint8_t> input) {
   config.lz_ofs_bits = 0x0d;
   config.command_limit = 0x8000;
   config.use_old_encoding = true;
+  config.allow_empty = true;
 
   auto ret = doraemon_comp_core(input, config, [](bool codes, size_t word) {
     return !codes || (word == 0);
@@ -437,6 +448,7 @@ std::vector<uint8_t> shima_kousaku_comp(std::span<const uint8_t> input) {
   lha_config config;
   config.header_size = 2;
   config.use_old_encoding = true;
+  config.allow_empty = true;
 
   config.lz_ofs_bits = 0x0e;
 
@@ -458,6 +470,7 @@ std::vector<uint8_t> yatterman_comp(std::span<const uint8_t> input) {
   lha_config config;
   config.header_size = 2;
   config.use_old_encoding = false;
+  config.allow_empty = true;
 
   config.lz_ofs_bits = 0x0e;
 
@@ -472,6 +485,31 @@ std::vector<uint8_t> yatterman_comp(std::span<const uint8_t> input) {
   write16(ret, 0, input.size());
   if (ret.size() % 2 == 1) ret.push_back(0);
   for (size_t i = 2; i < ret.size(); i += 2) std::swap(ret[i], ret[i + 1]);
+  return ret;
+}
+
+std::vector<uint8_t> time_cop_comp(std::span<const uint8_t> input) {
+  check_size(input.size(), 1, 0xffff);
+
+  lha_config config;
+  config.header_size = 6;
+  config.use_old_encoding = false;
+  config.allow_empty = false;
+
+  config.lz_ofs_bits = 0x0d;
+  config.code_max_bits = 0x10;
+  config.command_limit = 0x7fff;
+  assert(config.command_limit <= 0x7fff);
+
+  auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
+    return false;
+  });
+
+  // The data should be aligned to an even address if it crosses banks.
+  if (ret.size() & 1) ret.push_back(0);
+  write16(ret, 0, input.size() >> 0);
+  write16(ret, 2, input.size() >> 16); // unknown
+  write16(ret, 4, utility::crc16(input));
   return ret;
 }
 
