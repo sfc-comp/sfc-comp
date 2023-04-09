@@ -46,6 +46,7 @@ set(sfc_comp_src
   src/bokujou_monogatari_comp.cpp
   src/cb_chara_wars_comp.cpp
   src/chrono_trigger_comp.cpp
+  src/danzarb_comp.cpp
   src/diet_comp.cpp
   src/dokapon_comp.cpp
   src/doom_comp.cpp
@@ -84,6 +85,7 @@ set(sfc_comp_src
   src/sd_gundam_x_comp.cpp
   src/seiken_densetsu_2_comp.cpp
   src/shin_megami_tensei2_comp.cpp
+  src/sky_mission_comp.cpp
   src/slap_stick_comp.cpp
   src/soul_and_sword_comp.cpp
   src/super_donkey_kong_comp.cpp
@@ -118,6 +120,7 @@ set(comp_ext_list
   bokujou_monogatari_comp comp
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
+  danzarb_comp comp
   diet_comp comp
   dokapon_comp comp
   doom_comp_1 comp
@@ -148,6 +151,7 @@ set(comp_ext_list
   popful_mail_comp comp
   rareware_comp comp
   rayearth_comp comp
+  riddick_bowe_boxing_comp comp
   rob_northen_comp_1 comp
   rob_northen_comp_2 comp
   rs3_comp_1 comp
@@ -159,6 +163,7 @@ set(comp_ext_list
   seiken_densetsu_2_comp comp
   shima_kousaku_comp comp
   shin_megami_tensei2_comp comp
+  sky_mission_comp comp
   slap_stick_comp comp
   slayers_comp comp
   soul_and_sword_comp comp
@@ -170,6 +175,7 @@ set(comp_ext_list
   tactics_ogre_comp_1 comp
   tactics_ogre_comp_2 comp
   tales_of_phantasia_comp comp
+  tenchi_souzou_comp comp
   tenchi_wo_kurau_comp comp
   time_cop_comp comp
   vortex_comp comp
