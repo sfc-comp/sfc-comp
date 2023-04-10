@@ -42,6 +42,7 @@ set(sfc_comp_src
   src/io.cpp
   src/utility.cpp
 
+  src/addams_family_comp.cpp
   src/bahamut_lagoon_comp.cpp
   src/bokujou_monogatari_comp.cpp
   src/cb_chara_wars_comp.cpp
@@ -84,10 +85,12 @@ set(sfc_comp_src
   src/sd_gundam_gx_comp.cpp
   src/sd_gundam_x_comp.cpp
   src/seiken_densetsu_2_comp.cpp
+  src/shadowrun_comp.cpp
   src/shin_megami_tensei2_comp.cpp
   src/sky_mission_comp.cpp
   src/slap_stick_comp.cpp
   src/soul_and_sword_comp.cpp
+  src/stargate_comp.cpp
   src/super_donkey_kong_comp.cpp
   src/super_jinsei_game_comp.cpp
   src/super_mario_rpg_comp.cpp
@@ -116,7 +119,9 @@ add_executable(bench bench.cpp)
 target_link_libraries(bench ${lib_sfc_comp_static})
 
 set(comp_ext_list
+  addams_family_comp comp
   bahamut_lagoon_comp comp
+  battletech_comp comp
   bokujou_monogatari_comp comp
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
@@ -139,10 +144,11 @@ set(comp_ext_list
   front_mission_comp_2 comp
   hal_comp comp
   hanjuku_hero_comp comp
-  live_a_live_comp_1 comp
+  jurassic_park_comp comp
   koei_comp comp
   konami_comp_1 comp
   konami_comp_2 comp
+  live_a_live_comp_1 comp
   madara2_comp comp
   marios_super_picross_comp comp
   marvelous_comp comp
@@ -161,12 +167,15 @@ set(comp_ext_list
   sd_gundam_gx_comp comp
   sd_gundam_x_comp comp
   seiken_densetsu_2_comp comp
+  shadowrun_comp comp
   shima_kousaku_comp comp
   shin_megami_tensei2_comp comp
   sky_mission_comp comp
   slap_stick_comp comp
   slayers_comp comp
+  sotsugyou_bangai_hen_comp comp
   soul_and_sword_comp comp
+  stargate_comp comp
   super_donkey_kong_comp comp
   super_jinsei_game_comp comp
   super_mario_rpg_comp comp

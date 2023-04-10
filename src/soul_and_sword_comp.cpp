@@ -13,11 +13,9 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   };
   struct CompType {
     bool operator == (const CompType& rhs) const {
-      if (tag == uncomp) {
-        return len_no;
-      } else {
-        return len_no == rhs.len_no && ofs_no == rhs.ofs_no; // ?
-      }
+      if (tag != rhs.tag) return false;
+      if (tag == uncomp) return len_no == rhs.len_no;
+      return len_no == rhs.len_no && ofs_no == rhs.ofs_no;
     }
     Tag tag;
     size_t ofs_no, len_no;

@@ -75,6 +75,7 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   ret.write<d16, d8>(0xf000, 0);
 
   size_t cost = (dp.total_cost() + 2 + 7) / 8 + 3;
+  assert(adr == input.size());
   assert(cost <= ret.size() && ret.size() <= cost + 1 + (bit16_pos == 0 ? 1 : 0));
   return ret.out;
 }

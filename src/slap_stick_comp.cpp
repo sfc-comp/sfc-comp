@@ -50,4 +50,11 @@ std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t> input) {
   return ret.out;
 }
 
+std::vector<uint8_t> sotsugyou_bangai_hen_comp(std::span<const uint8_t> input) {
+  auto ret = slap_stick_comp(input);
+  for (size_t i = 0; i < ret.size() - 2; ++i) ret[i] = ret[i + 2];
+  ret.resize(ret.size() - 2);
+  return ret;
+}
+
 } // namespace sfc_comp

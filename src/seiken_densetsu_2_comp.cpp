@@ -45,6 +45,7 @@ std::vector<uint8_t> seiken_densetsu_2_comp(std::span<const uint8_t> input) {
       adr += cmd.len;
     }
     write16b(ret.out, 1, input.size());
+    assert(adr == input.size());
     assert(dp.total_cost() + 4 == ret.size());
     if (best.size() == 0 || ret.size() < best.size()) {
       best = std::move(ret.out);

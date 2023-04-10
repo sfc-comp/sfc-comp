@@ -8,7 +8,7 @@ namespace sfc_comp {
 std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x10000);
   enum CompType {
-    rle, uncomp, lz, pre16
+    rle, uncomp, lz, lzl, pre16
   };
 
   const size_t num_candidates[] = {2048, 512, 256, 128, 96, 80, 72, 68, 64};
@@ -30,7 +30,7 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
       dp.update(i, 1, 0x3f, rlen, Constant<2>(), rle);
       auto res_lz = lz_helper.find_best_closest(i, 0xffff, 0x100);
       dp.update_lz(i, 1, 0x3f, res_lz, Constant<3>(), lz);
-      dp.update_lz(i, 0x100, 0x100, res_lz, Constant<3>(), lz);
+      dp.update_lz(i, 0x100, 0x100, res_lz, Constant<3>(), lzl);
       if (i + 1 < input.size()) {
         int16_t ind = pre[read16(input, i)];
         if (ind >= 0) dp.update_lz(i, 2, 2, encode::lz_data(ind, 2), Constant<1>(), pre16);
@@ -58,7 +58,8 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
         switch (cmd.type) {
         case uncomp: ret.write<d8, d8n>(cmd.len, {cmd.len, &input[adr]}); break;
         case rle: ret.write<d8, d8>(0x40 + cmd.len, input[adr]); break;
-        case lz: ret.write<d8, d16>(0x80 + cmd.len, cmd.lz_ofs); break;
+        case lz:
+        case lzl: ret.write<d8, d16>(0x80 + cmd.len, cmd.lz_ofs); break;
         case pre16: ret.write<d8>(0xc0 + cmd.lz_ofs); break;
         default: assert(0);
         }

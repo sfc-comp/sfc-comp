@@ -14,7 +14,9 @@ void save(const std::string&, std::span<const uint8_t>);
 
 } // namespace io
 
+std::vector<uint8_t> addams_family_comp(std::span<const uint8_t>);
 std::vector<uint8_t> bahamut_lagoon_comp(std::span<const uint8_t>);
+std::vector<uint8_t> battletech_comp(std::span<const uint8_t>);
 std::vector<uint8_t> bokujou_monogatari_comp(std::span<const uint8_t>);
 std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t>);
 std::vector<uint8_t> chrono_trigger_comp(std::span<const uint8_t>);
@@ -37,10 +39,11 @@ std::vector<uint8_t> ffusa_comp(std::span<const uint8_t>);
 std::vector<uint8_t> front_mission_comp_2(std::span<const uint8_t>);
 std::vector<uint8_t> hal_comp(std::span<const uint8_t>);
 std::vector<uint8_t> hanjuku_hero_comp(std::span<const uint8_t>);
-std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t>);
+std::vector<uint8_t> jurassic_park_comp(std::span<const uint8_t>);
 std::vector<uint8_t> koei_comp(std::span<const uint8_t>);
 std::vector<uint8_t> konami_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> konami_comp_2(std::span<const uint8_t>);
+std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> madara2_comp(std::span<const uint8_t>);
 std::vector<uint8_t> marios_super_picross_comp(std::span<const uint8_t>);
 std::vector<uint8_t> marvelous_comp(std::span<const uint8_t>);
@@ -59,12 +62,15 @@ std::vector<uint8_t> sd_gundam_gnext_comp(std::span<const uint8_t>);
 std::vector<uint8_t> sd_gundam_gx_comp(std::span<const uint8_t>);
 std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t>);
 std::vector<uint8_t> seiken_densetsu_2_comp(std::span<const uint8_t>);
+std::vector<uint8_t> shadowrun_comp(std::span<const uint8_t>);
 std::vector<uint8_t> shima_kousaku_comp(std::span<const uint8_t>);
 std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t>);
 std::vector<uint8_t> sky_mission_comp(std::span<const uint8_t>);
 std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t>);
 std::vector<uint8_t> slayers_comp(std::span<const uint8_t>);
+std::vector<uint8_t> sotsugyou_bangai_hen_comp(std::span<const uint8_t>);
 std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t>);
+std::vector<uint8_t> stargate_comp(std::span<const uint8_t>);
 std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t>);
 std::vector<uint8_t> super_jinsei_game_comp(std::span<const uint8_t>);
 std::vector<uint8_t> super_mario_rpg_comp(std::span<const uint8_t>);
