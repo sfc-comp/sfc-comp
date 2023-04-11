@@ -25,7 +25,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
 
   struct tup {
     size_t min_len;
-    size_t codeword;
+    size_t val;
     size_t bits;
   };
 
@@ -90,8 +90,8 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
       const size_t li = cmd.type.len_no;
       const size_t oi = cmd.type.ofs_no;
       ret.write<b1h>(true);
-      ret.write<b8hn_h>({len_tab[li].bits, len_tab[li].codeword + (l - len_tab[li].min_len)});
-      ret.write<b8hn_h>({ofs_tab[oi].bits, ofs_tab[oi].codeword + (d - ofs_tab[oi].min_len)});
+      ret.write<b8hn_h>({len_tab[li].bits, len_tab[li].val + (l - len_tab[li].min_len)});
+      ret.write<b8hn_h>({ofs_tab[oi].bits, ofs_tab[oi].val + (d - ofs_tab[oi].min_len)});
     } break;
     default: assert(0);
     }

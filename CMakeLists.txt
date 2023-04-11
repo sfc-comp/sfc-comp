@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.5
+  VERSION 0.1.6
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -67,6 +67,7 @@ set(sfc_comp_src
   src/hanjuku_hero_comp.cpp
   src/koei_comp.cpp
   src/konami_comp.cpp
+  src/legend_comp.cpp
   src/live_a_live_comp_1.cpp
   src/madara2_comp.cpp
   src/marios_super_picross_comp.cpp
@@ -74,6 +75,7 @@ set(sfc_comp_src
   src/papuwa_comp.cpp
   src/pokemon_gold_comp.cpp
   src/popful_mail_comp.cpp
+  src/power_piggs_comp.cpp
   src/rareware_comp.cpp
   src/rayearth_comp.cpp
   src/rob_northen_comp_1.cpp
@@ -93,6 +95,7 @@ set(sfc_comp_src
   src/stargate_comp.cpp
   src/super_donkey_kong_comp.cpp
   src/super_jinsei_game_comp.cpp
+  src/super_loopz_comp.cpp
   src/super_mario_rpg_comp.cpp
   src/super_robot_wars_comp.cpp
   src/syndicate_comp.cpp
@@ -148,6 +151,7 @@ set(comp_ext_list
   koei_comp comp
   konami_comp_1 comp
   konami_comp_2 comp
+  legend_comp comp
   live_a_live_comp_1 comp
   madara2_comp comp
   marios_super_picross_comp comp
@@ -155,6 +159,7 @@ set(comp_ext_list
   papuwa_comp comp
   pokemon_gold_comp comp
   popful_mail_comp comp
+  power_piggs_comp comp
   rareware_comp comp
   rayearth_comp comp
   riddick_bowe_boxing_comp comp
@@ -178,6 +183,7 @@ set(comp_ext_list
   stargate_comp comp
   super_donkey_kong_comp comp
   super_jinsei_game_comp comp
+  super_loopz_comp comp
   super_mario_rpg_comp comp
   super_robot_wars_comp comp
   syndicate_comp comp
