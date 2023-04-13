@@ -212,15 +212,9 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
   auto update_shannon_fano_costs = [&] (const shannon_fano& sf) {
     const auto& codewords = sf.codewords;
     size_t largest_bit_size = 0;
-    for (size_t i = 0; i < lz_lens.size(); ++i) {
-      if (codewords[i + lz_sf_offset].bit_count >= 0) {
-        largest_bit_size = std::max<size_t>(largest_bit_size, codewords[i].bit_count);
-      }
-    }
+    for (const auto w : sf.words) largest_bit_size = std::max<size_t>(largest_bit_size, codewords[w].bit_count);
     sf_bitsizes.assign(sf_bitsizes.size(), largest_bit_size + 9);
-    for (const auto v : sf.words) {
-      sf_bitsizes[v] = codewords[v].bit_count;
-    }
+    for (const auto w : sf.words) sf_bitsizes[w] = codewords[w].bit_count;
   };
 
   std::vector<uint8_t> best;

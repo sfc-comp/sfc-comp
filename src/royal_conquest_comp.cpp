@@ -88,15 +88,9 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
   auto update_huffman_costs = [&] (const encode::huffman_result& huff, size_t penalty = 0) {
     const auto& codewords = huff.codewords;
     size_t largest_bit_size = 0;
-    for (size_t i = 0; i < lz_lens.size(); ++i) {
-      if (codewords[i + lz_huff_offset].bit_count >= 0) {
-        largest_bit_size = std::max<size_t>(largest_bit_size, codewords[i].bit_count);
-      }
-    }
+    for (const auto w : huff.words) largest_bit_size = std::max<size_t>(largest_bit_size, codewords[w].bit_count);
     huff_bitsizes.assign(huff_bitsizes.size(), std::max(penalty, largest_bit_size + 9));
-    for (const auto v : huff.words) {
-      huff_bitsizes[v] = codewords[v].bit_count;
-    }
+    for (const auto w : huff.words) huff_bitsizes[w] = codewords[w].bit_count;
   };
 
   std::vector<uint8_t> best;
