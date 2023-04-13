@@ -110,26 +110,32 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
   size_t begin = 0;
   size_t last_index = begin;
 
-  while (begin < input.size()) {
+  auto huff_bitsizes = [&]{
     // [Todo] Find a reasonable initialization.
-    std::vector<size_t> huff_bitsizes(0x100 + (lz_max_len - lz_min_len) + 1, 9);
-    for (size_t i = 0x0100; i < huff_bitsizes.size(); ++i) huff_bitsizes[i] = 18;
-    std::vector<size_t> huff_lz_ofs_bits(config.lz_ofs_bits + 1, 4);
+    std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
+    const auto codewords = encode::huffman(utility::freq_u8(input), true).codewords;
+    for (size_t i = 0; i < codewords.size(); ++i) {
+      if (codewords[i].bit_count >= 0) ret[i] = codewords[i].bit_count;
+    }
+    return ret;
+  }();
+  std::vector<size_t> huff_lz_ofs_bits(config.lz_ofs_bits + 1, 4);
 
+  while (begin < input.size()) {
     struct encodes {
       encode::huffman_result code;
       encode::huffman_result lz_ofs;
       encode::huffman_result bits;
     };
 
-    auto update_costs = [&] (const encode::huffman_result& huff, std::vector<size_t>& costs, size_t penalty = 9) {
+    const auto update_costs = [&] (const encode::huffman_result& huff, std::vector<size_t>& costs, size_t penalty = 9) {
       size_t worst_bit_count = 0;
       for (const auto w : huff.words) worst_bit_count = std::max<size_t>(worst_bit_count, huff.codewords[w].bit_count);
       costs.assign(costs.size(), worst_bit_count + penalty);
       for (const auto w : huff.words) costs[w] = huff.codewords[w].bit_count;
     };
 
-    auto update_huffman_costs = [&] (const encodes& enc) {
+    const auto update_huffman_costs = [&] (const encodes& enc) {
       update_costs(enc.code, huff_bitsizes);
       update_costs(enc.lz_ofs, huff_lz_ofs_bits);
     };
@@ -309,7 +315,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
           const auto& words = enc.code.words;
 
           if (words.size() == 0) {
-            std::logic_error("This should not happen");
+            throw std::logic_error("Nothing to compress.");
           }
 
           if (config.use_old_encoding) {
@@ -439,6 +445,22 @@ std::vector<uint8_t> doraemon_comp(std::span<const uint8_t> input) {
   for (size_t i = 2; i < header_size + 2; ++i) check_sum += ret[i];
   ret[0x01] = check_sum;
 
+  return ret;
+}
+
+std::vector<uint8_t> olivias_mystery_comp(std::span<const uint8_t> input) {
+  check_size(input.size(), 0, 0x800000);
+
+  lha_config config;
+  config.header_size = 0;
+  config.use_old_encoding = true;
+  config.allow_empty = true;
+  config.lz_ofs_bits = 0x0d;
+  config.code_max_bits = 0x10;
+  config.command_limit = 0x8000;
+  auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
+    return true;
+  });
   return ret;
 }
 

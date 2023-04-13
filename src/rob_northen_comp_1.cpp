@@ -109,8 +109,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     std::vector<size_t> huff_lz_len_bits(lz_len_table.size());
     std::iota(huff_lz_len_bits.begin(), huff_lz_len_bits.end(), 1);
 
-    std::vector<size_t> huff_lz_ofs_bits(lz_ofs_table.size());
-    std::iota(huff_lz_ofs_bits.begin(), huff_lz_ofs_bits.end(), 1);
+    std::vector<size_t> huff_lz_ofs_bits(lz_ofs_table.size(), 4);
 
     struct huffman {
       encode::huffman_result uncomp_len;

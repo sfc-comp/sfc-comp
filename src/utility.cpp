@@ -24,7 +24,13 @@ uint16_t crc16(std::span<const uint8_t> input, size_t offset, size_t count) {
   return crc16(input.subspan(offset, count));
 }
 
-std::vector<uint16_t> u16_freq_table(std::span<const uint8_t> input, size_t k) {
+std::array<size_t, 256> freq_u8(std::span<const uint8_t> input) {
+  std::array<size_t, 256> counter = {};
+  for (auto v : input) counter[v] += 1;
+  return counter;
+}
+
+std::vector<uint16_t> k_most_freq_u16(std::span<const uint8_t> input, size_t k) {
   std::vector<size_t> counts(1 << 16);
   uint16_t v = 0;
   for (size_t i = 0; i < input.size(); ++i) {

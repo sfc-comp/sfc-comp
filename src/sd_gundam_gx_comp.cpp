@@ -5,6 +5,8 @@
 #include "utility.hpp"
 #include "writer.hpp"
 
+#include "huffman.hpp"
+
 namespace sfc_comp {
 
 namespace {
@@ -197,9 +199,15 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
   std::vector<size_t> lz_lens(max_code - 0x100 + 1);
   std::iota(lz_lens.begin(), lz_lens.end(), 3);
 
-  // [Todo] Find a reasonable initialization.
-  std::vector<size_t> sf_bitsizes(max_code + 1, 9);
-  for (size_t i = 0x0100; i < sf_bitsizes.size(); ++i) sf_bitsizes[i] = 18;
+  auto sf_bitsizes = [&]{
+    // [Todo] Find a reasonable initialization.
+    std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
+    const auto codewords = encode::huffman(utility::freq_u8(input), true).codewords;
+    for (size_t i = 0; i < codewords.size(); ++i) {
+      if (codewords[i].bit_count >= 0) ret[i] = codewords[i].bit_count;
+    }
+    return ret;
+  }();
 
   auto update_shannon_fano_costs = [&] (const shannon_fano& sf) {
     const auto& codewords = sf.codewords;

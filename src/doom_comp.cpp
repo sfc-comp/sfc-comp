@@ -135,6 +135,8 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> input) {
   return ret.out;
 }
 
+namespace {
+
 class lz_helper_doom {
 public:
   lz_helper_doom(std::span<const uint8_t> in_odd, std::span<const uint8_t> in_even) : n(in_odd.size()) {
@@ -164,6 +166,8 @@ private:
   segment_tree<range_min<int>> seg_lcp;
 };
 
+} // namespace
+
 std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
   enum CompType {
@@ -180,7 +184,7 @@ std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
   lz_helper helper_odd(in_odd), helper_even(in_even);
   sssp_solver<CompType> dp_odd(in_odd.size()), dp_even(in_even.size());
 
-  lz_helper_doom helper_doom(in_odd, in_even);
+  lz_helper_doom lz_helper_d(in_odd, in_even);
 
   auto solve = [&](std::span<const uint8_t> inp, sssp_solver<CompType>& dp, lz_helper& lz_help, bool is_second) {
     size_t rlen = 0, rleni = 0;
@@ -197,7 +201,7 @@ std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
       dp.update_lz(i, 3, 0x12, res_lz, Constant<2>(), lz);
 
       if (is_second) {
-        auto res_lz2 = helper_doom.find_best(in_odd.size() + 1 + i, 0x0801);
+        auto res_lz2 = lz_helper_d.find_best(in_odd.size() + 1 + i, 0x0801);
         dp.update_lz(i, 3, 0x12, res_lz2, Constant<2>(), lz2);
       }
 

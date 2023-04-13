@@ -14,7 +14,7 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
   const size_t num_candidates[] = {2048, 512, 256, 128, 96, 80, 72, 68, 64};
   const size_t phase_total = sizeof(num_candidates) / sizeof(*num_candidates);
 
-  auto candidate = utility::u16_freq_table(input, num_candidates[0]);
+  auto candidate = utility::k_most_freq_u16(input, num_candidates[0]);
   std::vector<int64_t> pre(0x10000, -1);
 
   for (size_t phase = 0; phase < phase_total; ++phase) {
@@ -73,7 +73,7 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
     }
   }
 
-  throw std::logic_error("This should not happen.");
+  throw std::logic_error("phase_total == 0");
 }
 
 } // namespace sfc_comp

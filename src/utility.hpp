@@ -26,10 +26,12 @@ namespace utility {
 uint16_t crc16(std::span<const uint8_t> input);
 uint16_t crc16(std::span<const uint8_t> input, size_t offset, size_t count);
 
-std::vector<uint16_t> u16_freq_table(std::span<const uint8_t> input, size_t k);
+std::array<size_t, 256> freq_u8(std::span<const uint8_t> input);
+
+std::vector<uint16_t> k_most_freq_u16(std::span<const uint8_t> input, size_t k);
 
 template <typename T, size_t K>
-std::array<T, K> most_k(std::span<const size_t> counts) {
+std::array<T, K> k_most(std::span<const size_t> counts) {
   const size_t size = size_t(1) << (8 * sizeof(T));
   if (!(size == counts.size())) {
     throw std::runtime_error(format("The input size (= 0x%X) should be 0x%X.", counts.size(), size));

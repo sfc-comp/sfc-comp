@@ -14,14 +14,14 @@ struct pre_table {
     for (size_t i = 0; i < input.size(); ++i) {
       b8_counts[input[i]] += 1;
     }
-    b8 = utility::most_k<uint8_t, 2>(b8_counts);
+    b8 = utility::k_most<uint8_t, 2>(b8_counts);
     std::fill_n(b8_counts.data(), 256, 0);
     for (size_t i = 0; i < input.size(); ++i) {
       size_t rlen = encode::run_length(input, i, 0);
       if (rlen >= 3) b8_counts[input[i]] += 1;
       i += rlen;
     }
-    rle_b8 = utility::most_k<uint8_t, 2>(b8_counts);
+    rle_b8 = utility::k_most<uint8_t, 2>(b8_counts);
   }
   std::array<uint8_t, 2> b8 = {};
   std::array<uint8_t, 2> rle_b8 = {};
@@ -44,7 +44,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
     1024, 512, 256, 128, 96, 64, 48, 32, 25, 20, 17};
   const size_t phase_total = sizeof(num_candidates) / sizeof(*num_candidates);
 
-  auto candidate = utility::u16_freq_table(input, num_candidates[0]);
+  auto candidate = utility::k_most_freq_u16(input, num_candidates[0]);
   std::vector<int64_t> pre16(0x10000, -1);
   pre_table pre(input);
 
@@ -204,7 +204,8 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
       return ret.out;
     }
   }
-  throw std::logic_error("This should not happen.");
+
+  throw std::logic_error("phase_total == 0");
 }
 
 } // namespace sfc_comp

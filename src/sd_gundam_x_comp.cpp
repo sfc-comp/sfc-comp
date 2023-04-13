@@ -91,9 +91,15 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
   std::vector<size_t> lz_lens(max_code - 0x100 + 1);
   std::iota(lz_lens.begin(), lz_lens.end(), lz_min_len);
 
-  // [Todo] Find a reasonable initialization.
-  std::vector<size_t> huff_bitsizes(max_code + 1, 9);
-  for (size_t i = 0x0100; i < huff_bitsizes.size(); ++i) huff_bitsizes[i] = 18;
+  auto huff_bitsizes = [&]{
+    // [Todo] Find a reasonable initialization.
+    std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
+    const auto codewords = encode::huffman(utility::freq_u8(input), true).codewords;
+    for (size_t i = 0; i < codewords.size(); ++i) {
+      if (codewords[i].bit_count >= 0) ret[i] = codewords[i].bit_count;
+    }
+    return ret;
+  }();
 
   auto update_huffman_costs = [&] (const huffman& huff, size_t penalty = 0) {
     const auto& codewords = huff.codewords;

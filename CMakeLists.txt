@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.6
+  VERSION 0.1.7
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -45,6 +45,7 @@ set(sfc_comp_src
   src/addams_family_comp.cpp
   src/bahamut_lagoon_comp.cpp
   src/bokujou_monogatari_comp.cpp
+  src/burai_comp.cpp
   src/cb_chara_wars_comp.cpp
   src/chrono_trigger_comp.cpp
   src/danzarb_comp.cpp
@@ -80,6 +81,7 @@ set(sfc_comp_src
   src/rayearth_comp.cpp
   src/rob_northen_comp_1.cpp
   src/rob_northen_comp_2.cpp
+  src/royal_conquest_comp.cpp
   src/rs3_comp_1.cpp
   src/sailor_moon_comp_1.cpp
   src/sansara_naga2_comp.cpp
@@ -126,6 +128,7 @@ set(comp_ext_list
   bahamut_lagoon_comp comp
   battletech_comp comp
   bokujou_monogatari_comp comp
+  burai_comp comp
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
   danzarb_comp comp
@@ -156,6 +159,7 @@ set(comp_ext_list
   madara2_comp comp
   marios_super_picross_comp comp
   marvelous_comp comp
+  olivias_mystery_comp comp
   papuwa_comp comp
   pokemon_gold_comp comp
   popful_mail_comp comp
@@ -165,6 +169,7 @@ set(comp_ext_list
   riddick_bowe_boxing_comp comp
   rob_northen_comp_1 comp
   rob_northen_comp_2 comp
+  royal_conquest_comp comp
   rs3_comp_1 comp
   sailor_moon_comp_1 comp
   sansara_naga2_comp comp
