@@ -16,30 +16,24 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp0(input.size()), dp1(input.size());
-  dp1[0].cost = dp1.default_cost;
+  dp1[0].cost = dp1.infinite_cost;
 
   for (size_t i = 0; i <= input.size(); ++i) {
     const auto cost0 = dp0[i].cost;
-    if (cost0 < dp0.default_cost) {
-      const auto ncost = cost0 + 3;
-      if (ncost < dp1[i].cost) {
-        dp1[i].cost = ncost;
-        dp1[i].len = 0;
-        dp1[i].lz_ofs = 0;
-        dp1[i].type = none;
-      }
+    if (cost0 < dp0.infinite_cost) {
+      dp1.update(i, 0, 0, Constant<3>(), none, cost0);
     }
 
     if (i == input.size()) break;
 
-    if (cost0 < dp0.default_cost) {
+    if (cost0 < dp0.infinite_cost) {
       dp1.update(i, 1, 6, Linear<8, 3>(), uncomp_s, cost0);
       dp1.update(i, 7, 0x16, Linear<8, 8>(), uncomp_m, cost0);
       dp1.update(i, 0x17, 0x0fff, Linear<8, 14>(), uncomp_l, cost0);
     }
 
     const auto cost1 = dp1[i].cost;
-    if (cost1 < dp1.default_cost) {
+    if (cost1 < dp1.infinite_cost) {
       auto res_lzl = lz_helper.find_best(i, 0xffff);
       auto res_lzm = lz_helper.find_best(i, 0xfff);
       auto res_lzs = lz_helper.find_best(i, 0xff);
@@ -68,7 +62,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
     lz_helper.add_element(i);
   }
 
-  if (dp1.total_cost() == dp1.default_cost) {
+  if (dp1.total_cost() == dp1.infinite_cost) {
     // For example, this happens when the input is a de Bruijn sequence.
     throw std::runtime_error("This algorithm cannot compress the given data.");
   }

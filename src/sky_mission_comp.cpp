@@ -75,7 +75,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   if (!mixed) ret.write<d16>(0);
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
+  for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
       ret.write<b1h>(false);

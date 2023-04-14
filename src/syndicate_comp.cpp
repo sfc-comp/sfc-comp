@@ -7,7 +7,7 @@ namespace sfc_comp {
 
 std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
   enum Tag {
-    uncomp, lz
+    uncomp, lz1, lz2, lz3
   };
   struct CompType {
     Tag tag;
@@ -65,17 +65,17 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
         const size_t hi = len_masks[len_bits], lo = (hi & -hi);
         assert(min_len > 0);
         dp[std::max(min_len_bits, len_bits - 1)].update_lz(
-          i, min_len, min_len + (lo - 1), res_lz, Constant<0>(), {lz, len_bits}, next_cost);
+          i, min_len, min_len + (lo - 1), res_lz, Constant<0>(), {lz1, len_bits}, next_cost);
         dp[len_bits].update_lz(
-          i, min_len + lo, min_len + hi - 1, res_lz, Constant<0>(), {lz, len_bits}, next_cost);
+          i, min_len + lo, min_len + hi - 1, res_lz, Constant<0>(), {lz2, len_bits}, next_cost);
         dp[std::min(max_len_bits, len_bits + 1)].update_lz(
           i, min_len + hi, std::min<size_t>(0x10000, min_len + (size_t(1) << len_bits) - 1), res_lz,
-          Constant<0>(), {lz, len_bits}, next_cost);
+          Constant<0>(), {lz3, len_bits}, next_cost);
       }
     }
 
     std::vector<command_type> commands;
-    size_t last = 0, min_cost = dp[min_len_bits].default_cost;
+    size_t last = 0, min_cost = dp[min_len_bits].infinite_cost;
     for (size_t len_bits = min_len_bits; len_bits <= max_len_bits; ++len_bits) {
       if (dp[len_bits].total_cost() < min_cost) {
         min_cost = dp[len_bits].total_cost();
@@ -109,7 +109,7 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
       case uncomp: {
         ret.write<b1l, b8ln_l>(true, {8, input[adr]});
       } break;
-      case lz: {
+      case lz1: case lz2: case lz3: {
         ret.write<b1l, b8ln_l, b8ln_l>(false,
           {ofs_bits, d}, {curr, cmd.len - min_len});
         const size_t mask = len_masks[curr];

@@ -75,7 +75,7 @@ std::vector<uint8_t> rob_northen_comp_2(std::span<const uint8_t> input) {
   ret.write<b1h, b1h>(false, false);
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
+  for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
       ret.write<b1h, d8>(false, input[adr]);

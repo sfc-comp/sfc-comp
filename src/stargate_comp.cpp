@@ -34,16 +34,11 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp0(input.size()), dp1(input.size());
-  dp1[0].cost = dp1.default_cost;
+  dp1[0].cost = dp1.infinite_cost;
 
   for (size_t i = 0; i < input.size(); ++i) {
     const auto cost0 = dp0[i].cost;
-    if (cost0 + 1 < dp1[i].cost) {
-      dp1[i].cost = cost0 + 1;
-      dp1[i].len = 0;
-      dp1[i].lz_ofs = 0;
-      dp1[i].type = {none, 0};
-    }
+    dp1.update(i, 0, 0, Constant<1>(), {none, 0}, cost0);
     for (size_t k = 0; k < uncomp_max_lens.size(); ++k) {
       const size_t min_len = (k == 0) ? uncomp_max_lens[0] : uncomp_max_lens[k - 1] + 1;
       const size_t max_len = uncomp_max_lens[k];

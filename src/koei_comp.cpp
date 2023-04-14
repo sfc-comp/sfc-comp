@@ -91,7 +91,7 @@ std::vector<uint8_t> koei_comp(std::span<const uint8_t> input) {
   };
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
+  for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
       ret.write<b1h, d8>(true, input[adr]); break;

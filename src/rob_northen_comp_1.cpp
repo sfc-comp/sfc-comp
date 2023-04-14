@@ -36,7 +36,10 @@ struct CostType {
 } // namespace
 
 template <>
-constexpr CostType default_cost() { return CostType(default_cost<size_t>()); }
+struct cost_traits<CostType> {
+  static constexpr CostType infinity() { return CostType(cost_traits<size_t>::infinity()); }
+  static constexpr CostType unspecified() { return CostType(cost_traits<size_t>::unspecified()); }
+};
 
 std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x100000);
@@ -137,12 +140,12 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
 
     while (true) {
       dp0[begin].cost = CostType(0);
-      dp1[begin].cost = dp0.default_cost;
+      dp1[begin].cost = dp0.infinite_cost;
 
       size_t e = std::min(input.size(), last_index + std::max(lz_len_table.back(), uncomp_len_table.back()));
       for (size_t i = begin + 1; i <= e; ++i) {
-        dp0[i].cost = dp0.default_cost;
-        dp1[i].cost = dp1.default_cost;
+        dp0[i].cost = dp0.infinite_cost;
+        dp1[i].cost = dp1.infinite_cost;
       }
 
       constexpr auto bit_cost = [](size_t b) -> size_t {
@@ -152,19 +155,14 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
       size_t index = begin;
       for (; index <= input.size(); ++index) {
         const auto cost0 = dp0[index].cost;
-        if (cost0 != dp0.default_cost) {
+        if (cost0 < dp0.infinite_cost) {
           // skip uncomp
           const auto ncost = CostType(cost0.cost + huff_uncomp_bits[0], cost0.count + 1);
-          if (ncost < dp1[index].cost) {
-            dp1[index].cost = ncost;
-            dp1[index].len = 0;
-            dp1[index].lz_ofs = 0;
-            dp1[index].type = {uncomp, 0, 0};
-          }
+          dp1.update(index, 0, 0, Constant<0>(), {uncomp, 0, 0}, ncost);
         }
         if (index == input.size()) break;
 
-        if (cost0 != dp0.default_cost) {
+        if (cost0 < dp0.infinite_cost) {
           // uncomp
           for (size_t k = 1; k < uncomp_len_table.size(); ++k) {
             const size_t from = uncomp_len_table[k - 1] + 1;
@@ -175,7 +173,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         }
 
         const auto cost1 = dp1[index].cost;
-        if (cost1 == dp1.default_cost) break;
+        if (cost1 == dp1.infinite_cost) break;
         if (cost1.count >= command_limit) break;
 
         for (ptrdiff_t o = lz_max_ofs_bits; o >= 0; --o) {
@@ -195,7 +193,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
       }
 
       last_index = index;
-      if (dp1[index].cost == dp1.default_cost) {
+      if (dp1[index].cost == dp1.infinite_cost) {
         if (index == 0) throw std::logic_error("This should not happen.");
         --index;
       }
@@ -294,7 +292,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         ret.write<b8ln_l>({16, (best_commands.size() + 1) / 2});
 
         size_t adr = begin;
-        for (const auto cmd : best_commands) {
+        for (const auto& cmd : best_commands) {
           switch (cmd.type.tag) {
           case uncomp: {
             const size_t k = cmd.type.len_no;

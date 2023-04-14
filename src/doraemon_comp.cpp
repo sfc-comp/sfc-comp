@@ -36,7 +36,10 @@ struct CostType {
 } // namespace
 
 template <>
-constexpr CostType default_cost() { return CostType(default_cost<size_t>()); }
+struct cost_traits<CostType> {
+  static constexpr CostType infinity() { return CostType(cost_traits<size_t>::infinity()); }
+  static constexpr CostType unspecified() { return CostType(cost_traits<size_t>::unspecified()); }
+};
 
 struct lha_config {
   bool use_old_encoding = true;
@@ -148,7 +151,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
     while (true) {
       dp[begin].cost = CostType(0);
       size_t e = std::min(input.size(), last_index + lz_max_len);
-      for (size_t i = begin + 1; i <= e; ++i) dp[i].cost = dp.default_cost;
+      for (size_t i = begin + 1; i <= e; ++i) dp[i].cost = dp.infinite_cost;
 
       size_t index = begin;
       for (; index < input.size(); ++index) {

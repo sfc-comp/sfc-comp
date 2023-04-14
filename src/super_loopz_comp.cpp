@@ -81,7 +81,7 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   if (input.size() > 0) ret.write<b1l>(false);
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
+  for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
       if (cmd.type.len_no == 0) {

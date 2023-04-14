@@ -89,7 +89,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   raws.write<d8, d8>(input[0], input[1]);
 
   size_t adr = 2;
-  for (const auto cmd : dp.commands(2)) {
+  for (const auto& cmd : dp.commands(2)) {
     switch (cmd.type.tag) {
     case uncomp: {
       const size_t li = cmd.type.len_no;

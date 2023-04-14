@@ -142,6 +142,7 @@ void benchmark(const std::string& path) {
   }
 
   uint32_t total_hash = 0;
+  size_t total_size_sum = 0;
 
   const auto p_comps = comps.begin();
   for (size_t c = 0; c < comps.size(); ++c) {
@@ -164,12 +165,13 @@ void benchmark(const std::string& path) {
       }
     }
     total_hash ^= h;
+    total_size_sum += total_size;
 
     const auto end = high_resolution_clock::now();
     printf("%6zd | %.4f | %08X |\n", total_size,
             duration_cast<nanoseconds>(end - beg).count() / 1e9, h);
   }
-  printf("%08X\n", total_hash);
+  printf("%zd : %08X\n", total_size_sum, total_hash);
 }
 
 #undef P
