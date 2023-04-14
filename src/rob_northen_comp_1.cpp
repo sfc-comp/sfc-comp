@@ -118,10 +118,10 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     };
 
     auto update_costs = [&] (const encode::huffman_result& huff, std::vector<size_t>& costs, size_t penalty = 9) {
-      size_t worst_bit_count = 0;
-      for (const auto w : huff.words) worst_bit_count = std::max<size_t>(worst_bit_count, huff.codewords[w].bit_count);
-      costs.assign(costs.size(), worst_bit_count + penalty);
-      for (const auto w : huff.words) costs[w] = huff.codewords[w].bit_count;
+      size_t longest_bitlen = 0;
+      for (const auto w : huff.words) longest_bitlen = std::max<size_t>(longest_bitlen, huff.codewords[w].bitlen);
+      costs.assign(costs.size(), longest_bitlen + penalty);
+      for (const auto w : huff.words) costs[w] = huff.codewords[w].bitlen;
     };
 
     auto update_huffman_costs = [&] (const huffman& huff) {
@@ -235,7 +235,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         auto ret = encode::huffman(counts, true);
         if (ret.words.size() == 1) {
           // 0-bit codes are not allowed.
-          ret.codewords[ret.words[0]].bit_count += 1;
+          ret.codewords[ret.words[0]].bitlen += 1;
         }
         return ret;
       };
@@ -259,9 +259,9 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         for (const auto& cmd : commands) {
           if (cmd.type.tag == uncomp) cost += cmd.len * 8;
         }
-        for (size_t w : huff.uncomp_len.words) cost += counter.uncomp[w] * (huff.uncomp_len.codewords[w].bit_count + bit_cost(w));
-        for (size_t w : huff.lz_ofs.words) cost += counter.lz_ofs[w] * (huff.lz_ofs.codewords[w].bit_count + bit_cost(w));
-        for (size_t w : huff.lz_len.words) cost += counter.lz_len[w] * (huff.lz_len.codewords[w].bit_count + bit_cost(w));
+        for (size_t w : huff.uncomp_len.words) cost += counter.uncomp[w] * (huff.uncomp_len.codewords[w].bitlen + bit_cost(w));
+        for (size_t w : huff.lz_ofs.words) cost += counter.lz_ofs[w] * (huff.lz_ofs.codewords[w].bitlen + bit_cost(w));
+        for (size_t w : huff.lz_len.words) cost += counter.lz_len[w] * (huff.lz_len.codewords[w].bitlen + bit_cost(w));
         return cost;
       };
 
@@ -278,7 +278,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           const size_t total_count = max_elem(huff.words) + 1;
           ret.write<b8ln_l>({5, total_count});
           for (size_t i = 0; i < total_count; ++i) {
-            ptrdiff_t bits = huff.codewords[i].bit_count;
+            ptrdiff_t bits = huff.codewords[i].bitlen;
             if (bits <= 0) bits = 0;
             if (bits >= 16) {
               // this would not happen.
@@ -299,8 +299,8 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           case uncomp: {
             const size_t k = cmd.type.len_no;
             const auto c = best_huff.uncomp_len.codewords[k];
-            assert(c.bit_count >= 0);
-            ret.write<b8ln_h>({size_t(c.bit_count), c.val});
+            assert(c.bitlen >= 0);
+            ret.write<b8ln_h>({size_t(c.bitlen), c.val});
             if (cmd.len > 0) {
               const size_t min_len = ((k >= 1) ? uncomp_len_table[k - 1] + 1 : uncomp_len_table[0]);
               assert(min_len <= cmd.len && cmd.len <= uncomp_len_table[k]);
@@ -316,12 +316,12 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
             const size_t d = (adr - cmd.lz_ofs);
             const size_t min_ofs = ((o >= 1) ? lz_ofs_table[o - 1] + 1 : lz_ofs_table[0]);
             assert(min_ofs <= d && d <= lz_ofs_table[o]);
-            ret.write<b8ln_h>({size_t(c_ofs.bit_count), c_ofs.val});
+            ret.write<b8ln_h>({size_t(c_ofs.bitlen), c_ofs.val});
             if (o >= 2) ret.write<b8ln_l>({o - 1, d - min_ofs});
 
             const size_t min_len = ((k >= 1) ? lz_len_table[k - 1] + 1 : lz_len_table[0]);
             assert(min_len <= cmd.len && cmd.len <= lz_len_table[k]);
-            ret.write<b8ln_h>({size_t(c_len.bit_count), c_len.val});
+            ret.write<b8ln_h>({size_t(c_len.bitlen), c_len.val});
             if (k >= 2) ret.write<b8ln_l>({k - 1, cmd.len - min_len});
           } break;
           default: assert(0);

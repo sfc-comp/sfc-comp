@@ -20,7 +20,7 @@ struct huffman_node {
 };
 
 struct huffman_data {
-  ptrdiff_t bit_count;
+  ptrdiff_t bitlen;
   size_t val;
 };
 

@@ -12,7 +12,7 @@ namespace sfc_comp {
 namespace {
 
 struct sf_code {
-  ptrdiff_t bit_count;
+  ptrdiff_t bitlen;
   size_t val;
 };
 
@@ -199,22 +199,22 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
   std::vector<size_t> lz_lens(max_code - 0x100 + 1);
   std::iota(lz_lens.begin(), lz_lens.end(), 3);
 
-  auto sf_bitsizes = [&]{
+  auto sf_bitlens = [&]{
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
     const auto codewords = encode::huffman(utility::freq_u8(input), true).codewords;
     for (size_t i = 0; i < codewords.size(); ++i) {
-      if (codewords[i].bit_count >= 0) ret[i] = codewords[i].bit_count;
+      if (codewords[i].bitlen >= 0) ret[i] = codewords[i].bitlen;
     }
     return ret;
   }();
 
   auto update_shannon_fano_costs = [&] (const shannon_fano& sf) {
     const auto& codewords = sf.codewords;
-    size_t largest_bit_size = 0;
-    for (const auto w : sf.words) largest_bit_size = std::max<size_t>(largest_bit_size, codewords[w].bit_count);
-    sf_bitsizes.assign(sf_bitsizes.size(), largest_bit_size + 9);
-    for (const auto w : sf.words) sf_bitsizes[w] = codewords[w].bit_count;
+    size_t longest_bit_size = 0;
+    for (const auto w : sf.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
+    sf_bitlens.assign(sf_bitlens.size(), longest_bit_size + 9);
+    for (const auto w : sf.words) sf_bitlens[w] = codewords[w].bitlen;
   };
 
   std::vector<uint8_t> best;
@@ -222,11 +222,11 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
   while (true) {
     sssp_solver<CompType> dp(input.size());
     for (size_t i = 0; i < input.size(); ++i) {
-      dp.update(i, 1, 1, [&](size_t) { return sf_bitsizes[input[i]]; }, uncomp);
+      dp.update(i, 1, 1, [&](size_t) { return sf_bitlens[input[i]]; }, uncomp);
       dp.update_lz_table(i, lz_lens, lz_memo_s[i],
-        [&](size_t j) { return 1 + lzs_ofs_bits + sf_bitsizes[lz_lens[j] + lz_sf_offset]; }, lzs);
+        [&](size_t j) { return 1 + lzs_ofs_bits + sf_bitlens[lz_lens[j] + lz_sf_offset]; }, lzs);
       dp.update_lz_table(i, lz_lens, lz_memo_l[i],
-        [&](size_t j) { return 1 + lzl_ofs_bits + sf_bitsizes[lz_lens[j] + lz_sf_offset]; }, lzl);
+        [&](size_t j) { return 1 + lzl_ofs_bits + sf_bitlens[lz_lens[j] + lz_sf_offset]; }, lzl);
     }
 
     const auto commands = dp.commands();
@@ -290,12 +290,12 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
         switch (cmd.type) {
         case uncomp: {
           const auto& c = shannon_fano.codewords[input[adr]];
-          ret.write<b8hn_h>({size_t(c.bit_count), c.val});
+          ret.write<b8hn_h>({size_t(c.bitlen), c.val});
         } break;
         case lzs:
         case lzl: {
           const auto& c = shannon_fano.codewords[cmd.len + lz_sf_offset];
-          ret.write<b8hn_h>({size_t(c.bit_count), c.val});
+          ret.write<b8hn_h>({size_t(c.bitlen), c.val});
           size_t d = adr - cmd.lz_ofs - 1;
           if (cmd.type == lzs) {
             ret.write<b1h, b8hn_h>(false, {lzs_ofs_bits, d});

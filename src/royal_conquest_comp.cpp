@@ -75,22 +75,22 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
   std::vector<size_t> lz_lens(0x100);
   std::iota(lz_lens.begin(), lz_lens.end(), lz_min_len);
 
-  auto huff_bitsizes = [&]{
+  auto huff_bitlens = [&]{
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
     const auto codewords = encode::huffman(utility::freq_u8(in), true).codewords;
     for (size_t i = 0; i < codewords.size(); ++i) {
-      if (codewords[i].bit_count >= 0) ret[i] = codewords[i].bit_count;
+      if (codewords[i].bitlen >= 0) ret[i] = codewords[i].bitlen;
     }
     return ret;
   }();
 
   auto update_huffman_costs = [&] (const encode::huffman_result& huff, size_t penalty = 0) {
     const auto& codewords = huff.codewords;
-    size_t largest_bit_size = 0;
-    for (const auto w : huff.words) largest_bit_size = std::max<size_t>(largest_bit_size, codewords[w].bit_count);
-    huff_bitsizes.assign(huff_bitsizes.size(), std::max(penalty, largest_bit_size + 9));
-    for (const auto w : huff.words) huff_bitsizes[w] = codewords[w].bit_count;
+    size_t longest_bit_size = 0;
+    for (const auto w : huff.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
+    huff_bitlens.assign(huff_bitlens.size(), std::max(penalty, longest_bit_size + 9));
+    for (const auto w : huff.words) huff_bitlens[w] = codewords[w].bitlen;
   };
 
   std::vector<uint8_t> best;
@@ -101,14 +101,14 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     for (size_t i = 0; i < pad; ++i) dp[i + 1].cost = 0;
 
     for (size_t i = pad; i < input.size(); ++i) {
-      dp.update(i, 1, 1, [&](size_t) { return huff_bitsizes[input[i]]; }, {uncomp, 0});
+      dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, {uncomp, 0});
       for (ptrdiff_t o = lz_ofs_total - 1; o >= 0; --o) {
         const auto& res_lz = lz_memo[i][o];
         if (res_lz.len < lz_min_len) break;
         if ((i - res_lz.ofs) < lz_ofs_table[o].min) continue;
         const size_t ofs_bits = lz_ofs_table[o].bits;
         dp.update_lz_table(i, lz_lens, res_lz, [&](size_t j) {
-          return huff_bitsizes[lz_lens[j] + lz_huff_offset] + ofs_bits;
+          return huff_bitlens[lz_lens[j] + lz_huff_offset] + ofs_bits;
         }, {lz, size_t(o)});
       }
     }
@@ -160,7 +160,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
       for (size_t i = 0; i < huff.words.size(); ++i) {
         const auto w = huff.words[i];
         auto c = huff.codewords[w];
-        for (ptrdiff_t b = 0; b < c.bit_count; ++b) {
+        for (ptrdiff_t b = 0; b < c.bitlen; ++b) {
           if ((c.val >> b) & 1) break;
           tree.write<b1h>(true);
         }
@@ -177,11 +177,11 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
         switch (cmd.type.tag) {
         case uncomp: {
           const auto& c = huff.codewords[input[adr]];
-          ret.write<b8ln_h>({size_t(c.bit_count), c.val});
+          ret.write<b8ln_h>({size_t(c.bitlen), c.val});
         } break;
         case lz: {
           const auto& c = huff.codewords[cmd.len + lz_huff_offset];
-          ret.write<b8ln_h>({size_t(c.bit_count), c.val});
+          ret.write<b8ln_h>({size_t(c.bitlen), c.val});
           const auto tp = lz_ofs_table[cmd.type.ofs_no];
           ret.write<b8ln_h>({tp.bits, tp.val + (adr - cmd.lz_ofs - tp.min)});
         } break;
