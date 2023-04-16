@@ -87,6 +87,18 @@ inline void write16b(std::span<uint8_t> c, size_t i, uint32_t v) {
   c[i + 1] = v >> 0;
 }
 
+inline void write24(std::span<uint8_t> c, size_t i, uint32_t v) {
+  c[i + 0] = v >> 0;
+  c[i + 1] = v >> 8;
+  c[i + 2] = v >> 16;
+}
+
+inline void write24b(std::span<uint8_t> c, size_t i, uint32_t v) {
+  c[i + 0] = v >> 16;
+  c[i + 1] = v >> 8;
+  c[i + 2] = v >> 0;
+}
+
 inline void write32(std::span<uint8_t> c, size_t i, uint32_t v) {
   c[i + 0] = v >> 0;
   c[i + 1] = v >> 8;

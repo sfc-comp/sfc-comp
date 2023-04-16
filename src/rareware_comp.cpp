@@ -44,6 +44,24 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
     1024, 512, 256, 128, 96, 64, 48, 32, 25, 20, 17};
   const size_t phase_total = sizeof(num_candidates) / sizeof(*num_candidates);
 
+  std::vector<encode::lz_data> lzl_memo(input.size());
+  std::vector<encode::lz_data> lzm_memo(input.size());
+  std::vector<std::array<encode::lz_data, 0x10>> lz_memo(input.size());
+  {
+    lz_helper lz_helper(input);
+    for (size_t i = 0; i < input.size(); ++i) {
+      lzl_memo[i] = lz_helper.find_best(i, 0xffff);
+      const size_t j = i + 0x0102;
+      if (j < input.size()) lzm_memo[j] = lz_helper.find_best(j, 0x1102);
+      for (size_t l = 3; l <= 0x12; ++l) {
+        const size_t j = i + l - 1;
+        if (j >= input.size()) break;
+        lz_memo[j][l - 3] = lz_helper.find_best(j, l + 0xff);
+      }
+      lz_helper.add_element(i);
+    }
+  }
+
   auto candidate = utility::k_most_freq_u16(input, num_candidates[0]);
   std::vector<int64_t> pre16(0x10000, -1);
   pre_table pre(input);
@@ -51,11 +69,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
   for (size_t phase = 0; phase < phase_total; ++phase) {
     for (size_t i = 0; i < candidate.size(); ++i) pre16[candidate[i]] = i;
 
-    lz_helper lz_helper(input);
     sssp_solver<CompType> dp(input.size());
-
-    encode::lz_data lz_memo[32][16];
-    encode::lz_data lzm_memo[0x200];
 
     size_t rlen = 0;
     for (size_t i = 0; i < input.size(); ++i) {
@@ -97,27 +111,10 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
         else if (ind > 0) dp.update_lz(i, 2, 2, encode::lz_data(ind, 2), Constant<2>(), pre16s);
       }
       for (size_t l = 3; l <= 0x12; ++l) {
-        if (i < l) continue;
-        const auto& res_lzvs = lz_memo[(i - l + 1) & 31][l - 3];
-        dp.update_lz(i, l, l, res_lzvs, Constant<4>(), lzs);
+        dp.update_lz(i, l, l, lz_memo[i][l - 3], Constant<4>(), lzs);
       }
-      if (i >= 0x0103) {
-        const auto& res_lzm = lzm_memo[(i - 0x102) & 0x1ff];
-        dp.update_lz(i, 3, 0x12, res_lzm, Constant<5>(), lzm);
-      }
-      auto res_lzl = lz_helper.find_best(i, 0xffff);
-      dp.update_lz(i, 3, 0x12, res_lzl, Constant<6>(), lzl);
-
-      if (phase + 3 >= phase_total) {
-        for (size_t l = 3; l <= 0x12; ++l) {
-          if (i + l - 1 >= input.size()) break;
-          lz_memo[i & 31][l - 3] = lz_helper.find_best(i + l - 1, l + 0xff);
-        }
-      }
-      if (i + 0x102 < input.size()) {
-        lzm_memo[i & 0x1ff] = lz_helper.find_best(i + 0x102, 0x1102);
-      }
-      lz_helper.add_element(i);
+      dp.update_lz(i, 3, 0x12, lzm_memo[i], Constant<5>(), lzm);
+      dp.update_lz(i, 3, 0x12, lzl_memo[i], Constant<6>(), lzl);
     }
 
     if (phase + 1 < phase_total) {

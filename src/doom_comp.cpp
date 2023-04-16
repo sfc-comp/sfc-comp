@@ -254,12 +254,12 @@ std::vector<uint8_t> doom_comp_1(std::span<const uint8_t> input) {
   std::vector<uint8_t> ret = doom_comp_04(input);
   size_t comp_type = 1;
 
-  auto comp2 = doom_comp_08(input);
-  if (comp2.size() < ret.size()) ret = std::move(comp2), comp_type = 2;
-
-  auto comp3 = doom_comp_0c(input);
-  if (comp3.size() < ret.size()) ret = std::move(comp3), comp_type = 3;
-
+  if (auto res = doom_comp_08(input); res.size() < ret.size()) {
+    ret = std::move(res); comp_type = 2;
+  }
+  if (auto res = doom_comp_0c(input); res.size() < ret.size()) {
+    ret = std::move(res); comp_type = 3;
+  }
   ret.resize(ret.size() + 2);
   for (size_t i = 0; i < ret.size() - 2; ++i) ret[ret.size() - 1 - i] = ret[ret.size() - 3 - i];
   write16(ret, 0, comp_type << 2);
@@ -270,9 +270,9 @@ std::vector<uint8_t> doom_comp_1(std::span<const uint8_t> input) {
 std::vector<uint8_t> doom_comp_2(std::span<const uint8_t> input) {
   std::vector<uint8_t> ret = doom_comp_08(input);
 
-  auto comp3 = doom_comp_0c(input);
-  if (comp3.size() < ret.size()) ret = std::move(comp3);
-
+  if (auto res = doom_comp_0c(input); res.size() < ret.size()) {
+    ret = std::move(res);
+  }
   return ret;
 }
 

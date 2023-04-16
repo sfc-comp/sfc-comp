@@ -30,16 +30,18 @@ std::vector<uint8_t> rayearth_comp(std::span<const uint8_t> input) {
         dp.update_lz(i, 0x0042, 0x00ff, res_lz4, Constant<4>(), lz4l);
       }
       auto res_lz = lz_helper.find_best(i, 0x02fe);
-      size_t d = i - res_lz.ofs;
-      if (d >= 0x0200) {
-        dp.update_lz(i, 0x0003, 0x0041, res_lz, Constant<2>(), lz3);
-        dp.update_lz(i, 0x0042, 0x00ff, res_lz, Constant<3>(), lz3l);
-      } else if (d >= 0x0100) {
-        dp.update_lz(i, 0x0003, 0x0041, res_lz, Constant<2>(), lz2);
-        dp.update_lz(i, 0x0042, 0x00ff, res_lz, Constant<3>(), lz2l);
-      } else {
-        dp.update_lz(i, 0x0003, 0x0041, res_lz, Constant<2>(), lz1);
-        dp.update_lz(i, 0x0042, 0x00ff, res_lz, Constant<3>(), lz1l);
+      if (res_lz.len >= 3) {
+        const size_t d = i - res_lz.ofs;
+        if (d >= 0x0200) {
+          dp.update_lz(i, 0x0003, 0x0041, res_lz, Constant<2>(), lz3);
+          dp.update_lz(i, 0x0042, 0x00ff, res_lz, Constant<3>(), lz3l);
+        } else if (d >= 0x0100) {
+          dp.update_lz(i, 0x0003, 0x0041, res_lz, Constant<2>(), lz2);
+          dp.update_lz(i, 0x0042, 0x00ff, res_lz, Constant<3>(), lz2l);
+        } else {
+          dp.update_lz(i, 0x0003, 0x0041, res_lz, Constant<2>(), lz1);
+          dp.update_lz(i, 0x0042, 0x00ff, res_lz, Constant<3>(), lz1l);
+        }
       }
     }
 
