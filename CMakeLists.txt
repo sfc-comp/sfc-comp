@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.7
+  VERSION 0.1.8
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -39,6 +39,7 @@ endif()
 set(sfc_comp_src
   src/encode.cpp
   src/huffman.cpp
+  src/image.cpp
   src/io.cpp
   src/utility.cpp
 
@@ -64,8 +65,10 @@ set(sfc_comp_src
   src/ff6_comp.cpp
   src/ffusa_comp.cpp
   src/front_mission_comp_2.cpp
+  src/gun_hazard_comp.cpp
   src/hal_comp.cpp
   src/hanjuku_hero_comp.cpp
+  src/kiki_kaikai_comp.cpp
   src/koei_comp.cpp
   src/konami_comp.cpp
   src/legend_comp.cpp
@@ -125,9 +128,11 @@ target_link_libraries(bench ${lib_sfc_comp_static})
 
 set(comp_ext_list
   addams_family_comp comp
+  assault_suits_valken_comp comp
   bahamut_lagoon_comp comp
   battletech_comp comp
   bokujou_monogatari_comp comp
+  brandish_comp comp
   burai_comp comp
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
@@ -148,9 +153,11 @@ set(comp_ext_list
   ff6_comp comp
   ffusa_comp comp
   front_mission_comp_2 comp
+  gun_hazard_comp comp
   hal_comp comp
   hanjuku_hero_comp comp
   jurassic_park_comp comp
+  kiki_kaikai_comp comp
   koei_comp comp
   konami_comp_1 comp
   konami_comp_2 comp
@@ -199,6 +206,7 @@ set(comp_ext_list
   tenchi_wo_kurau_comp comp
   time_cop_comp comp
   vortex_comp comp
+  wild_guns_comp comp
   wizardry5_comp_1 comp
   wizardry5_comp_2 comp
   yatterman_comp comp
