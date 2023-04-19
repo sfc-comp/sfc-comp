@@ -22,6 +22,7 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
   size_t rlen8 = 0, rlen16 = 0, rlen24 = 0;
   encode::rle_data c16[2] = {{}, {}}, c24[3] = {{}, {}, {}}, c32[4] = {{}, {}, {}, {}};
   encode::rle_data rlen8i = {}, rlen16i[2] = {{}, {}};
+  std::array<size_t, 16> lz8s = {};
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 0xf0, Linear<1, 1>(), uncomp);
 
@@ -81,18 +82,9 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
     auto res_lzs = lz_helper.find_best(i, 0x100);
     dp.update_lz(i, 0x14, 0x113, res_lzs, Constant<3>(), lzs);
 
-    // naive
-    encode::lz_data res_lz8 = {0, 0};
-    for (size_t ofs = 8; ofs <= 0x80; ofs += 8) {
-      if (ofs > i) break;
-      size_t l = 0, n = input.size();
-      for (size_t j = i; j < n && l < 0x12 && input[j] == input[j - ofs]; ++j, ++l);
-      if (l > res_lz8.len) {
-        res_lz8 = encode::lz_data(i - ofs, l);
-        if (l == 0x12) break;
-      }
-    }
-    dp.update_lz(i, 3, 0x12, res_lz8, Constant<2>(), lz8);
+    for (size_t k = 0; k < 0x10; ++k) lz8s[k] = encode::lz_dist(input, i, 8 * (k + 1), lz8s[k]);
+    const size_t best_k = std::max_element(lz8s.begin(), lz8s.end()) - lz8s.begin();
+    dp.update_lz(i, 3, 0x12, {ptrdiff_t(i - 8 * (best_k + 1)), lz8s[best_k]}, Constant<2>(), lz8);
 
     // offset should be >= 2.
     if (i >= 1) lz_helper.add_element(i - 1);

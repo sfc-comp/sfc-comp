@@ -39,6 +39,7 @@ std::vector<uint8_t> fe4_comp(std::span<const uint8_t>);
 std::vector<uint8_t> ff5_comp(std::span<const uint8_t>);
 std::vector<uint8_t> ff6_comp(std::span<const uint8_t>);
 std::vector<uint8_t> ffusa_comp(std::span<const uint8_t>);
+std::vector<uint8_t> flintstones_comp(std::span<const uint8_t>);
 std::vector<uint8_t> front_mission_comp_2(std::span<const uint8_t>);
 std::vector<uint8_t> gun_hazard_comp(std::span<const uint8_t>);
 std::vector<uint8_t> hal_comp(std::span<const uint8_t>);

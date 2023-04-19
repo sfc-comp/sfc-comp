@@ -29,6 +29,8 @@ rle_data common_lo32_24_hint(std::span<const uint8_t> in, size_t adr, size_t pre
 rle_data common_hi8(std::span<const uint8_t> in, size_t adr, size_t max_len);
 rle_data common_lo8(std::span<const uint8_t> in, size_t adr, size_t max_len);
 
+size_t lz_dist(std::span<const uint8_t> in, size_t adr, size_t dist, size_t prev_len);
+
 } // namespace encode
 
 } // namespace sfc_comp

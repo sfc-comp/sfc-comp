@@ -139,6 +139,15 @@ rle_data common_lo8(std::span<const uint8_t> in, size_t adr, size_t max_len) {
   return {l, v};
 }
 
+size_t lz_dist(std::span<const uint8_t> in, size_t adr, size_t dist, size_t prev_len) {
+  if (prev_len >= 1) return prev_len - 1;
+  if (adr < dist) return 0;
+  const size_t n = in.size();
+  size_t l = 0;
+  for (; adr + l < n && in[adr + l - dist] == in[adr + l]; l += 1);
+  return l;
+}
+
 } // namespace encode
 
 } // namespace sfc_comp

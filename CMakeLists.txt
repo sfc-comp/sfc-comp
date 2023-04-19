@@ -64,6 +64,7 @@ set(sfc_comp_src
   src/ff5_comp.cpp
   src/ff6_comp.cpp
   src/ffusa_comp.cpp
+  src/flintstones_comp.cpp
   src/front_mission_comp_2.cpp
   src/gun_hazard_comp.cpp
   src/hal_comp.cpp
@@ -152,6 +153,7 @@ set(comp_ext_list
   ff5_comp comp
   ff6_comp comp
   ffusa_comp comp
+  flintstones_comp comp
   front_mission_comp_2 comp
   gun_hazard_comp comp
   hal_comp comp

@@ -48,6 +48,7 @@ void benchmark(const std::string& path) {
     P(ff5_comp),
     P(ff6_comp),
     P(ffusa_comp),
+    P(flintstones_comp),
     P(front_mission_comp_2),
     P(gun_hazard_comp),
     P(hal_comp),
