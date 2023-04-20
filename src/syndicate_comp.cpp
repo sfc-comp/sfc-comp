@@ -12,7 +12,11 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
   struct CompType {
     Tag tag;
     size_t from;
-    bool operator == (const CompType& rhs) const { return tag == rhs.tag; }
+    bool operator == (const CompType& rhs) const {
+      if (tag != rhs.tag) return false;
+      if (tag == uncomp) return true;
+      return from == rhs.from;
+    }
   };
   static constexpr size_t min_ofs_bits = 1, max_ofs_bits = 16;
   static constexpr size_t min_len_bits = 2, max_len_bits = 16;

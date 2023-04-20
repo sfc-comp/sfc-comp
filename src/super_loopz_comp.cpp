@@ -15,7 +15,7 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag == uncomp) return len_no == rhs.len_no;
-      return len_no == rhs.len_no && ofs_no == rhs.ofs_no;
+      return len_no == rhs.len_no;
     }
     Tag tag;
     size_t ofs_no, len_no;

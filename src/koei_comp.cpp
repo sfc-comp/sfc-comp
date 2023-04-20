@@ -14,7 +14,7 @@ std::vector<uint8_t> koei_comp(std::span<const uint8_t> input) {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag == uncomp) return true;
-      return len_no == rhs.len_no && ofs_no == rhs.ofs_no; // ?
+      return len_no == rhs.len_no;
     }
     Tag tag;
     size_t ofs_no, len_no;
@@ -76,15 +76,15 @@ std::vector<uint8_t> koei_comp(std::span<const uint8_t> input) {
   writer_b ret; ret.write<d16>(0);
 
   size_t curr16 = 0, next16 = 0, bit16_pos = 0;
-  auto write_b16 = [&](size_t input_bits, size_t v) {
-    while (input_bits > 0) {
-      --input_bits;
+  auto write_b16 = [&](size_t bitlen, size_t v) {
+    while (bitlen > 0) {
+      --bitlen;
       if (!bit16_pos) {
         bit16_pos = 16;
         curr16 = next16; next16 = ret.size(); ret.write<d16>(0);
       }
       --bit16_pos;
-      if ((v >> input_bits) & 1) {
+      if ((v >> bitlen) & 1) {
         ret.out[curr16 + (bit16_pos >> 3)] |= 1 << (bit16_pos & 7);
       }
     }

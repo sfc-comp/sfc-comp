@@ -20,7 +20,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag == uncomp) return true;
-      return ofs_no == rhs.ofs_no;
+      return true;
     }
     Tag tag;
     size_t ofs_no;

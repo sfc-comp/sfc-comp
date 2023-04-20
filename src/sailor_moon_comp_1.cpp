@@ -29,10 +29,10 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   ret.write<d16>(0);
 
   size_t curr16 = 0, bit16_pos = 0;
-  auto write_b16 = [&](size_t input_bits, size_t v) {
-    while (input_bits > 0) {
-      --input_bits;
-      if ((v >> input_bits) & 1) {
+  auto write_b16 = [&](size_t bitlen, size_t v) {
+    while (bitlen > 0) {
+      --bitlen;
+      if ((v >> bitlen) & 1) {
         ret.out[curr16 + (bit16_pos >> 3)] |= 1 << (bit16_pos & 7);
       }
       ++bit16_pos;

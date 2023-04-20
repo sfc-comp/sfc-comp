@@ -14,7 +14,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag == uncomp) return true;
-      return len_no == rhs.len_no && ofs_no == rhs.ofs_no;
+      return len_no == rhs.len_no;
     }
     Tag tag;
     size_t ofs_no, len_no;
