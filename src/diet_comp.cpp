@@ -14,7 +14,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag != lz) return true;
-      return len_no == rhs.len_no && ofs_no == rhs.ofs_no; // ?
+      return len_no == rhs.len_no;
     }
     Tag tag;
     size_t ofs_no, len_no;
@@ -86,41 +86,23 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b16_hasty ret;
   for (size_t i = 0; i < 17; ++i) ret.write<d8>(0);
-  ret.write<d16>(0);
-
-  size_t curr16 = 0x11, bit16_pos = 0;
-  auto write_b16 = [&](size_t bitlen, size_t v) {
-    while (bitlen > 0) {
-      --bitlen;
-      if ((v >> bitlen) & 1) {
-        ret.out[curr16 + (bit16_pos >> 3)] |= 1 << (bit16_pos & 7);
-      }
-      ++bit16_pos;
-      if (bit16_pos == 16) {
-        bit16_pos = 0;
-        curr16 = ret.size();
-        ret.write<d16>(0);
-      }
-    }
-  };
+  ret.write<none>(none());
 
   size_t adr = 0;
   for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
-      write_b16(1, 1);
-      ret.write<d8>(input[adr]);
+      ret.write<b1l, d8>(true, input[adr]);
     } break;
     case lz2: {
       const size_t d = adr - cmd.lz_ofs;
-      write_b16(2, 0);
-      ret.write<d8>((0x900 - d) & 0xff);
+      ret.write<b8ln_h, d8>({2, 0}, (0x900 - d) & 0xff);
       if (cmd.type.ofs_no == 0) {
-        write_b16(1, 0);
+        ret.write<b8ln_h>({1, 0});
       } else {
-        write_b16(4, 0x08 | (0x900 - d) >> 8);
+        ret.write<b8ln_h>({4, 0x08 | (0x900 - d) >> 8});
       }
     } break;
     case lz: {
@@ -128,8 +110,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
       const size_t li = cmd.type.len_no;
       const size_t oi = cmd.type.ofs_no;
 
-      write_b16(2, 1);
-      ret.write<d8>(-d & 0xff);
+      ret.write<b8ln_h, d8>({2, 1}, -d & 0xff);
       size_t v = (ofs_tab[oi + 1][0] - 1 - d) >> 8;
       if (oi == 0) {
         v <<= 1;
@@ -147,14 +128,14 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
         v += v & ~7;
         v += (v & 0x20) * 3;
       }
-      write_b16(ofs_tab[oi][2] - 8, v | ofs_tab[oi][1]);
+      ret.write<b8ln_h>({ofs_tab[oi][2] - 8, v | ofs_tab[oi][1]});
 
       const size_t len_bits = len_tab[li][2];
       const size_t len_v = cmd.len - len_tab[li][0];
       if (len_bits < 10) {
-        write_b16(len_tab[li][2], len_v | len_tab[li][1]);
+        ret.write<b8ln_h>({len_tab[li][2], len_v | len_tab[li][1]});
       } else {
-        write_b16(len_tab[li][2] - 8, len_tab[li][1]);
+        ret.write<b8ln_h>({len_tab[li][2] - 8, len_tab[li][1]});
         ret.write<d8>(len_v);
       }
     } break;
@@ -162,18 +143,16 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  write_b16(2, 0);
-  ret.write<d8>(0xff);
-  write_b16(1, 0);
-  if (ret.size() == curr16 + 2 && bit16_pos == 0) {
-    ret.out.resize(ret.size() - 2);
-  }
+  ret.write<b8ln_h, d8, b8ln_h>({2, 0}, 0xff, {1, 0});
+  ret.trim();
+
+  assert((dp.total_cost() + 11 + 7) / 8 + 0x11 <= ret.size() && ret.size() <= (dp.total_cost() + 11 + 7) / 8 + 0x13);
   assert(adr == input.size());
 
   std::array<uint8_t, 9> header = {
     0xb4, 0x4c, 0xcd, 0x21, 0x9d, 0x89, 0x64, 0x6c, 0x7a
   };
-  for (size_t i = 0; i < header.size(); ++i) ret.out[i] = header[i];
+  std::copy(header.begin(), header.end(), ret.out.begin());
   ret[9] = ((ret.size() - 0x11) >> 16) & 0x0f;
   write16(ret.out, 10, ret.size() - 0x11);
   write16(ret.out, 12, utility::crc16(ret.out, 0x11, ret.size() - 0x11));

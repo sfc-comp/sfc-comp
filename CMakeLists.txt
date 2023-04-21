@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.8
+  VERSION 0.1.9
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -66,6 +66,7 @@ set(sfc_comp_src
   src/ffusa_comp.cpp
   src/flintstones_comp.cpp
   src/front_mission_comp_2.cpp
+  src/gokinjo_boukentai_comp.cpp
   src/gun_hazard_comp.cpp
   src/hal_comp.cpp
   src/hanjuku_hero_comp.cpp
@@ -75,8 +76,10 @@ set(sfc_comp_src
   src/legend_comp.cpp
   src/live_a_live_comp_1.cpp
   src/madara2_comp.cpp
+  src/mahoujin_guru_guru_comp.cpp
   src/marios_super_picross_comp.cpp
   src/marvelous_comp.cpp
+  src/mujintou_monogatari_comp.cpp
   src/papuwa_comp.cpp
   src/pokemon_gold_comp.cpp
   src/popful_mail_comp.cpp
@@ -107,6 +110,7 @@ set(sfc_comp_src
   src/syndicate_comp.cpp
   src/tactics_ogre_comp_1.cpp
   src/tails_of_phantasia_comp.cpp
+  src/tamolympic_comp.cpp
   src/tenchi_wo_kurau_comp.cpp
   src/vortex_comp.cpp
   src/wizardry5_comp_1.cpp
@@ -133,6 +137,7 @@ set(comp_ext_list
   bahamut_lagoon_comp comp
   battletech_comp comp
   bokujou_monogatari_comp comp
+  bounty_sword_comp comp
   brandish_comp comp
   burai_comp comp
   cb_chara_wars_comp comp
@@ -155,6 +160,7 @@ set(comp_ext_list
   ffusa_comp comp
   flintstones_comp comp
   front_mission_comp_2 comp
+  gokinjo_boukentai_comp comp
   gun_hazard_comp comp
   hal_comp comp
   hanjuku_hero_comp comp
@@ -166,8 +172,10 @@ set(comp_ext_list
   legend_comp comp
   live_a_live_comp_1 comp
   madara2_comp comp
+  mahoujin_guru_guru_comp comp
   marios_super_picross_comp comp
   marvelous_comp comp
+  mujintou_monogatari_comp comp
   olivias_mystery_comp comp
   papuwa_comp comp
   pokemon_gold_comp comp
@@ -204,6 +212,7 @@ set(comp_ext_list
   tactics_ogre_comp_1 comp
   tactics_ogre_comp_2 comp
   tales_of_phantasia_comp comp
+  tamolympic_comp comp
   tenchi_souzou_comp comp
   tenchi_wo_kurau_comp comp
   time_cop_comp comp

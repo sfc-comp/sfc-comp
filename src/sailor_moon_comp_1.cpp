@@ -25,58 +25,35 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
-  ret.write<d16>(0);
-
-  size_t curr16 = 0, bit16_pos = 0;
-  auto write_b16 = [&](size_t bitlen, size_t v) {
-    while (bitlen > 0) {
-      --bitlen;
-      if ((v >> bitlen) & 1) {
-        ret.out[curr16 + (bit16_pos >> 3)] |= 1 << (bit16_pos & 7);
-      }
-      ++bit16_pos;
-      if (bit16_pos == 16) {
-        bit16_pos = 0;
-        curr16 = ret.size();
-        ret.write<d16>(0);
-      }
-    }
-  };
+  writer_b16_hasty ret;
+  ret.write<none>(none());
 
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     const size_t d = adr - cmd.lz_ofs;
-
     switch (cmd.type) {
     case uncomp: {
-      write_b16(1, 1);
-      ret.write<d8>(input[adr]);
+      ret.write<b8ln_h, d8>({1, 1}, input[adr]);
     } break;
     case lzs: {
-      write_b16(4, cmd.len - 2);
-      ret.write<d8>(0x100 - d);
+      ret.write<b8ln_h, d8>({4, cmd.len - 2}, 0x100 - d);
     } break;
     case lzls: case lzll: {
-      write_b16(2, 1);
-      ret.write<d8>((0x2000 - d) & 0x00ff);
+      ret.write<b8ln_h, d8>({2, 1}, (0x2000 - d) & 0x00ff);
       if (cmd.type == lzls) {
         ret.write<d8>((cmd.len - 2) | ((0x2000 - d) & 0x1f00) >> 5);
       } else {
-        ret.write<d8>(((0x2000 - d) & 0x1f00) >> 5);
-        ret.write<d8>(cmd.len - 1);
+        ret.write<d8, d8>(((0x2000 - d) & 0x1f00) >> 5, cmd.len - 1);
       }
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  write_b16(2, 1);
-  ret.write<d16, d8>(0xf000, 0);
-
-  size_t cost = (dp.total_cost() + 2 + 7) / 8 + 3;
+  ret.write<b8ln_h, d16, d8>({2, 1}, 0xf000, 0);
+  ret.trim();
   assert(adr == input.size());
-  assert(cost <= ret.size() && ret.size() <= cost + 1 + (bit16_pos == 0 ? 1 : 0));
+  assert((dp.total_cost() + 2 + 7) / 8 + 3 <= ret.size() && ret.size() <= (dp.total_cost() + 2 + 7) / 8 + 5);
   return ret.out;
 }
 

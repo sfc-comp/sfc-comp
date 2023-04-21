@@ -159,7 +159,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
       writer_b tree;
       for (size_t i = 0; i < huff.words.size(); ++i) {
         const auto w = huff.words[i];
-        auto c = huff.codewords[w];
+        const auto c = huff.codewords[w];
         for (ptrdiff_t b = 0; b < c.bitlen; ++b) {
           if ((c.val >> b) & 1) break;
           tree.write<b1h>(true);
@@ -168,7 +168,6 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
         ret[4 + 0x4f + (i >> 3)] |= (w >> 8) << (7 - (i & 7));
         ret[4 + 0x77 + i] = w & 0xff;
       }
-      tree.write<b1h>(false);
       assert(tree.size() <= 0x4f);
       for (size_t i = 0; i < tree.size(); ++i) ret[4 + i] = tree[i];
 

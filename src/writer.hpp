@@ -381,4 +381,70 @@ struct writer_b16 : public writer {
   size_t bits_pos;
 };
 
+struct writer_b16_hasty : public writer {
+  using writer::write;
+
+  writer_b16_hasty() : bit(0), bits_pos(0) {}
+
+  template <typename Head, typename... Args>
+  void write(const Head& h, Args... args) {
+    write(h);
+    write(args...);
+  }
+
+  void trim() {
+    if (bit == 16 && bits_pos + 2 == out.size()) {
+      out.pop_back(); out.pop_back();
+      bit = 0;
+    }
+  }
+
+  void write(const data_type::b1l& d) {
+    --bit;
+    if (d.b) out[bits_pos + ((15 - bit) >> 3)] |= 1 << (7 - (bit & 7));
+    write(data_type::none());
+  }
+
+  void write(const data_type::b1h& d) {
+    --bit;
+    if (d.b) out[bits_pos + (bit >> 3)] |= 1 << (bit & 7);
+    write(data_type::none());
+  }
+
+  void write(const data_type::none&) {
+    if (bit == 0) {
+      bits_pos = out.size();
+      out.push_back(0); out.push_back(0);
+      bit = 16;
+    }
+  }
+
+  void write(const data_type::b8ln_l& d) {
+    for (size_t i = 0; i < d.n; ++i) {
+      write<data_type::b1l>((d.x >> i) & 1);
+    }
+  }
+
+  void write(const data_type::b8ln_h& d) {
+    for (size_t i = 0; i < d.n; ++i) {
+      write<data_type::b1l>((d.x >> (d.n - 1 - i)) & 1);
+    }
+  }
+
+  void write(const data_type::b8hn_l& d) {
+    for (size_t i = 0; i < d.n; ++i) {
+      write<data_type::b1h>((d.x >> i) & 1);
+    }
+  }
+
+  void write(const data_type::b8hn_h& d) {
+    for (size_t i = 0; i < d.n; ++i) {
+      write<data_type::b1h>((d.x >> (d.n - 1 - i)) & 1);
+    }
+  }
+
+  size_t bit;
+  size_t bits_pos;
+};
+
 } // namespace sfc_comp

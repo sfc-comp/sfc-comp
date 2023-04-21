@@ -36,7 +36,6 @@ std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t> input) {
         } else {
           dp.update_lz(i, lz_min_len, lz_min_len + 0x0f, res_lz, Constant<17>(), lz);
         }
-        lz_helper.add_element(i);
       }
 
       using namespace data_type;
