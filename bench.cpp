@@ -56,6 +56,7 @@ void benchmark(const std::string& path) {
     P(final_stretch_comp),
     P(flintstones_comp),
     P(front_mission_comp_2),
+    P(gionbana_comp),
     P(gokinjo_boukentai_comp),
     P(gun_hazard_comp),
     P(hal_comp),
@@ -68,6 +69,7 @@ void benchmark(const std::string& path) {
     P(konami_comp_1),
     P(konami_comp_2),
     P(legend_comp),
+    P(lennus_2_comp),
     P(live_a_live_comp_1),
     P(love_quest_comp),
     P(madara2_comp),
@@ -122,6 +124,7 @@ void benchmark(const std::string& path) {
     P(wild_guns_comp),
     P(wizardry5_comp_1),
     P(wizardry5_comp_2),
+    P(wizardry6_comp),
     P(yatterman_comp),
     P(zelda_comp_1),
     P(zelda_comp_2)

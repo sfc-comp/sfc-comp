@@ -65,7 +65,6 @@ set(sfc_comp_src
   src/ff5_comp.cpp
   src/ff6_comp.cpp
   src/ffusa_comp.cpp
-  src/final_stretch_comp.cpp
   src/flintstones_comp.cpp
   src/front_mission_comp_2.cpp
   src/gokinjo_boukentai_comp.cpp
@@ -76,6 +75,7 @@ set(sfc_comp_src
   src/koei_comp.cpp
   src/konami_comp.cpp
   src/legend_comp.cpp
+  src/lennus_2_comp.cpp
   src/live_a_live_comp_1.cpp
   src/madara2_comp.cpp
   src/mahoujin_guru_guru_comp.cpp
@@ -106,7 +106,6 @@ set(sfc_comp_src
   src/soul_and_sword_comp.cpp
   src/stargate_comp.cpp
   src/super_donkey_kong_comp.cpp
-  src/super_jinsei_game_comp.cpp
   src/super_loopz_comp.cpp
   src/super_mario_rpg_comp.cpp
   src/super_robot_wars_comp.cpp
@@ -119,6 +118,7 @@ set(sfc_comp_src
   src/vortex_comp.cpp
   src/wizardry5_comp_1.cpp
   src/wizardry5_comp_2.cpp
+  src/wizardry6_comp.cpp
   src/zelda_comp.cpp
 )
 
@@ -169,6 +169,7 @@ set(comp_ext_list
   final_stretch_comp comp
   flintstones_comp comp
   front_mission_comp_2 comp
+  gionbana_comp comp
   gokinjo_boukentai_comp comp
   gun_hazard_comp comp
   hal_comp comp
@@ -181,6 +182,7 @@ set(comp_ext_list
   konami_comp_1 comp
   konami_comp_2 comp
   legend_comp comp
+  lennus_2_comp comp
   live_a_live_comp_1 comp
   love_quest_comp comp
   madara2_comp comp
@@ -235,6 +237,7 @@ set(comp_ext_list
   wild_guns_comp comp
   wizardry5_comp_1 comp
   wizardry5_comp_2 comp
+  wizardry6_comp comp
   yatterman_comp comp
   zelda_comp_1 comp
   zelda_comp_2 comp
