@@ -43,6 +43,7 @@ set(sfc_comp_src
   src/io.cpp
   src/utility.cpp
 
+  src/action_pachio_comp.cpp
   src/addams_family_comp.cpp
   src/bahamut_lagoon_comp.cpp
   src/bokujou_monogatari_comp.cpp
@@ -64,6 +65,7 @@ set(sfc_comp_src
   src/ff5_comp.cpp
   src/ff6_comp.cpp
   src/ffusa_comp.cpp
+  src/final_stretch_comp.cpp
   src/flintstones_comp.cpp
   src/front_mission_comp_2.cpp
   src/gokinjo_boukentai_comp.cpp
@@ -81,6 +83,7 @@ set(sfc_comp_src
   src/marvelous_comp.cpp
   src/mujintou_monogatari_comp.cpp
   src/papuwa_comp.cpp
+  src/picross_np_comp.cpp
   src/pokemon_gold_comp.cpp
   src/popful_mail_comp.cpp
   src/power_piggs_comp.cpp
@@ -107,6 +110,7 @@ set(sfc_comp_src
   src/super_loopz_comp.cpp
   src/super_mario_rpg_comp.cpp
   src/super_robot_wars_comp.cpp
+  src/super_soukoban_comp.cpp
   src/syndicate_comp.cpp
   src/tactics_ogre_comp_1.cpp
   src/tails_of_phantasia_comp.cpp
@@ -132,6 +136,7 @@ add_executable(bench bench.cpp)
 target_link_libraries(bench ${lib_sfc_comp_static})
 
 set(comp_ext_list
+  action_pachio_comp comp
   addams_family_comp comp
   assault_suits_valken_comp comp
   bahamut_lagoon_comp comp
@@ -143,12 +148,15 @@ set(comp_ext_list
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
   danzarb_comp comp
+  dekitate_high_school_comp_1 comp
+  dekitate_high_school_comp_2 comp
   diet_comp comp
   dokapon_comp comp
   doom_comp_1 comp
   doom_comp_2 comp
   doraemon_comp comp
   dq12_comp comp
+  dq5_comp_2 comp
   dq6_comp comp
   dragon_knight_4_comp_1 comp
   estpolis_biography_comp comp
@@ -158,6 +166,7 @@ set(comp_ext_list
   ff5_comp comp
   ff6_comp comp
   ffusa_comp comp
+  final_stretch_comp comp
   flintstones_comp comp
   front_mission_comp_2 comp
   gokinjo_boukentai_comp comp
@@ -165,12 +174,15 @@ set(comp_ext_list
   hal_comp comp
   hanjuku_hero_comp comp
   jurassic_park_comp comp
+  keiba_eight_special_2_comp comp
+  keirin_ou_comp comp
   kiki_kaikai_comp comp
   koei_comp comp
   konami_comp_1 comp
   konami_comp_2 comp
   legend_comp comp
   live_a_live_comp_1 comp
+  love_quest_comp comp
   madara2_comp comp
   mahoujin_guru_guru_comp comp
   marios_super_picross_comp comp
@@ -178,6 +190,7 @@ set(comp_ext_list
   mujintou_monogatari_comp comp
   olivias_mystery_comp comp
   papuwa_comp comp
+  picross_np_comp comp
   pokemon_gold_comp comp
   popful_mail_comp comp
   power_piggs_comp comp
@@ -204,10 +217,12 @@ set(comp_ext_list
   soul_and_sword_comp comp
   stargate_comp comp
   super_donkey_kong_comp comp
+  super_dunk_star_comp comp
   super_jinsei_game_comp comp
   super_loopz_comp comp
   super_mario_rpg_comp comp
   super_robot_wars_comp comp
+  super_soukoban_comp comp
   syndicate_comp comp
   tactics_ogre_comp_1 comp
   tactics_ogre_comp_2 comp

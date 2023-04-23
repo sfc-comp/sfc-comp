@@ -17,4 +17,10 @@ std::vector<uint8_t> dq12_comp(std::span<const uint8_t> input) {
   return ret;
 }
 
+std::vector<uint8_t> dq5_comp_2(std::span<const uint8_t> input) {
+  auto ret = dq12_comp(input);
+  std::swap(ret[0], ret[1]);
+  return ret;
+}
+
 } // namespace sfc_comp

@@ -16,7 +16,7 @@ struct pre_table {
     }
     b8 = utility::k_most<uint8_t, 2>(b8_counts);
     std::fill_n(b8_counts.data(), 256, 0);
-    for (size_t i = 0; i < input.size(); ++i) {
+    for (size_t i = 0; i < input.size(); ) {
       size_t rlen = encode::run_length(input, i, 0);
       if (rlen >= 3) b8_counts[input[i]] += 1;
       i += rlen;
