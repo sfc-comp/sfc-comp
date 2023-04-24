@@ -28,7 +28,7 @@ std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t> input) {
         dp.update_lz(i, 3, 0x11, res_lz, Constant<17>(), lz);
         rlen = encode::run_length(input, i, rlen);
         dp.update(i, 4, 0x12, rlen, Constant<17>(), rle);
-        dp.update(i, 0x13, 0x102, rlen, Constant<25>(), rlel);
+        dp.update(i, 0x13, 0x13 + 0xff, rlen, Constant<25>(), rlel);
       }
       lz_helper.add_element(i);
     }

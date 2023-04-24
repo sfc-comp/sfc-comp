@@ -75,12 +75,12 @@ std::vector<uint8_t> flintstones_comp(std::span<const uint8_t> input) {
       ret.write<b1h, d8>(((d - 1) >> 8) & 1, (d - 1) & 0x00ff);
     } break;
     case lzds: {
-      const size_t k = cmd.lz_ofs;
+      const size_t k = cmd.val();
       ret.write<b1h, d8>(true, 0xf0 | (cmd.len - 5));
       ret.write<b8hn_h>({4, k});
     } break;
     case lzdl: {
-      const size_t k = cmd.lz_ofs;
+      const size_t k = cmd.val();
       ret.write<b1h, d8>(true, 0xf8 | k >> 3);
       ret.write<b1h, d8>((k >> 2) & 1, (k & 0x03) << 6 | (cmd.len - 9));
     } break;

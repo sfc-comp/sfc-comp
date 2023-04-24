@@ -330,6 +330,8 @@ class sssp_solver {
     size_t len;
     size_t lz_ofs;
     comp_type type;
+
+    size_t val() const { return lz_ofs; }
   };
 
   using vertex_type = Vertex;

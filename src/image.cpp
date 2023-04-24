@@ -2,7 +2,7 @@
 
 namespace sfc_comp {
 
-namespace image {
+namespace snes4bpp {
 
 namespace {
 
@@ -36,14 +36,14 @@ std::vector<uint8_t> to_indexed16_h_8_1(std::span<const uint8_t> in) {
   return ret;
 }
 
-std::vector<uint8_t> to_indexed16_h_2_4(std::span<const uint8_t> in) {
+std::vector<uint8_t> to_indexed16_h_2_8(std::span<const uint8_t> in) {
   std::vector<uint8_t> ret(truncate(in.size(), 32));
   for (size_t i = 0; i < ret.size(); i += 0x20) {
-    to_indexed16_h_2_4(in.subspan(i, 0x20), std::span(ret.begin() + i, 0x20));
+    to_indexed16_h_2_8(in.subspan(i, 0x20), std::span(ret.begin() + i, 0x20));
   }
   return ret;
 }
 
-} // namespace image
+} // namespace snes4bpp
 
 } // namespace sfc_comp

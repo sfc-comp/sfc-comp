@@ -39,14 +39,14 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
       dp.update_lz(i, 0x100, 0x100, res_lz, Constant<3>(), lzl);
       if (i + 1 < input.size()) {
         int16_t ind = pre[read16(input, i)];
-        if (ind >= 0) dp.update_lz(i, 2, 2, encode::lz_data(ind, 2), Constant<1>(), pre16);
+        if (ind >= 0) dp.update_lz(i, 2, 2, {ind, 2}, Constant<1>(), pre16);
       }
     }
     if (phase + 1 < phase_total) {
       for (const auto c : candidate) pre[c] = 0;
       for (const auto cmd : dp.commands()) {
         if (cmd.type != pre16) continue;
-        pre[candidate[cmd.lz_ofs]] += 1;
+        pre[candidate[cmd.val()]] += 1;
       }
       const size_t next_k = num_candidates[phase + 1];
       std::partial_sort(
@@ -65,7 +65,7 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
         case rle: ret.write<d8, d8>(0x40 + cmd.len, input[adr]); break;
         case lz:
         case lzl: ret.write<d8, d16>(0x80 + cmd.len, cmd.lz_ofs); break;
-        case pre16: ret.write<d8>(0xc0 + cmd.lz_ofs); break;
+        case pre16: ret.write<d8>(0xc0 + cmd.val()); break;
         default: assert(0);
         }
         adr += cmd.len;

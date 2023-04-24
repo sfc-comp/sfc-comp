@@ -61,6 +61,7 @@ void benchmark(const std::string& path) {
     P(gun_hazard_comp),
     P(hal_comp),
     P(hanjuku_hero_comp),
+    P(ihatovo_monogatari_comp),
     P(jurassic_park_comp),
     // P(keiba_eight_special_2_comp),
     // P(keirin_ou_comp),
@@ -69,14 +70,17 @@ void benchmark(const std::string& path) {
     P(konami_comp_1),
     P(konami_comp_2),
     P(legend_comp),
+    P(lemmings_comp),
     P(lennus_2_comp),
     P(live_a_live_comp_1),
     P(love_quest_comp),
     P(madara2_comp),
     P(mahoujin_guru_guru_comp),
+    P(maka_maka_comp),
     P(marios_super_picross_comp),
     P(marvelous_comp),
     P(mujintou_monogatari_comp),
+    P(odekake_lester_comp),
     P(olivias_mystery_comp),
     P(papuwa_comp),
     P(picross_np_comp),
@@ -105,6 +109,7 @@ void benchmark(const std::string& path) {
     P(sotsugyou_bangai_hen_comp),
     P(soul_and_sword_comp),
     P(stargate_comp),
+    P(super_bomberman_5_comp),
     P(super_donkey_kong_comp),
     // P(super_dunk_star_comp),
     P(super_jinsei_game_comp),
@@ -153,17 +158,17 @@ void benchmark(const std::string& path) {
 
     printf("|");
     for (size_t i = 0; i < inputs.size() + 4; ++i) {
-      printf(" :---- |");
+      printf(" :--- |");
     }
     puts("");
 
     size_t s = 0;
     printf("| %-40s |", "**uncompressed**");
     for (const size_t i : orders) {
-      printf(" %5zd |", inputs[i].size());
+      printf(" %4zX |", inputs[i].size());
       s += inputs[i].size();
     }
-    printf(" %6zd | ------ | -------- |\n", s);
+    printf(" %6zX | ------ | -------- |\n", s);
   }
 
   uint32_t total_hash = 0;
@@ -184,7 +189,7 @@ void benchmark(const std::string& path) {
         const auto sz = res.size();
         h ^= hash(res);
         total_size += sz;
-        printf("%5zd | ", sz);
+        printf("%4zX | ", sz);
       } catch (const std::exception& e) {
         printf("ERROR | ");
       }
@@ -193,10 +198,10 @@ void benchmark(const std::string& path) {
     total_size_sum += total_size;
 
     const auto end = high_resolution_clock::now();
-    printf("%6zd | %.4f | %08X |\n", total_size,
+    printf("%6zX | %.4f | %08X |\n", total_size,
             duration_cast<nanoseconds>(end - beg).count() / 1e9, h);
   }
-  printf("%zd : %08X\n", total_size_sum, total_hash);
+  printf("%zX : %08X\n", total_size_sum, total_hash);
 }
 
 #undef P

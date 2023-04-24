@@ -108,7 +108,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
         }
         const int16_t ind = pre16[v16];
         if (ind == 0) dp.update(i, 2, 2, Constant<1>(), pre16_1);
-        else if (ind > 0) dp.update_lz(i, 2, 2, encode::lz_data(ind, 2), Constant<2>(), pre16s);
+        else if (ind > 0) dp.update_lz(i, 2, 2, {ind, 2}, Constant<2>(), pre16s);
       }
       for (size_t l = 3; l <= 0x12; ++l) {
         dp.update_lz(i, l, l, lz_memo[i][l - 3], Constant<4>(), lzs);
@@ -121,7 +121,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
       for (size_t i = 0; i < candidate.size(); ++i) pre16[candidate[i]] = 0;
       for (const auto cmd : dp.commands()) {
         if (cmd.type == pre16_1) pre16[candidate[0]] += 1;
-        else if (cmd.type == pre16s) pre16[candidate[cmd.lz_ofs]] += 2;
+        else if (cmd.type == pre16s) pre16[candidate[cmd.val()]] += 2;
       }
       const size_t next_k = num_candidates[phase + 1];
       std::partial_sort(
@@ -187,7 +187,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
           ret.write<b4h>(14);
         } break;
         case pre16s: {
-          ret.write<b4h, b4h>(15, cmd.lz_ofs - 1);
+          ret.write<b4h, b4h>(15, cmd.val() - 1);
         } break;
         }
         adr += cmd.len;

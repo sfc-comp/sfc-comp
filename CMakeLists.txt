@@ -105,6 +105,7 @@ set(sfc_comp_src
   src/slap_stick_comp.cpp
   src/soul_and_sword_comp.cpp
   src/stargate_comp.cpp
+  src/super_bomberman_5_comp.cpp
   src/super_donkey_kong_comp.cpp
   src/super_loopz_comp.cpp
   src/super_mario_rpg_comp.cpp
@@ -174,6 +175,7 @@ set(comp_ext_list
   gun_hazard_comp comp
   hal_comp comp
   hanjuku_hero_comp comp
+  ihatovo_monogatari_comp comp
   jurassic_park_comp comp
   keiba_eight_special_2_comp comp
   keirin_ou_comp comp
@@ -182,14 +184,17 @@ set(comp_ext_list
   konami_comp_1 comp
   konami_comp_2 comp
   legend_comp comp
+  lemmings_comp comp
   lennus_2_comp comp
   live_a_live_comp_1 comp
   love_quest_comp comp
   madara2_comp comp
   mahoujin_guru_guru_comp comp
+  maka_maka_comp comp
   marios_super_picross_comp comp
   marvelous_comp comp
   mujintou_monogatari_comp comp
+  odekake_lester_comp comp
   olivias_mystery_comp comp
   papuwa_comp comp
   picross_np_comp comp
@@ -218,6 +223,7 @@ set(comp_ext_list
   sotsugyou_bangai_hen_comp comp
   soul_and_sword_comp comp
   stargate_comp comp
+  super_bomberman_5_comp comp
   super_donkey_kong_comp comp
   super_dunk_star_comp comp
   super_jinsei_game_comp comp

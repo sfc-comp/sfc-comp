@@ -9,11 +9,11 @@
 
 namespace sfc_comp {
 
-namespace image {
+namespace snes4bpp {
 
 std::vector<uint8_t> to_indexed256_8_1(std::span<const uint8_t> in);
 std::vector<uint8_t> to_indexed16_h_8_1(std::span<const uint8_t> in);
-std::vector<uint8_t> to_indexed16_h_2_4(std::span<const uint8_t> in);
+std::vector<uint8_t> to_indexed16_h_2_8(std::span<const uint8_t> in);
 
 std::vector<uint8_t> from_indexed256_8_1(std::span<const uint8_t> in);
 
@@ -60,7 +60,7 @@ inline void to_indexed16_h_8_1(std::span<const uint8_t> in, std::span<uint8_t> o
   }
 }
 
-inline void to_indexed16_h_2_4(std::span<const uint8_t> in, std::span<uint8_t> out) {
+inline void to_indexed16_h_2_8(std::span<const uint8_t> in, std::span<uint8_t> out) {
   for (size_t row = 0; row < 8; ++row) {
     uint32_t v = in[2 * row + 0x11] << 24 | in[2 * row + 0x10] << 16
                | in[2 * row + 0x01] <<  8 | in[2 * row + 0x00] <<  0;
@@ -74,6 +74,6 @@ inline void to_indexed16_h_2_4(std::span<const uint8_t> in, std::span<uint8_t> o
   }
 }
 
-} // namespace image
+} // namespace snes4bpp
 
 } // namespace sfc_comp

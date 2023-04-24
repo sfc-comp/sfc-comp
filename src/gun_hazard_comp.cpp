@@ -13,7 +13,7 @@ std::vector<uint8_t> gun_hazard_comp_1(std::span<const uint8_t> input, const uin
 
   using namespace data_type;
   writer_b4 ret; ret.write<d8, d8, d8>(0, 0, 0);
-  const auto indexed_256 = image::to_indexed256_8_1(input);
+  const auto indexed_256 = snes4bpp::to_indexed256_8_1(input);
   for (size_t i = 0; i < indexed_256.size(); ) {
     const auto v = indexed_256[i];
     ret.write<b4h>(v);
@@ -40,7 +40,7 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
   }
   std::array<size_t, 16> freq = {};
 
-  auto indexed_256 = image::to_indexed256_8_1(input);
+  auto indexed_256 = snes4bpp::to_indexed256_8_1(input);
   for (size_t i = 0; i < indexed_256.size(); i += 32) {
     std::array<uint16_t, 4> flags = {};
     for (size_t j = 0; j < 4; ++j) {
@@ -156,7 +156,7 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
   }
 
   const size_t block_size = best_flag & 0x7f;
-  const auto permuted_4bpp = image::from_indexed256_8_1(indexed_256);
+  const auto permuted_4bpp = snes4bpp::from_indexed256_8_1(indexed_256);
   for (size_t i = 0; i < permuted_4bpp.size(); i += 0x20) {
     for (const size_t offset : {0x00, 0x10, 0x01, 0x11}) {
       for (size_t o = offset; o < offset + 0x10; o += block_size * 2) {
@@ -244,14 +244,14 @@ std::vector<uint8_t> gun_hazard_comp_4(std::span<const uint8_t> input, const uin
 
 std::vector<uint8_t> gun_hazard_comp_5(std::span<const uint8_t> input, const uint8_t header_val) {
   if (input.size() % 32 != 0) throw std::logic_error("The input size must be a multiple of 32.");
-  auto ret = gun_hazard_comp_3(image::to_indexed16_h_8_1(input), header_val);
+  auto ret = gun_hazard_comp_3(snes4bpp::to_indexed16_h_8_1(input), header_val);
   ret[0] = header_val | 0x05;
   return ret;
 }
 
 std::vector<uint8_t> gun_hazard_comp_6(std::span<const uint8_t> input, const uint8_t header_val) {
   if (input.size() % 32 != 0) throw std::logic_error("The input size must be a multiple of 32.");
-  auto ret = gun_hazard_comp_4(image::to_indexed16_h_8_1(input), header_val);
+  auto ret = gun_hazard_comp_4(snes4bpp::to_indexed16_h_8_1(input), header_val);
   ret[0] = header_val | 0x06;
   return ret;
 }
