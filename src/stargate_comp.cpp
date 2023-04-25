@@ -33,17 +33,20 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
   }
 
   lz_helper lz_helper(input);
+  uncomp_helper u_helper(input.size(), 8);
   sssp_solver<CompType> dp0(input.size()), dp1(input.size());
-  dp1[0].cost = dp1.infinite_cost;
+  dp1.reset(0);
 
   for (size_t i = 0; i < input.size(); ++i) {
     const auto cost0 = dp0[i].cost;
+    u_helper.update(i, cost0);
+
     dp1.update(i, 0, 0, Constant<1>(), {none, 0}, cost0);
     for (size_t k = 0; k < uncomp_max_lens.size(); ++k) {
       const size_t min_len = (k == 0) ? uncomp_max_lens[0] : uncomp_max_lens[k - 1] + 1;
       const size_t max_len = uncomp_max_lens[k];
-      const size_t base_cost = cost0 + 1 + (1 + 2 * k);
-      dp1.update(i, min_len, max_len, Linear<8, 0>(), {uncomp, k}, base_cost);
+      const auto res_u = u_helper.find(i + 1, min_len, max_len);
+      dp1.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + (1 + 2 * k));
     }
     const auto cost1 = dp1[i].cost;
     const auto res_lz = lz_helper.find_best(i, input.size());

@@ -42,19 +42,19 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
 
   auto indexed_256 = snes4bpp::to_indexed256_8_1(input);
   for (size_t i = 0; i < indexed_256.size(); i += 32) {
-    std::array<uint16_t, 4> flags = {};
+    std::array<uint16_t, 4> pal_flags = {};
     for (size_t j = 0; j < 4; ++j) {
-      uint16_t flag = 0;
+      uint16_t pal_flag = 0;
       for (size_t k = 0; k < 8; ++k) {
         const auto v = indexed_256[i + j * 8 + k];
         freq[v] += 1;
-        flag |= 1 << v;
+        pal_flag |= 1 << v;
       }
-      flags[j] = flag, zeros[0][flag] += 1;
+      pal_flags[j] = pal_flag, zeros[0][pal_flag] += 1;
       if (j & 1) {
-        flags[j] |= flags[j - 1], zeros[1][flags[j]] += 1;
+        pal_flags[j] |= pal_flags[j - 1], zeros[1][pal_flags[j]] += 1;
         if (j & 2) {
-          flags[j] |= flags[j - 2], zeros[2][flags[j]] += 1;
+          pal_flags[j] |= pal_flags[j - 2], zeros[2][pal_flags[j]] += 1;
         }
       }
     }
@@ -81,15 +81,15 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
 
   perm_type best_perm = iden_perm;
   size_t best_cost = std::numeric_limits<size_t>::max();
-  size_t best_flag = 0;
+  size_t best_conf = 0;
 
   static constexpr std::array<size_t, 3> lens = {1, 2, 4};
 
   const auto update = [&](const perm_type& perm) -> bool {
-    size_t flags[4] = {};
+    size_t bitplane_flags[4] = {};
     for (size_t i = 0; i < perm.size(); ++i) {
       for (size_t j = 0; j < 4; ++j) {
-        if (!((i >> j) & 1)) flags[j] |= 1 << perm[i];
+        if (!((i >> j) & 1)) bitplane_flags[j] |= 1 << perm[i];
       }
     }
     const bool iden = (perm == iden_perm);
@@ -97,12 +97,12 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
     bool updated = false;
     for (size_t zi = 0; zi < 3; ++zi) {
       size_t z = 0;
-      for (auto f : flags) z += zeros[zi][f];
+      for (auto f : bitplane_flags) z += zeros[zi][f];
       size_t cost = input.size() * numers[zi] / 32 - z * lens[zi] + (iden ? 0 : 8);
       if (cost < best_cost) {
         best_cost = cost;
         best_perm = perm;
-        best_flag = lens[zi] | (iden ? 0x00 : 0x80);
+        best_conf = lens[zi] | (iden ? 0x00 : 0x80);
         updated = true;
       }
     }
@@ -148,14 +148,14 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
 
   using namespace data_type;
   writer_b ret; ret.write<d8, d16, d8>(0, 0, 0);
-  if (best_flag & 0x80) {
+  if (best_conf & 0x80) {
     for (size_t i = 0; i < 16; i += 2) ret.write<d8>(best_perm[i] << 4 | best_perm[i + 1]);
     perm_type iperm;
     for (size_t i = 0; i < best_perm.size(); ++i) iperm[best_perm[i]] = i;
     for (size_t i = 0; i < indexed_256.size(); ++i) indexed_256[i] = iperm[indexed_256[i]];
   }
 
-  const size_t block_size = best_flag & 0x7f;
+  const size_t block_size = best_conf & 0x7f;
   const auto permuted_4bpp = snes4bpp::from_indexed256_8_1(indexed_256);
   for (size_t i = 0; i < permuted_4bpp.size(); i += 0x20) {
     for (const size_t offset : {0x00, 0x10, 0x01, 0x11}) {
@@ -179,7 +179,7 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
 
   ret[0] = header_val | 0x02;
   write16(ret.out, 1, input.size());
-  ret[3] = best_flag;
+  ret[3] = best_conf;
   return ret.out;
 }
 

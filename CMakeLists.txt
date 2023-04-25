@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.1.9
+  VERSION 0.2.0
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")

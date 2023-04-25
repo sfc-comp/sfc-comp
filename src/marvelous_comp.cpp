@@ -15,13 +15,19 @@ std::vector<uint8_t> marvelous_comp(std::span<const uint8_t> input) {
   };
 
   lz_helper_c lz_helper(input);
+  uncomp_helper u_helper(input.size(), 1);
   sssp_solver<CompType> dp(input.size());
 
   size_t rlen = 0, rlen16 = 0, rleni = 0;
   for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 0x20, Linear<1, 1>(), uncomp);
-    dp.update(i, 0x21, 0x400, Linear<1, 2>(), uncompm);
-    dp.update(i, 0x401, 0x10000, Linear<1, 3>(), uncompl);
+    u_helper.update(i, dp[i].cost);
+    auto u1 = u_helper.find(i + 1, 1, 0x20);
+    dp.update_u(i + 1, u1.len, uncomp, u1.cost + 1);
+    auto u2 = u_helper.find(i + 1, 0x21, 0x400);
+    dp.update_u(i + 1, u2.len, uncompm, u2.cost + 2);
+    auto u3 = u_helper.find(i + 1, 0x401, 0x10000);
+    dp.update_u(i + 1, u3.len, uncompl, u3.cost + 3);
+
     rlen = encode::run_length(input, i, rlen);
     dp.update(i, 1, 0x20, rlen, Constant<2>(), rle);
     dp.update(i, 0x21, 0x400, rlen, Constant<3>(), rlem);

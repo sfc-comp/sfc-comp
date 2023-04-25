@@ -67,17 +67,17 @@ encode::lz_data find_best_closest(
 
 } // namespace encode
 
-template <typename T>
+template <typename T, T Unit = std::numeric_limits<T>::min()>
 struct range_max {
   using value_type = T;
-  static T unit() { return std::numeric_limits<T>::min(); }
+  static T unit() { return Unit; }
   static T op(const value_type& l, const value_type& r) { return std::max<T>(l, r); }
 };
 
-template <typename T>
+template <typename T, T Unit = std::numeric_limits<T>::max()>
 struct range_min {
   using value_type = T;
-  static T unit() { return std::numeric_limits<T>::max(); }
+  static T unit() { return Unit; }
   static T op(const value_type& l, const value_type& r) { return std::min<T>(l, r); }
 };
 
@@ -314,6 +314,58 @@ struct cost_traits<size_t> {
   static constexpr size_t unspecified() { return std::numeric_limits<size_t>::max(); }
 };
 
+template <typename CostType = size_t>
+class uncomp_helper {
+ public:
+  using cost_type = CostType;
+  static constexpr cost_type infinite_cost = cost_traits<cost_type>::infinity();
+  static constexpr size_t nlen = std::numeric_limits<size_t>::max();
+
+  struct len_cost {
+    size_t len;
+    cost_type cost;
+  };
+
+ private:
+  struct indexed_cost {
+    constexpr bool operator < (const indexed_cost& rhs) const {
+      return cost < rhs.cost || (cost == rhs.cost && index < rhs.index);
+    }
+    cost_type cost;
+    size_t index;
+  };
+  static constexpr indexed_cost unit = indexed_cost({infinite_cost, nlen});
+
+ public:
+  uncomp_helper(size_t size, size_t slope)
+      : n(size), slope_(slope), tree_(size) {}
+
+  void update(size_t i, cost_type cost) {
+    tree_.update(i, {cost  + (n - i) * slope_, i});
+  }
+
+  void reset(size_t i) {
+    tree_.update(i, unit);
+  }
+
+  void reset(size_t begin, size_t end) {
+    for (size_t i = begin; i < end; ++i) reset(i);
+  }
+
+  len_cost find(size_t i, size_t fr, size_t to) const {
+    if (i < fr) return {nlen, infinite_cost};
+    to = std::min(i, to);
+    const auto res = tree_.fold(i - to, i - fr + 1);
+    if (res.cost >= infinite_cost) return {nlen, infinite_cost};
+    return {i - res.index, res.cost - (n - i) * slope_};
+  }
+
+ private:
+  size_t n;
+  size_t slope_;
+  segment_tree<range_min<indexed_cost, unit>> tree_;
+};
+
 template <typename CompType, typename CostType = size_t>
 class sssp_solver {
  public:
@@ -338,8 +390,16 @@ class sssp_solver {
 
   sssp_solver() {}
   sssp_solver(const size_t n) : vertex(n + 1) {
-    for (size_t i = 1; i <= n; ++i) (*this)[i].cost = infinite_cost;
+    reset(1, n + 1);
     (*this)[0].cost = cost_type(0);
+  }
+
+  void reset(size_t i) {
+    (*this)[i].cost = infinite_cost;
+  }
+
+  void reset(size_t begin, size_t end) {
+    for (size_t i = begin; i < end; ++i) reset(i);
   }
 
   template <typename Func>
@@ -358,9 +418,25 @@ class sssp_solver {
     }
   }
 
+  template <typename Skip = std::greater_equal<cost_type>>
+  void update(size_t adr, size_t len, comp_type ty, cost_type cost, size_t arg = 0) {
+    if (adr < len) return;
+    constexpr auto skip = Skip();
+    auto& target = (*this)[adr];
+    if (skip(cost, target.cost)) return;
+    target.cost = cost;
+    target.len = len;
+    target.lz_ofs = arg;
+    target.type = ty;
+  }
+
+  void update_u(size_t adr, size_t len, comp_type ty, cost_type cost, size_t arg = 0) {
+    return update<std::greater<cost_type>>(adr, len, ty, cost, arg);
+  }
+
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
   void update(size_t adr, size_t fr, size_t to, Func func,
-      comp_type ty, cost_type base_cost = unspecified, size_t optional = 0) {
+      comp_type ty, cost_type base_cost = unspecified, size_t arg = 0) {
     constexpr auto skip = Skip();
     to = std::min(to, size() > adr ? (size() - 1) - adr : 0);
     if (base_cost == unspecified) base_cost = (*this)[adr].cost;
@@ -374,7 +450,7 @@ class sssp_solver {
         continue;
       }
       target.cost = curr_cost;
-      target.lz_ofs = optional;
+      target.lz_ofs = arg;
       target.len = i;
       target.type = ty;
     }
@@ -382,8 +458,8 @@ class sssp_solver {
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
   void update(size_t adr, size_t fr, size_t to, size_t len, Func func,
-      comp_type ty, cost_type base_cost = unspecified, size_t optional = 0) {
-    update<Skip, Func>(adr, fr, std::min(to, len), func, ty, base_cost, optional);
+      comp_type ty, cost_type base_cost = unspecified, size_t arg = 0) {
+    update<Skip, Func>(adr, fr, std::min(to, len), func, ty, base_cost, arg);
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
@@ -394,7 +470,7 @@ class sssp_solver {
   }
 
   template <size_t K, typename Func>
-  void update_k(size_t adr, size_t fr, size_t to, Func func, comp_type ty, size_t optional = 0) {
+  void update_k(size_t adr, size_t fr, size_t to, Func func, comp_type ty, size_t arg = 0) {
     to = std::min(to, size() > adr ? (size() - 1) - adr : 0);
     if (to < fr) return;
     to = fr + (to - fr) / K * K;
@@ -410,15 +486,15 @@ class sssp_solver {
       }
       target.cost = curr_cost;
       target.len = i;
-      target.lz_ofs = optional;
+      target.lz_ofs = arg;
       target.type = ty;
     }
   }
 
   template <size_t K, typename Func>
   void update_k(size_t adr, size_t fr, size_t to,
-      size_t max_len, Func func, comp_type ty, size_t optional = 0) {
-    update_k<K>(adr, fr, std::min(max_len, to), func, ty, optional);
+      size_t max_len, Func func, comp_type ty, size_t arg = 0) {
+    update_k<K>(adr, fr, std::min(max_len, to), func, ty, arg);
   }
 
   cost_type total_cost() const {

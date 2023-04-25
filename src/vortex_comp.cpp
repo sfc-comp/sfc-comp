@@ -15,7 +15,9 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
   std::reverse(input.begin(), input.end());
 
   lz_helper lz_helper(input);
+  uncomp_helper u_helper(input.size(), 8);
   sssp_solver<CompType> dp0(input.size()), dp1(input.size());
+
   dp1[0].cost = dp1.infinite_cost;
 
   for (size_t i = 0; i <= input.size(); ++i) {
@@ -27,10 +29,14 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
     if (i == input.size()) break;
 
     if (cost0 < dp0.infinite_cost) {
-      dp1.update(i, 1, 6, Linear<8, 3>(), uncomp_s, cost0);
-      dp1.update(i, 7, 0x16, Linear<8, 8>(), uncomp_m, cost0);
-      dp1.update(i, 0x17, 0x0fff, Linear<8, 14>(), uncomp_l, cost0);
+      u_helper.update(i, cost0);
     }
+    auto u0 = u_helper.find(i + 1, 1, 6);
+    dp1.update_u(i + 1, u0.len, uncomp_s, u0.cost + 3);
+    auto u1 = u_helper.find(i + 1, 7, 0x16);
+    dp1.update_u(i + 1, u1.len, uncomp_m, u1.cost + 8);
+    auto u2 = u_helper.find(i + 1, 0x17, 0x0fff);
+    dp1.update_u(i + 1, u2.len, uncomp_l, u2.cost + 14);
 
     const auto cost1 = dp1[i].cost;
     if (cost1 < dp1.infinite_cost) {

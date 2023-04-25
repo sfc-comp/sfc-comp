@@ -191,7 +191,7 @@ void benchmark(const std::string& path) {
         total_size += sz;
         printf("%4zX | ", sz);
       } catch (const std::exception& e) {
-        printf("ERROR | ");
+        printf(" ERR | ");
       }
     }
     total_hash ^= h;

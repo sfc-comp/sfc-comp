@@ -13,12 +13,16 @@ std::vector<uint8_t> popful_mail_comp(std::span<const uint8_t> input) {
   };
 
   lz_helper lz_helper(input);
+  uncomp_helper u_helper(input.size(), 1);
   sssp_solver<CompType> dp(input.size());
 
   size_t rlen = 0;
   for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 0x1f, Linear<1, 1>(), uncomp);
-    dp.update(i, 2, 0x1fff, Linear<1, 2>(), uncompl);
+    u_helper.update(i, dp[i].cost);
+    auto u1 = u_helper.find(i + 1, 1, 0x1f);
+    dp.update_u(i + 1, u1.len, uncomp, u1.cost + 1);
+    auto u2 = u_helper.find(i + 1, 2, 0x1fff);
+    dp.update_u(i + 1, u2.len, uncompl, u2.cost + 2);
     rlen = encode::run_length(input, i, rlen);
     dp.update(i, 4, 0x13, rlen, Constant<2>(), rle);
     dp.update(i, 4, 0x1003, rlen, Constant<3>(), rlel);

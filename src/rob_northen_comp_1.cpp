@@ -11,43 +11,32 @@ namespace sfc_comp {
 
 namespace {
 
-struct CostType {
-  explicit constexpr CostType() : CostType(0, 0) {}
-  explicit constexpr CostType(size_t cost, size_t count = 0) : cost(cost), count(count) {}
-
-  constexpr bool operator == (const CostType& rhs) const { return cost == rhs.cost && count == rhs.count; }
-  constexpr bool operator != (const CostType& rhs) const { return !(*this == rhs); }
-  constexpr CostType operator + (const CostType& rhs) const {
-    return CostType(cost + rhs.cost, count + rhs.count);
-  }
-  constexpr CostType operator + (const size_t& c) const {
-    return CostType(cost + c, count);
-  }
-  constexpr bool operator >= (const CostType& rhs) const {
-    return cost >= rhs.cost;
-  }
-  constexpr bool operator < (const CostType& rhs) const {
-    return !(*this >= rhs);
-  }
-  size_t cost;
+struct rnc1_cost {
+  using value_type = size_t;
+  explicit constexpr rnc1_cost() : rnc1_cost(0, 0) {}
+  explicit constexpr rnc1_cost(value_type value, size_t count = 0) : value(value), count(count) {}
+  constexpr bool operator == (const rnc1_cost& rhs) const { return value == rhs.value && count == rhs.count; }
+  constexpr bool operator != (const rnc1_cost& rhs) const { return !(*this == rhs); }
+  constexpr rnc1_cost operator + (const value_type& c) const { return rnc1_cost(value + c, count); }
+  constexpr bool operator >= (const rnc1_cost& rhs) const { return value >= rhs.value; }
+  constexpr bool operator > (const rnc1_cost& rhs) const { return value > rhs.value; }
+  constexpr bool operator < (const rnc1_cost& rhs) const { return !(*this >= rhs); }
+  value_type value;
   size_t count; // uncomp count
 };
 
 } // namespace
 
 template <>
-struct cost_traits<CostType> {
-  static constexpr CostType infinity() { return CostType(cost_traits<size_t>::infinity()); }
-  static constexpr CostType unspecified() { return CostType(cost_traits<size_t>::unspecified()); }
+struct cost_traits<rnc1_cost> {
+  static constexpr rnc1_cost infinity() { return rnc1_cost(cost_traits<size_t>::infinity()); }
+  static constexpr rnc1_cost unspecified() { return rnc1_cost(cost_traits<size_t>::unspecified()); }
 };
 
 std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x100000);
 
-  enum Tag {
-    uncomp, lz
-  };
-
+  enum Tag { uncomp, lz };
   struct CompType {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
@@ -60,7 +49,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
 
   static constexpr size_t lz_max_ofs_bits = 15;
   static constexpr size_t lz_max_len_bits = 15; // <= 15
-  static constexpr size_t uncomp_max_len_bits = 10; // <= 15
+  static constexpr size_t uncomp_max_len_bits = 15; // <= 15
 
   static constexpr size_t command_limit = 0x4000;
   static_assert(1 <= command_limit && command_limit <= 0xffff, "invalid command_limit");
@@ -97,9 +86,10 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
 
   size_t chunk = 0;
 
-  using command_type = sssp_solver<CompType, CostType>::vertex_type;
-  sssp_solver<CompType, CostType> dp0(input.size());
-  sssp_solver<CompType, CostType> dp1(input.size());
+  using command_type = sssp_solver<CompType, rnc1_cost>::vertex_type;
+  sssp_solver<CompType, rnc1_cost> dp0(input.size());
+  sssp_solver<CompType, rnc1_cost> dp1(input.size());
+  uncomp_helper<rnc1_cost::value_type> u_helper(input.size(), 8);
 
   size_t begin = 0;
   size_t last_index = begin;
@@ -134,19 +124,17 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     };
 
     size_t best_cost = std::numeric_limits<size_t>::max();
-    size_t best_last_index = 0;
+    size_t best_end = begin;
     std::vector<command_type> best_commands;
     huffman best_huff;
 
     while (true) {
-      dp0[begin].cost = CostType(0);
-      dp1[begin].cost = dp0.infinite_cost;
+      dp0[begin].cost = rnc1_cost(0);
+      dp1.reset(begin);
 
       size_t e = std::min(input.size(), last_index + std::max(lz_len_table.back(), uncomp_len_table.back()));
-      for (size_t i = begin + 1; i <= e; ++i) {
-        dp0[i].cost = dp0.infinite_cost;
-        dp1[i].cost = dp1.infinite_cost;
-      }
+      dp0.reset(begin + 1, e + 1);
+      dp1.reset(begin + 1, e + 1);
 
       constexpr auto bit_cost = [](size_t b) -> size_t {
         return (b == 0) ? 0 : (b - 1);
@@ -157,19 +145,22 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         const auto cost0 = dp0[index].cost;
         if (cost0 < dp0.infinite_cost) {
           // skip uncomp
-          const auto ncost = CostType(cost0.cost + huff_uncomp_bits[0], cost0.count + 1);
+          const auto ncost = rnc1_cost(cost0.value + huff_uncomp_bits[0], cost0.count + 1);
           dp1.update(index, 0, 0, Constant<0>(), {uncomp, 0, 0}, ncost);
         }
         if (index == input.size()) break;
 
         if (cost0 < dp0.infinite_cost) {
-          // uncomp
-          for (size_t k = 1; k < uncomp_len_table.size(); ++k) {
-            const size_t from = uncomp_len_table[k - 1] + 1;
-            const size_t to = uncomp_len_table[k];
-            const auto base_cost = CostType(cost0.cost + huff_uncomp_bits[k] + bit_cost(k), cost0.count + 1);
-            dp1.update(index, from, to, Linear<8, 0>(), {uncomp, 0, k}, base_cost);
-          }
+          u_helper.update(index, cost0.value);
+        }
+
+        for (size_t k = 1; k < uncomp_len_table.size(); ++k) {
+          const size_t from = uncomp_len_table[k - 1] + 1;
+          const size_t to = uncomp_len_table[k];
+          const auto u = u_helper.find(index + 1, from, to);
+          if (u.len == u_helper.nlen) continue;
+          const auto cost = rnc1_cost(u.cost + huff_uncomp_bits[k] + bit_cost(k), dp0[index + 1 - u.len].cost.count + 1);
+          dp1.update_u(index + 1, u.len, {uncomp, 0, k}, cost);
         }
 
         const auto cost1 = dp1[index].cost;
@@ -186,11 +177,12 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
             const size_t to = lz_len_table[k];
             const size_t bit_size = (huff_lz_ofs_bits[o] + bit_cost(o)) +
                                     (huff_lz_len_bits[k] + bit_cost(k));
-            const auto base_cost = CostType(cost1.cost + bit_size, cost1.count);
-            dp0.update_lz(index, from, to, res_lz, Constant<0>(), {lz, size_t(o), k}, base_cost);
+            const auto cost = rnc1_cost(cost1.value + bit_size, cost1.count);
+            dp0.update_lz(index, from, to, res_lz, Constant<0>(), {lz, size_t(o), k}, cost);
           }
         }
       }
+      u_helper.reset(begin, index);
 
       last_index = index;
       if (dp1[index].cost == dp1.infinite_cost) {
@@ -269,7 +261,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         best_cost = estimated_cost;
         best_commands = std::move(commands);
         best_huff = std::move(huff);
-        best_last_index = index; // (do not use last_index)
+        best_end = index; // (do not use last_index)
         update_huffman_costs(best_huff);
       } else {
         auto write_cost = [&](const encode::huffman_result& huff) {
@@ -288,7 +280,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         write_cost(best_huff.uncomp_len);
         write_cost(best_huff.lz_ofs);
         write_cost(best_huff.lz_len);
-        assert(best_commands.size() % 2 == 1);
+        assert(best_commands.size() % 2 == 1 && (best_commands.size() + 1) / 2 <= command_limit);
         ret.write<b8ln_l>({16, (best_commands.size() + 1) / 2});
 
         size_t adr = begin;
@@ -326,8 +318,8 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           }
           adr += cmd.len;
         }
-        assert(adr == best_last_index);
-        begin = adr;
+        assert(adr == best_end);
+        begin = best_end;
         break;
       }
     }

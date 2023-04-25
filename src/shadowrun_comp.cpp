@@ -19,7 +19,7 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
     size_t len_no;
   };
 
-  static constexpr size_t uncomp_max_len_bits = 10; // <= 15
+  static constexpr size_t uncomp_max_len_bits = 15;
   static constexpr size_t lz_max_len_bits = 15;
 
   std::array<size_t, uncomp_max_len_bits + 1> uncomp_max_lens = {};
@@ -28,15 +28,17 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
   for (size_t i = 0; i < lz_max_lens.size(); ++i) lz_max_lens[i] = (2 << i) + 1;
 
   lz_helper lz_helper(input);
+  uncomp_helper u_helper(input.size(), 8);
   sssp_solver<CompType> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     const auto cost = dp[i].cost;
+    u_helper.update(i, cost);
     for (size_t k = 0; k < uncomp_max_lens.size(); ++k) {
       const size_t min_len = (k == 0) ? uncomp_max_lens[0] : uncomp_max_lens[k - 1] + 1;
       const size_t max_len = uncomp_max_lens[k];
-      const size_t base_cost = cost + 1 + (1 + 2 * k);
-      dp.update(i, min_len, max_len, Linear<8, 0>(), {uncomp, k}, base_cost);
+      const auto res_u = u_helper.find(i + 1, min_len, max_len);
+      dp.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + (1 + 2 * k));
     }
     const auto res_lz = lz_helper.find_best(i, input.size());
     for (size_t k = 0; k < lz_max_lens.size(); ++k) {

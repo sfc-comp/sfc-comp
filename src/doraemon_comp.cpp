@@ -11,34 +11,25 @@ namespace sfc_comp {
 
 namespace {
 
-struct CostType {
-  explicit constexpr CostType() : CostType(0, 0) {}
-  explicit constexpr CostType(size_t cost, size_t count = 0) : cost(cost), count(count) {}
-
-  constexpr bool operator == (const CostType& rhs) const { return cost == rhs.cost && count == rhs.count; }
-  constexpr bool operator != (const CostType& rhs) const { return !(*this == rhs); }
-  constexpr CostType operator + (const CostType& rhs) const {
-    return CostType(cost + rhs.cost, count + rhs.count);
-  }
-  constexpr CostType operator + (const size_t& c) const {
-    return CostType(cost + c, count + 1);
-  }
-  constexpr bool operator >= (const CostType& rhs) const {
-    return cost >= rhs.cost;
-  }
-  constexpr bool operator < (const CostType& rhs) const {
-    return !(*this >= rhs);
-  }
-  size_t cost;
+struct lha_cost {
+  using value_type = size_t;
+  explicit constexpr lha_cost() : lha_cost(0, 0) {}
+  explicit constexpr lha_cost(value_type cost, size_t count = 0) : cost(cost), count(count) {}
+  constexpr bool operator == (const lha_cost& rhs) const { return cost == rhs.cost && count == rhs.count; }
+  constexpr bool operator != (const lha_cost& rhs) const { return !(*this == rhs); }
+  constexpr lha_cost operator + (const size_t& c) const { return lha_cost(cost + c, count + 1); }
+  constexpr bool operator >= (const lha_cost& rhs) const { return cost >= rhs.cost; }
+  constexpr bool operator < (const lha_cost& rhs) const { return !(*this >= rhs); }
+  value_type cost;
   size_t count;
 };
 
 } // namespace
 
 template <>
-struct cost_traits<CostType> {
-  static constexpr CostType infinity() { return CostType(cost_traits<size_t>::infinity()); }
-  static constexpr CostType unspecified() { return CostType(cost_traits<size_t>::unspecified()); }
+struct cost_traits<lha_cost> {
+  static constexpr lha_cost infinity() { return lha_cost(cost_traits<size_t>::infinity()); }
+  static constexpr lha_cost unspecified() { return lha_cost(cost_traits<size_t>::unspecified()); }
 };
 
 struct lha_config {
@@ -107,8 +98,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
   writer_b ret;
   for (size_t i = 0; i < config.header_size; ++i) ret.write<d8>(0);
 
-  using command_type = sssp_solver<CompType, CostType>::vertex_type;
-  sssp_solver<CompType, CostType> dp(input.size());
+  using command_type = sssp_solver<CompType, lha_cost>::vertex_type;
+  sssp_solver<CompType, lha_cost> dp(input.size());
 
   size_t begin = 0;
   size_t last_index = begin;
@@ -144,14 +135,13 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
     };
 
     size_t best_cost = std::numeric_limits<size_t>::max();
-    size_t best_last_index = 0;
+    size_t best_end = 0;
     std::vector<command_type> best_commands;
     encodes best_enc;
 
     while (true) {
-      dp[begin].cost = CostType(0);
-      size_t e = std::min(input.size(), last_index + lz_max_len);
-      for (size_t i = begin + 1; i <= e; ++i) dp[i].cost = dp.infinite_cost;
+      dp[begin].cost = lha_cost(0);
+      dp.reset(begin + 1, std::min(input.size(), last_index + lz_max_len) + 1);
 
       size_t index = begin;
       for (; index < input.size(); ++index) {
@@ -263,7 +253,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
         best_cost = estimated_cost;
         best_commands = std::move(commands);
         best_enc = std::move(enc);
-        best_last_index = last_index;
+        best_end = last_index;
         update_huffman_costs(best_enc);
       } else {
         const auto write_huff_bits =
@@ -395,8 +385,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
           }
           adr += cmd.len;
         }
-        assert(adr == best_last_index);
-        begin = adr;
+        assert(adr == best_end);
+        begin = best_end;
         break;
       }
     }

@@ -21,12 +21,6 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
     size_t ofs_no, len_no;
   };
 
-  std::vector<uint8_t> input(in.begin(), in.end());
-  std::reverse(input.begin(), input.end());
-
-  lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
-
   struct tup {
     size_t min_len;
     size_t val;
@@ -49,10 +43,21 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
     tup({0x4220, 0x0000, 0, 0})
   };
 
+  std::vector<uint8_t> input(in.begin(), in.end());
+  std::reverse(input.begin(), input.end());
+
+  lz_helper lz_helper(input);
+  uncomp_helper u_helper(input.size(), 8);
+  sssp_solver<CompType> dp(input.size());
+
   for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    dp.update(i, 0x0f, 0x0f + 0x001f, Linear<8, 14>(), {uncomp, 0, 1});
-    dp.update(i, 0x0f, 0x0f + 0x3fff, Linear<8, 23>(), {uncomp, 0, 2});
+    u_helper.update(i, dp[i].cost);
+    const auto u0 = u_helper.find(i + 1, 1, 1);
+    dp.update_u(i + 1, u0.len, {uncomp, 0, 0}, u0.cost + 1);
+    const auto u1 = u_helper.find(i + 1, 0x0f, 0x0f + 0x001f);
+    dp.update_u(i + 1, u1.len, {uncomp, 0, 1}, u1.cost + 14);
+    const auto u2 = u_helper.find(i + 1, 0x0f, 0x0f + 0x3fff);
+    dp.update_u(i + 1, u2.len, {uncomp, 0, 2}, u2.cost + 23);
 
     const auto cost = dp[i].cost;
     for (ptrdiff_t oi = ofs_tab.size() - 2; oi >= 0; --oi) {
