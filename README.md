@@ -101,8 +101,10 @@ $ ./bench <input-dir>
 | gun_hazard_comp                          |    5 | 5247 | 2DD9 | 727E | 1FEE | 35C9 | 52ED | 1863 |  1B3AA | 0.2654 | ED5DB7F4 |
 | hal_comp                                 |    4 | 5C25 | 34EB | 785A | 27C5 | 3955 | 674A | 199C |  1EB6E | 0.2644 | 61E4F832 |
 | hanjuku_hero_comp                        |    B | 5F62 | 3747 | 7FC8 | 25DC | 3858 | 69F7 | 19F9 |  1F8A0 | 0.0542 | 8EC736EB |
+| heberekes_popoon_comp                    |   24 | 606A | 37C9 | 79B5 | 2B00 | 38E3 | 68A0 | 27FA |  20689 | 0.6649 | D3B73ED6 |
 | ihatovo_monogatari_comp                  |    7 | 5F69 | 375B | 7FC8 | 25DF | 385A | 6A13 | 19F5 |  1F8D4 | 0.0507 | 0391DCB9 |
 | jurassic_park_comp                       |    4 | 5B8E | 33A0 | 7BB2 | 2294 | 34EE | 64AE | 219A |  1E8AE | 0.0599 | 34541B52 |
+| kamen_rider_sd_comp                      |    5 | 5B0B | 378B | 7D2C | 28A7 | 34B5 | 656E | 23EB |  1F67C | 0.1207 | 01EDB505 |
 | kiki_kaikai_comp                         |    5 | 61AF | 36E4 | 8003 | 24ED | 3A01 | 6CA2 | 1C39 |  20064 | 0.0503 | E4A4C89E |
 | koei_comp                                |    5 | 5587 | 2F66 | 77A8 | 1FA0 | 3051 | 5FEA | 1851 |  1C4C6 | 0.1701 | E344CF3E |
 | konami_comp_1                            |    5 | 5D6A | 3798 | 770A | 28D3 | 394F | 6504 | 1DCE |  1F105 | 0.0634 | 3A7D7CB0 |

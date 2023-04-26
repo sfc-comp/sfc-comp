@@ -71,6 +71,8 @@ set(sfc_comp_src
   src/gun_hazard_comp.cpp
   src/hal_comp.cpp
   src/hanjuku_hero_comp.cpp
+  src/heberekes_popoon_comp.cpp
+  src/kamen_rider_sd_comp.cpp
   src/kiki_kaikai_comp.cpp
   src/koei_comp.cpp
   src/konami_comp.cpp
@@ -175,8 +177,10 @@ set(comp_ext_list
   gun_hazard_comp comp
   hal_comp comp
   hanjuku_hero_comp comp
+  heberekes_popoon_comp comp
   ihatovo_monogatari_comp comp
   jurassic_park_comp comp
+  kamen_rider_sd_comp comp
   keiba_eight_special_2_comp comp
   keirin_ou_comp comp
   kiki_kaikai_comp comp
