@@ -13,42 +13,34 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (!(tag == lz || tag == rle || tag == rle0)) return true;
-      return len_no == rhs.len_no;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t ofs_no, len_no;
+    size_t oi, li;
+  };
+
+  const std::array<vrange, 7> len_tab = {
+    vrange(0x0003, 0x0003,  1, 0x0001), // 1
+    vrange(0x0004, 0x0004,  2, 0x0001), // 01
+    vrange(0x0005, 0x0005,  3, 0x0001), // 001
+    vrange(0x0006, 0x0006,  4, 0x0001), // 0001
+    vrange(0x0007, 0x0008,  6, 0x0002), // 00001_
+    vrange(0x0009, 0x0010,  9, 0x0000), // 000000___
+    vrange(0x0011, 0x0110, 14, 0x0001)  // 000001[]
+  };
+
+  const std::array<vrange, 7> ofs_tab = {
+    vrange(0x0001, 0x00ff,  9, 0x0000), // []0
+    vrange(0x0100, 0x02ff, 11, 0x0004), // []1_0
+    vrange(0x0300, 0x06ff, 13, 0x0014), // []1_1_0
+    vrange(0x0700, 0x0eff, 15, 0x0054), // []1_1_1_0
+    vrange(0x0f00, 0x1eff, 17, 0x0154), // []1_1_1_1_0
+    vrange(0x1f00, 0x3eff, 19, 0x0554), // []1_1_1_1_1_0
+    vrange(0x3f00, 0xbeff, 21, 0x1554)  // []1_1_1_1_1_1__
   };
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());
-
-  struct tup {
-    size_t min_len;
-    size_t val;
-    size_t bits;
-  };
-
-  static constexpr std::array<tup, 8>  len_tab = {
-    tup({0x0003, 0x0001,  1}), // 1
-    tup({0x0004, 0x0001,  2}), // 01
-    tup({0x0005, 0x0001,  3}), // 001
-    tup({0x0006, 0x0001,  4}), // 0001
-    tup({0x0007, 0x0002,  6}), // 00001_
-    tup({0x0009, 0x0000,  9}), // 000000___
-    tup({0x0011, 0x0001, 14}), // 000001[]
-    tup({0x0111, 0x0000,  0})
-  };
-
-  static constexpr std::array<tup, 9> ofs_tab = {
-    tup({0x0001, 0x0000,  9}), // []0
-    tup({0x0100, 0x0004, 11}), // []1_0
-    tup({0x0300, 0x0014, 13}), // []1_1_0
-    tup({0x0700, 0x0054, 15}), // []1_1_1_0
-    tup({0x0f00, 0x0154, 17}), // []1_1_1_1_0
-    tup({0x1f00, 0x0554, 19}), // []1_1_1_1_1_0
-    tup({0x3f00, 0x1554, 21}), // []1_1_1_1_1_1__
-    tup({0xbf00, 0x0000,  0}), //
-  };
 
   size_t rlen = 0;
   for (size_t i = 0; i < input.size(); ++i) {
@@ -58,14 +50,13 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     dp.update(i, 0x14, 0x14 + 0xff, Linear<8, 20>(), {uncompl, 0, 0});
 
     rlen = encode::run_length(input, i, rlen);
-    for (size_t li = 0; li < len_tab.size() - 1; ++li) {
-      const size_t min_len = len_tab[li].min_len;
-      if (min_len > rlen) break;
-      const size_t max_len = len_tab[li + 1].min_len - 1;
+    for (size_t li = 0; li < len_tab.size(); ++li) {
+      const auto& l = len_tab[li];
+      if (rlen < l.min) break;
       if (input[i] != 0) {
-        dp.update(i, min_len, max_len, rlen, Constant<20>(), {rle, 0, li}, cost + len_tab[li].bits);
+        dp.update(i, l.min, l.max, rlen, Constant<20>(), {rle, 0, li}, cost + l.bitlen);
       } else {
-        dp.update(i, min_len, max_len, rlen, Constant<11>(), {rle0, 0, li}, cost + len_tab[li].bits);
+        dp.update(i, l.min, l.max, rlen, Constant<11>(), {rle0, 0, li}, cost + l.bitlen);
       }
     }
 
@@ -78,24 +69,11 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
       }
     }
 
-    for (ptrdiff_t oi = ofs_tab.size() - 2; oi >= 0; --oi) {
-      const size_t min_ofs = ofs_tab[oi].min_len;
-      if (min_ofs > i) continue;
-      const size_t max_ofs = ofs_tab[oi + 1].min_len - 1;
-      const size_t ofs_bitsize = ofs_tab[oi].bits;
-      const auto res_lz = lz_helper.find_best(i, max_ofs);
-      if (res_lz.len <= 2) break;
-      if ((i - res_lz.ofs) < min_ofs) continue;
-      for (size_t li = 0; li < len_tab.size() - 1; ++li) {
-        const size_t min_len = len_tab[li].min_len;
-        if (min_len > res_lz.len) break;
-        const size_t max_len = len_tab[li + 1].min_len - 1;
-        const size_t len_bitsize = len_tab[li].bits;
-        dp.update_lz(i, min_len, max_len, res_lz,
-                     Constant<2>(), {lz, size_t(oi), li}, cost + ofs_bitsize + len_bitsize);
-      }
-    }
-
+    dp.update_lz_matrix(i, ofs_tab, len_tab,
+      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi, size_t li) -> CompType { return {lz, oi, li}; },
+      2
+    );
     lz_helper.add_element(i);
   }
 
@@ -104,8 +82,8 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   ret.write<none>(none());
 
   const auto write_len = [&](const size_t li, const size_t len) -> void {
-    const size_t min_len = len_tab[li].min_len;
-    const size_t b = len_tab[li].bits;
+    const size_t min_len = len_tab[li].min;
+    const size_t b = len_tab[li].bitlen;
     const size_t v = len_tab[li].val;
     assert(len >= min_len);
     if (b <= 9) ret.write<b8hn_h>({b, v + (len - min_len)});
@@ -117,8 +95,8 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
 
   size_t adr = 0;
   for (const auto& cmd : dp.commands()) {
-    const size_t li = cmd.type.len_no;
-    const size_t oi = cmd.type.ofs_no;
+    const size_t li = cmd.type.li;
+    const size_t oi = cmd.type.oi;
     const size_t d = adr - cmd.lz_ofs;
 
     switch (cmd.type.tag) {
@@ -146,7 +124,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     } break;
 
     case lz: {
-      const auto min_dist = ofs_tab[oi].min_len - (oi == 0 ? 1 : 0);
+      const auto min_dist = ofs_tab[oi].min - (oi == 0 ? 1 : 0);
       ret.write<b1h, d8, b1h>(false, d & 0xff, true);
       assert(d >= min_dist);
       size_t h = (d - min_dist) >> 8, t = 0;
@@ -164,10 +142,8 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   }
   ret.trim();
   assert(adr == input.size());
-  assert((dp.total_cost() + 7) / 8 + 2 <= ret.size() && ret.size() <= (dp.total_cost() + 7) / 8 + 4);
-
+  assert(dp.total_cost() + 16 == ret.bit_length());
   write16(ret.out, 0, input.size());
-
   return ret.out;
 }
 

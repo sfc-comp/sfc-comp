@@ -28,7 +28,7 @@ std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t> input) {
     dp.update_lz(i, 2, 0x21, res_lz, Constant<2>(), lz);
     if (input[i] == 0) {
       auto common16_len = encode::common_lo16(input, i, 0x40).len;
-      dp.update_k<2>(i, 2, 0x40, common16_len, [](size_t i) { return 1 + (i >> 1); }, common16);
+      dp.update_k<2>(i, 2, 0x40, common16_len, LinearQ<1, 2, 2>(), common16);
     }
     lz_helper.add_element(i);
   }

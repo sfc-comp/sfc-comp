@@ -38,7 +38,7 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> input, const bool
     dp.update_lz(i, 2, 0x21, res_lz, Constant<2>(), lz);
     if (input2[i] == 0) {
       auto common16_len = encode::common_lo16(input2, i, 0x42).len;
-      dp.update_k<2>(i, 4, 0x42, common16_len, LinearQ<1, 3, 2>(), common16);
+      dp.update_k<2>(i, 4, 0x42, common16_len, LinearQ<1, 2, 2>(), common16);
     }
     lz_helper.add_element(i);
   }

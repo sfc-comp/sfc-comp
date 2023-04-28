@@ -7,46 +7,41 @@ namespace sfc_comp {
 
 std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
-  enum Tag {
-    uncomp, lz2, lz
-  };
+  enum Tag { uncomp, lz2, lz };
   struct CompType {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag != lz) return true;
-      return len_no == rhs.len_no;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t ofs_no, len_no;
+    size_t oi, li;
+  };
+
+  static constexpr std::array<vrange, 5> ofs_tab = {
+    vrange(0x0001, 0x0200, 10, 0x0001), // _1
+    vrange(0x0201, 0x0400, 11, 0x0001), // _01
+    vrange(0x0401, 0x0800, 13, 0x0001), // _00_1
+    vrange(0x0801, 0x1000, 15, 0x0001), // _00_0_1
+    vrange(0x1001, 0x2000, 16, 0x0000), // _00_0_0_
+  };
+
+  static constexpr std::array<vrange, 7> len_tab = {
+    vrange(0x0003, 0x0003,  1, 0x0001), // 1
+    vrange(0x0004, 0x0004,  2, 0x0001), // 01
+    vrange(0x0005, 0x0005,  3, 0x0001), // 001
+    vrange(0x0006, 0x0006,  4, 0x0001), // 0001
+    vrange(0x0007, 0x0008,  6, 0x0002), // 00001_
+    vrange(0x0009, 0x0010,  9, 0x0000), // 000000___
+    vrange(0x0011, 0x0110, 14, 0x0001)  // 000001<1B>
   };
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());
 
-  static constexpr size_t len_tab[][3] = {
-    {0x0003, 0x0001,  1}, // 1
-    {0x0004, 0x0001,  2}, // 01
-    {0x0005, 0x0001,  3}, // 001
-    {0x0006, 0x0001,  4}, // 0001
-    {0x0007, 0x0002,  6}, // 00001_
-    {0x0009, 0x0000,  9}, // 000000___
-    {0x0011, 0x0001, 14}, // 000001<1B>
-    {0x0111, 0x0000,  0}  // * end *
-  };
-
-  static constexpr size_t ofs_tab[][3] = {
-    {0x0001, 0x0001, 10}, // _1
-    {0x0201, 0x0001, 11}, // _01
-    {0x0401, 0x0001, 13}, // _00_1
-    {0x0801, 0x0001, 15}, // _00_0_1
-    {0x1001, 0x0000, 16}, // _00_0_0_
-    {0x2001, 0x0000,  0}  // * end *
-  };
-
   encode::lz_data res_lz2 = {}, res_lz2s = {};
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-
     if (res_lz2.len >= 2) {
       if (res_lz2s.len >= 2) {
         dp.update_lz(i, 2, 2, res_lz2s, Constant<11>(), {lz2, 0, 0});
@@ -54,28 +49,12 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
         dp.update_lz(i, 2, 2, res_lz2, Constant<14>(), {lz2, 1, 0});
       }
     }
-
-    const auto cost = dp[i].cost;
-    for (size_t k = 0; k < 5; ++k) {
-      size_t oi = 4 - k;
-      const size_t min_ofs = ofs_tab[oi][0];
-      if (min_ofs > i) continue;
-      const size_t max_ofs = ofs_tab[oi + 1][0] - 1;
-      const size_t ofs_bitsize = ofs_tab[oi][2];
-      auto res_lz = lz_helper.find_best(i, max_ofs);
-      if (res_lz.len <= 2) break;
-      if ((i - res_lz.ofs) < min_ofs) continue;
-      for (size_t li = 0; li < 7; ++li) {
-        const size_t min_len = len_tab[li][0];
-        if (min_len > res_lz.len) break;
-        const size_t max_len = len_tab[li + 1][0] - 1;
-        size_t len_bitsize = len_tab[li][2];
-        size_t total_cost = cost + 2 + ofs_bitsize + len_bitsize;
-        dp.update_lz(i, min_len, max_len, res_lz,
-                     Constant<0>(), {lz, oi, li}, total_cost);
-      }
-    }
-
+    dp.update_lz_matrix(i, ofs_tab, len_tab,
+      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi, size_t li) -> CompType { return {lz, oi, li}; },
+      2
+    );
+    // dist should be >= 2.
     if (i + 1 < input.size()) {
       res_lz2 = lz_helper.find_best(i + 1, 0x900);
       if (res_lz2.len >= 2) {
@@ -99,7 +78,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
     case lz2: {
       const size_t d = adr - cmd.lz_ofs;
       ret.write<b8ln_h, d8>({2, 0}, (0x900 - d) & 0xff);
-      if (cmd.type.ofs_no == 0) {
+      if (cmd.type.oi == 0) {
         ret.write<b8ln_h>({1, 0});
       } else {
         ret.write<b8ln_h>({4, 0x08 | (0x900 - d) >> 8});
@@ -107,11 +86,11 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
     } break;
     case lz: {
       const size_t d = adr - cmd.lz_ofs;
-      const size_t li = cmd.type.len_no;
-      const size_t oi = cmd.type.ofs_no;
+      const size_t oi = cmd.type.oi;
+      const auto& o = ofs_tab[oi];
 
       ret.write<b8ln_h, d8>({2, 1}, -d & 0xff);
-      size_t v = (ofs_tab[oi + 1][0] - 1 - d) >> 8;
+      size_t v = (o.max - d) >> 8;
       if (oi == 0) {
         v <<= 1;
       } else if (oi == 1) {
@@ -128,15 +107,14 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
         v += v & ~7;
         v += (v & 0x20) * 3;
       }
-      ret.write<b8ln_h>({ofs_tab[oi][2] - 8, v | ofs_tab[oi][1]});
+      ret.write<b8ln_h>({o.bitlen - 8, v | o.val});
 
-      const size_t len_bits = len_tab[li][2];
-      const size_t len_v = cmd.len - len_tab[li][0];
-      if (len_bits < 10) {
-        ret.write<b8ln_h>({len_tab[li][2], len_v | len_tab[li][1]});
+      const auto& l = len_tab[cmd.type.li];
+      const size_t len_v = cmd.len - l.min;
+      if (l.bitlen < 10) {
+        ret.write<b8ln_h>({l.bitlen, len_v | l.val});
       } else {
-        ret.write<b8ln_h>({len_tab[li][2] - 8, len_tab[li][1]});
-        ret.write<d8>(len_v);
+        ret.write<b8ln_h, d8>({l.bitlen - 8, l.val}, len_v);
       }
     } break;
     default: assert(0);
@@ -146,7 +124,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   ret.write<b8ln_h, d8, b8ln_h>({2, 0}, 0xff, {1, 0});
   ret.trim();
 
-  assert((dp.total_cost() + 11 + 7) / 8 + 0x11 <= ret.size() && ret.size() <= (dp.total_cost() + 11 + 7) / 8 + 0x13);
+  assert(dp.total_cost() + 11 + 0x11 * 8 == ret.bit_length());
   assert(adr == input.size());
 
   std::array<uint8_t, 9> header = {

@@ -10,23 +10,20 @@
 
 #include <span>
 
+#include "encode.hpp"
+
 namespace sfc_comp {
 
 namespace encode {
 
-struct huffman_node {
+struct node {
   size_t left;
   size_t right;
 };
 
-struct huffman_data {
-  ptrdiff_t bitlen;
-  size_t val;
-};
-
 struct huffman_result {
   std::vector<size_t> words;
-  std::vector<huffman_data> codewords;
+  std::vector<codeword> codewords;
 };
 
 huffman_result huffman(std::span<const size_t> counts, bool zero_to_one);

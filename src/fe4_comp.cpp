@@ -252,28 +252,24 @@ std::vector<uint8_t> fe4_comp(std::span<const uint8_t> input) {
     dp.update(i, 11, 0x1002, rlen, Constant<3>(), rlel);
 
     auto coupled8_len = encode::coupled8(input, i, 0x20);
-    dp.update_k<2>(i, 2, 0x20, coupled8_len, LinearQ<1, 3, 2>(), coupled);
+    dp.update_k<2>(i, 2, 0x20, coupled8_len, LinearQ<1, 2, 2>(), coupled);
     auto common_lo16_len = encode::common_lo16(input, i, 0x22).len;
-    dp.update_k<2>(i, 4, 0x22, common_lo16_len, LinearQ<1, 5, 2>(), common_lo16);
+    dp.update_k<2>(i, 4, 0x22, common_lo16_len, LinearQ<1, 4, 2>(), common_lo16);
     auto common_hi16_len = encode::common_hi16(input, i, 0x22).len;
-    dp.update_k<2>(i, 4, 0x22, common_hi16_len, LinearQ<1, 5, 2>(), common_hi16);
+    dp.update_k<2>(i, 4, 0x22, common_hi16_len, LinearQ<1, 4, 2>(), common_hi16);
     auto common_hi8_res = encode::common_hi8(input, i, 0x12);
     if (((common_hi8_res.v + 0x10) & 0xf0) < 0x20) {
-      dp.update(i, 3, 0x12, common_hi8_res.len,
-        [](size_t i) { return (i + 4) >> 1; },
+      dp.update(i, 3, 0x12, common_hi8_res.len, LinearQ<1, 4, 2>(),
         common_hi8_res.v == 0 ? common_hi8_0 : common_hi8_f);
     } else {
-      dp.update(i, 2, 0x11, common_hi8_res.len,
-        [](size_t i) { return (i + 5) >> 1; }, common_hi8);
+      dp.update(i, 2, 0x11, common_hi8_res.len, LinearQ<1, 5, 2>(), common_hi8);
     }
     auto common_lo8_res = encode::common_lo8(input, i, 0x12);
     if (((common_lo8_res.v + 1) & 0xf) < 2) {
-      dp.update(i, 3, 0x12, common_lo8_res.len,
-        [](size_t i) { return (i + 4) >> 1; },
+      dp.update(i, 3, 0x12, common_lo8_res.len, LinearQ<1, 4, 2>(),
         common_lo8_res.v == 0 ? common_lo8_0 : common_lo8_f);
     } else {
-      dp.update(i, 2, 0x11, common_lo8_res.len,
-        [](size_t i) { return (i + 5) >> 1; }, common_lo8);
+      dp.update(i, 2, 0x11, common_lo8_res.len, LinearQ<1, 5, 2>(), common_lo8);
     }
     lz_helper.add_element(i);
   }

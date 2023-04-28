@@ -247,10 +247,13 @@ struct writer_b4 : public writer {
   bool lo;
 };
 
-struct writer_b : public writer {
+template <size_t BlockBytes, bool PreRead>
+struct bitstream_writer : public writer {
+  static constexpr size_t block_bitsize = BlockBytes * 8;
+
   using writer::write;
 
-  writer_b() : bit(0), bits_pos(0) {}
+  bitstream_writer() : bit(0), bits_pos(0) {}
 
   template <typename Head, typename... Args>
   void write(const Head& h, Args... args) {
@@ -259,30 +262,24 @@ struct writer_b : public writer {
   }
 
   void write(const data_type::b1l& d) {
-    if (bit == 0) {
-      bits_pos = out.size();
-      out.push_back(0);
-      bit = 8;
-    }
+    if constexpr (!PreRead) write(data_type::none());
     --bit;
-    if (d.b) out[bits_pos] |= 1 << (7 - bit);
+    if (size_t b = block_bitsize - 1 - bit; d.b) out[bits_pos + b / 8] |= 1 << (b % 8);
+    if constexpr (PreRead) write(data_type::none());
   }
 
   void write(const data_type::b1h& d) {
-    if (bit == 0) {
-      bits_pos = out.size();
-      out.push_back(0);
-      bit = 8;
-    }
+    if constexpr (!PreRead) write(data_type::none());
     --bit;
-    if (d.b) out[bits_pos] |= 1 << bit;
+    if (d.b) out[bits_pos + bit / 8] |= 1 << (bit % 8);
+    if constexpr (PreRead) write(data_type::none());
   }
 
   void write(const data_type::none&) {
     if (bit == 0) {
       bits_pos = out.size();
-      out.push_back(0);
-      bit = 8;
+      for (size_t i = 0; i < BlockBytes; ++i) out.push_back(0);
+      bit = block_bitsize;
     }
   }
 
@@ -308,143 +305,26 @@ struct writer_b : public writer {
     for (size_t i = 0; i < d.n; ++i) {
       write<data_type::b1h>((d.x >> (d.n - 1 - i)) & 1);
     }
-  }
-
-  size_t bit;
-  size_t bits_pos;
-};
-
-struct writer_b16 : public writer {
-  using writer::write;
-
-  writer_b16() : bit(0), bits_pos(0) {}
-
-  template <typename Head, typename... Args>
-  void write(const Head& h, Args... args) {
-    write(h);
-    write(args...);
-  }
-
-  void write(const data_type::b1l& d) {
-    if (bit == 0) {
-      bits_pos = out.size();
-      out.push_back(0); out.push_back(0);
-      bit = 16;
-    }
-    --bit;
-    if (d.b) out[bits_pos + ((15 - bit) >> 3)] |= 1 << (7 - (bit & 7));
-  }
-
-  void write(const data_type::b1h& d) {
-    if (bit == 0) {
-      bits_pos = out.size();
-      out.push_back(0); out.push_back(0);
-      bit = 16;
-    }
-    --bit;
-    if (d.b) out[bits_pos + (bit >> 3)] |= 1 << (bit & 7);
-  }
-
-  void write(const data_type::none&) {
-    if (bit == 0) {
-      bits_pos = out.size();
-      out.push_back(0); out.push_back(0);
-      bit = 16;
-    }
-  }
-
-  void write(const data_type::b8ln_l& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1l>((d.x >> i) & 1);
-    }
-  }
-
-  void write(const data_type::b8ln_h& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1l>((d.x >> (d.n - 1 - i)) & 1);
-    }
-  }
-
-  void write(const data_type::b8hn_l& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1h>((d.x >> i) & 1);
-    }
-  }
-
-  void write(const data_type::b8hn_h& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1h>((d.x >> (d.n - 1 - i)) & 1);
-    }
-  }
-
-  size_t bit;
-  size_t bits_pos;
-};
-
-struct writer_b16_hasty : public writer {
-  using writer::write;
-
-  writer_b16_hasty() : bit(0), bits_pos(0) {}
-
-  template <typename Head, typename... Args>
-  void write(const Head& h, Args... args) {
-    write(h);
-    write(args...);
   }
 
   void trim() {
-    if (bit == 16 && bits_pos + 2 == out.size()) {
-      out.pop_back(); out.pop_back();
+    if (bit == block_bitsize && bits_pos + BlockBytes == out.size()) {
+      for (size_t i = 0; i < BlockBytes; ++i) out.pop_back();
       bit = 0;
     }
   }
 
-  void write(const data_type::b1l& d) {
-    --bit;
-    if (d.b) out[bits_pos + ((15 - bit) >> 3)] |= 1 << (7 - (bit & 7));
-    write(data_type::none());
-  }
-
-  void write(const data_type::b1h& d) {
-    --bit;
-    if (d.b) out[bits_pos + (bit >> 3)] |= 1 << (bit & 7);
-    write(data_type::none());
-  }
-
-  void write(const data_type::none&) {
-    if (bit == 0) {
-      bits_pos = out.size();
-      out.push_back(0); out.push_back(0);
-      bit = 16;
-    }
-  }
-
-  void write(const data_type::b8ln_l& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1l>((d.x >> i) & 1);
-    }
-  }
-
-  void write(const data_type::b8ln_h& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1l>((d.x >> (d.n - 1 - i)) & 1);
-    }
-  }
-
-  void write(const data_type::b8hn_l& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1h>((d.x >> i) & 1);
-    }
-  }
-
-  void write(const data_type::b8hn_h& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1h>((d.x >> (d.n - 1 - i)) & 1);
-    }
+  size_t bit_length() const {
+    return out.size() * 8 - bit;
   }
 
   size_t bit;
   size_t bits_pos;
 };
+
+struct writer_b : public bitstream_writer<1, false> {};
+struct writer_b8 : public bitstream_writer<1, false> {};
+struct writer_b16 : public bitstream_writer<2, false> {};
+struct writer_b16_hasty : public bitstream_writer<2, true> {};
 
 } // namespace sfc_comp

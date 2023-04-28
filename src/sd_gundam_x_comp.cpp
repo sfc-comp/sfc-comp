@@ -13,8 +13,8 @@ namespace {
 
 struct huffman {
   std::vector<size_t> words;
-  std::vector<encode::huffman_data> codewords;
-  std::vector<encode::huffman_node> table;
+  std::vector<encode::codeword> codewords;
+  std::vector<encode::node> table;
 };
 
 huffman huffman_encode(std::span<const size_t> counts) {
@@ -28,7 +28,7 @@ huffman huffman_encode(std::span<const size_t> counts) {
   std::reverse(huff.words.begin(), huff.words.end());
 
   huffman ret;
-  std::vector<encode::huffman_node> huff_table;
+  std::vector<encode::node> huff_table;
 
   if (depth > 0) {
     size_t prev_count = 0, node_id = 0, word_id = 0;

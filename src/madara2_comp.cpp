@@ -38,25 +38,25 @@ std::vector<uint8_t> madara2_comp(std::span<const uint8_t> input) {
 
     auto common_lo16_len = encode::common_lo16(input, i, 0x22).len;
     if (input[i] == 0) {
-      dp.update_k<2>(i, 2, 0x20, common_lo16_len, [](size_t i) { return 1 + (i >> 1); }, common_lo16_0);
+      dp.update_k<2>(i, 2, 0x20, common_lo16_len, LinearQ<1, 2, 2>(), common_lo16_0);
     }
-    dp.update_k<2>(i, 4, 0x22, common_lo16_len, [](size_t i) { return 2 + (i >> 1); }, common_lo16);
+    dp.update_k<2>(i, 4, 0x22, common_lo16_len, LinearQ<1, 4, 2>(), common_lo16);
 
     auto common_hi8_res = encode::common_hi8(input, i, 0x20);
     if (common_hi8_res.v == 0) {
       dp.update_k<2>(i, 2, 0x20, common_hi8_res.len,
-        [](size_t i) { return (i + 2) >> 1;}, common_hi8_0);
+        LinearQ<1, 2, 2>(), common_hi8_0);
     } else if (common_hi8_res.v == 0xf0) {
       dp.update_k<2>(i, 2, 0x20, common_hi8_res.len,
-        [](size_t i) { return (i + 2) >> 1;}, common_hi8_f);
+        LinearQ<1, 2, 2>(), common_hi8_f);
     }
     auto common_lo8_res = encode::common_lo8(input, i, 0x20);
     if (common_lo8_res.v == 0) {
       dp.update_k<2>(i, 2, 0x20, common_lo8_res.len,
-        [](size_t i) { return (i + 2) >> 1;}, common_lo8_0);
+        LinearQ<1, 2, 2>(), common_lo8_0);
     } else if (common_lo8_res.v == 0x0f) {
       dp.update_k<2>(i, 2, 0x20, common_lo8_res.len,
-        [](size_t i) { return (i + 2) >> 1;}, common_lo8_f);
+        LinearQ<1, 2, 2>(), common_lo8_f);
     }
     auto res_lz = lz_helper.find_best_closest(i, 0x400, 0x11);
     dp.update_lz(i, 2, 0x11, res_lz, Constant<2>(), lz);

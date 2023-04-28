@@ -14,10 +14,10 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag == none) return true;
-      return len_no == rhs.len_no;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t len_no;
+    size_t li;
   };
 
   static constexpr size_t uncomp_max_len_bits = 15;
@@ -110,9 +110,9 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 2);
-  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
   assert(adr == input.size());
-  assert((std::min(dp0.total_cost(), dp1.total_cost()) + 7 - 1) / 8 + 4 == ret.size());
+  assert((std::min(dp0.total_cost(), dp1.total_cost()) - 1) + 32 == flags.bit_length() + 8 * ret.size());
+  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
 
   return ret.out;
 }

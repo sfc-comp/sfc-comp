@@ -9,6 +9,11 @@ namespace sfc_comp {
 
 namespace encode {
 
+struct codeword {
+  ptrdiff_t bitlen;
+  size_t val;
+};
+
 struct rle_data {
   size_t len;
   uint64_t v;

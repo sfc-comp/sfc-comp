@@ -11,8 +11,8 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
     rle, uncomp, lz, lzl, pre16
   };
 
-  const size_t num_candidates[] = {2048, 512, 256, 128, 96, 80, 72, 68, 64};
-  const size_t phase_total = sizeof(num_candidates) / sizeof(*num_candidates);
+  const std::vector<size_t> num_candidates = {2048, 512, 256, 128, 96, 80, 72, 68, 64};
+  const size_t phase_total = num_candidates.size();
 
   auto candidate = utility::k_most_freq_u16(input, num_candidates[0]);
   std::vector<int64_t> pre(0x10000, -1);

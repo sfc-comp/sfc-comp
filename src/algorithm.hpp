@@ -366,11 +366,18 @@ class uncomp_helper {
   segment_tree<range_min<indexed_cost, unit>> tree_;
 };
 
-template <typename CompType, typename CostType = size_t>
+struct vrange {
+  size_t min;
+  size_t max;
+  size_t bitlen;
+  size_t val;
+};
+
+template <typename TagType, typename CostType = size_t>
 class sssp_solver {
  public:
   using cost_type = CostType;
-  using comp_type = CompType;
+  using tag_type = TagType;
   static constexpr cost_type infinite_cost = cost_traits<cost_type>::infinity();
 
  private:
@@ -381,7 +388,7 @@ class sssp_solver {
     cost_type cost;
     size_t len;
     size_t lz_ofs;
-    comp_type type;
+    tag_type type;
 
     size_t val() const { return lz_ofs; }
   };
@@ -402,8 +409,37 @@ class sssp_solver {
     for (size_t i = begin; i < end; ++i) reset(i);
   }
 
+  template <typename LzFunc, typename TagFunc>
+  void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const vrange> lens,
+      LzFunc find_lz, TagFunc tag, size_t c, cost_type base_cost = unspecified) {
+    if (lens.empty() || offsets.empty()) return;
+    const size_t lz_min_len = lens[0].min;
+    if (base_cost == unspecified) base_cost = (*this)[adr].cost;
+
+    using encode::lz_data;
+    ptrdiff_t oi = offsets.size() - 1;
+    ptrdiff_t li = lens.size() - 1;
+    for (lz_data res_lz = find_lz(oi); ; ) {
+      const size_t d = adr - res_lz.ofs;
+      if (res_lz.len < lz_min_len) break;
+      while (oi >= 0 && d < offsets[oi].min) --oi;
+      if (oi < 0) break;
+      lz_data nres_lz = (oi == 0) ? lz_data(0, 0) : find_lz(oi - 1);
+      for (; li >= 0 && res_lz.len < lens[li].min; --li);
+      const size_t min_len = nres_lz.len + 1;
+      for (; li >= 0 && min_len <= lens[li].max; --li) {
+        const auto& l = lens[li];
+        const auto cost = base_cost + (offsets[oi].bitlen + l.bitlen + c);
+        update_lz(adr, std::max(min_len, l.min), l.max, res_lz, Constant<0>(), tag(oi, li), cost);
+        if (min_len > l.min) break;
+      }
+      if (--oi < 0) break;
+      res_lz = std::move(nres_lz);
+    }
+  }
+
   template <typename Func>
-  void update_lz_table(size_t adr, std::span<const size_t> table, encode::lz_data lz, Func func, comp_type ty) {
+  void update_lz_table(size_t adr, std::span<const size_t> table, encode::lz_data lz, Func func, tag_type tag) {
     const cost_type base_cost = (*this)[adr].cost;
     for (size_t i = 0; i < table.size(); ++i) {
       const size_t l = table[i];
@@ -414,12 +450,12 @@ class sssp_solver {
       target.cost = curr_cost;
       target.len = l;
       target.lz_ofs = lz.ofs;
-      target.type = ty;
+      target.type = tag;
     }
   }
 
   template <typename Skip = std::greater_equal<cost_type>>
-  void update(size_t adr, size_t len, comp_type ty, cost_type cost, size_t arg = 0) {
+  void update(size_t adr, size_t len, tag_type tag, cost_type cost, size_t arg = 0) {
     if (adr < len) return;
     constexpr auto skip = Skip();
     auto& target = (*this)[adr];
@@ -427,16 +463,16 @@ class sssp_solver {
     target.cost = cost;
     target.len = len;
     target.lz_ofs = arg;
-    target.type = ty;
+    target.type = tag;
   }
 
-  void update_u(size_t adr, size_t len, comp_type ty, cost_type cost, size_t arg = 0) {
-    return update<std::greater<cost_type>>(adr, len, ty, cost, arg);
+  void update_u(size_t adr, size_t len, tag_type tag, cost_type cost, size_t arg = 0) {
+    return update<std::greater<cost_type>>(adr, len, tag, cost, arg);
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
   void update(size_t adr, size_t fr, size_t to, Func func,
-      comp_type ty, cost_type base_cost = unspecified, size_t arg = 0) {
+      tag_type tag, cost_type base_cost = unspecified, size_t arg = 0) {
     constexpr auto skip = Skip();
     to = std::min(to, size() > adr ? (size() - 1) - adr : 0);
     if (base_cost == unspecified) base_cost = (*this)[adr].cost;
@@ -445,32 +481,32 @@ class sssp_solver {
       auto& target = (*this)[adr + i];
       if (skip(curr_cost, target.cost)) {
         if constexpr (is_linear<Func>::value) {
-          if (target.type == ty) break;
+          if (target.type == tag) break;
         }
         continue;
       }
       target.cost = curr_cost;
       target.lz_ofs = arg;
       target.len = i;
-      target.type = ty;
+      target.type = tag;
     }
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
   void update(size_t adr, size_t fr, size_t to, size_t len, Func func,
-      comp_type ty, cost_type base_cost = unspecified, size_t arg = 0) {
-    update<Skip, Func>(adr, fr, std::min(to, len), func, ty, base_cost, arg);
+      tag_type tag, cost_type base_cost = unspecified, size_t arg = 0) {
+    update<Skip, Func>(adr, fr, std::min(to, len), func, tag, base_cost, arg);
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
   void update_lz(size_t adr, size_t fr, size_t to, encode::lz_data lz, Func func,
-      comp_type ty, cost_type base_cost = unspecified) {
+      tag_type tag, cost_type base_cost = unspecified) {
     to = std::min(to, lz.len);
-    update<Skip, Func>(adr, fr, std::min(to, lz.len), func, ty, base_cost, lz.ofs);
+    update<Skip, Func>(adr, fr, std::min(to, lz.len), func, tag, base_cost, lz.ofs);
   }
 
   template <size_t K, typename Func>
-  void update_k(size_t adr, size_t fr, size_t to, Func func, comp_type ty, size_t arg = 0) {
+  void update_k(size_t adr, size_t fr, size_t to, Func func, tag_type tag, size_t arg = 0) {
     to = std::min(to, size() > adr ? (size() - 1) - adr : 0);
     if (to < fr) return;
     to = fr + (to - fr) / K * K;
@@ -480,21 +516,21 @@ class sssp_solver {
       auto& target = (*this)[adr + i];
       if (curr_cost >= target.cost) {
         if constexpr (is_linear_k<Func, K>::value) {
-          if (target.type == ty) break;
+          if (target.type == tag) break;
         }
         continue;
       }
       target.cost = curr_cost;
       target.len = i;
       target.lz_ofs = arg;
-      target.type = ty;
+      target.type = tag;
     }
   }
 
   template <size_t K, typename Func>
   void update_k(size_t adr, size_t fr, size_t to,
-      size_t max_len, Func func, comp_type ty, size_t arg = 0) {
-    update_k<K>(adr, fr, std::min(max_len, to), func, ty, arg);
+      size_t max_len, Func func, tag_type tag, size_t arg = 0) {
+    update_k<K>(adr, fr, std::min(max_len, to), func, tag, arg);
   }
 
   cost_type total_cost() const {

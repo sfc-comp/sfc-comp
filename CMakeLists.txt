@@ -84,6 +84,7 @@ set(sfc_comp_src
   src/marios_super_picross_comp.cpp
   src/marvelous_comp.cpp
   src/mujintou_monogatari_comp.cpp
+  src/oscar_comp.cpp
   src/papuwa_comp.cpp
   src/picross_np_comp.cpp
   src/pokemon_gold_comp.cpp
@@ -105,8 +106,10 @@ set(sfc_comp_src
   src/shin_megami_tensei2_comp.cpp
   src/sky_mission_comp.cpp
   src/slap_stick_comp.cpp
+  src/soccer_kid_comp.cpp
   src/soul_and_sword_comp.cpp
   src/stargate_comp.cpp
+  src/super_4wd_the_baja_comp.cpp
   src/super_bomberman_5_comp.cpp
   src/super_donkey_kong_comp.cpp
   src/super_loopz_comp.cpp
@@ -200,6 +203,7 @@ set(comp_ext_list
   mujintou_monogatari_comp comp
   odekake_lester_comp comp
   olivias_mystery_comp comp
+  oscar_comp comp
   papuwa_comp comp
   picross_np_comp comp
   pokemon_gold_comp comp
@@ -224,9 +228,13 @@ set(comp_ext_list
   sky_mission_comp comp
   slap_stick_comp comp
   slayers_comp comp
+  smurfs_comp comp
   sotsugyou_bangai_hen_comp comp
+  soccer_kid_comp comp
   soul_and_sword_comp comp
+  spirou_comp comp
   stargate_comp comp
+  super_4wd_the_baja_comp comp
   super_bomberman_5_comp comp
   super_donkey_kong_comp comp
   super_dunk_star_comp comp

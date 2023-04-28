@@ -14,57 +14,36 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag == uncomp) return true;
-      return len_no == rhs.len_no;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t ofs_no, len_no;
+    size_t oi, li;
+  };
+
+  static constexpr std::array<vrange, 4> ofs_tab = {
+    vrange(0x0001, 0x0020,  7, 0x0000), // 00_____
+    vrange(0x0021, 0x00a0,  9, 0x0080), // 01_______
+    vrange(0x00a1, 0x02a0, 11, 0x0400), // 10_________
+    vrange(0x02a1, 0x06a0, 12, 0x0c00)  // 11__________
+  };
+
+  static constexpr std::array<vrange, 4> len_tab = {
+    vrange(0x0002, 0x0002,   1, 0x0000),     // 0
+    vrange(0x0003, 0x0005,   3, 0x0004 + 1), // 1__
+    vrange(0x0006, 0x0014,   7, 0x0040 + 1), // 100____
+    vrange(0x0015, 0x0113,  15, 0x4000 + 1)  // 1000000________
   };
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());
 
-  struct tup {
-    size_t min_len;
-    size_t val;
-    size_t bits;
-  };
-
-  static constexpr std::array<tup, 5> len_tab = {
-    tup({0x0002, 0x0000,      1}),  // 0
-    tup({0x0003, 0x0004 + 1,  3}),  // 1__
-    tup({0x0006, 0x0040 + 1,  7}),  // 100____
-    tup({0x0015, 0x4000 + 1,  15}), // 1000000________
-    tup({0x0114, 0x0000,      0})
-  };
-
-  static constexpr std::array<tup, 5> ofs_tab = {
-    tup({0x0001, 0x0000, 7}),  // 00_____
-    tup({0x0021, 0x0080, 9}),  // 01_______
-    tup({0x00a1, 0x0400, 11}), // 10_________
-    tup({0x02a1, 0x0c00, 12}), // 11__________
-    tup({0x06a1, 0x0000, 0})
-  };
-
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    const auto cost = dp[i].cost;
-    for (ptrdiff_t oi = ofs_tab.size() - 2; oi >= 0; --oi) {
-      const size_t min_ofs = ofs_tab[oi].min_len;
-      if (min_ofs > i) continue;
-      const size_t max_ofs = ofs_tab[oi + 1].min_len - 1;
-      const size_t ofs_bitsize = ofs_tab[oi].bits;
-      auto res_lz = lz_helper.find_best(i, max_ofs);
-      if (res_lz.len <= 1) break;
-      if ((i - res_lz.ofs) < min_ofs) continue;
-      for (size_t li = 0; li < len_tab.size() - 1; ++li) {
-        const size_t min_len = len_tab[li].min_len;
-        if (min_len > res_lz.len) break;
-        const size_t max_len = len_tab[li + 1].min_len - 1;
-        const size_t len_bitsize = len_tab[li].bits;
-        dp.update_lz(i, min_len, max_len, res_lz,
-                     Constant<0>(), {lz, size_t(oi), li}, cost + 1 + ofs_bitsize + len_bitsize);
-      }
-    }
+    dp.update_lz_matrix(i, ofs_tab, len_tab,
+      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi, size_t li) -> CompType { return {lz, oi, li}; },
+      1
+    );
     lz_helper.add_element(i);
   }
 
@@ -86,12 +65,11 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
       }
     } break;
     case lz: {
-      const size_t d = adr - cmd.lz_ofs, l = cmd.len;
-      const size_t li = cmd.type.len_no;
-      const size_t oi = cmd.type.ofs_no;
+      const auto& l = len_tab[cmd.type.li];
+      const auto& o = ofs_tab[cmd.type.oi];
       ret.write<b1h>(true);
-      ret.write<b8hn_h>({len_tab[li].bits, len_tab[li].val + (l - len_tab[li].min_len)});
-      ret.write<b8hn_h>({ofs_tab[oi].bits, ofs_tab[oi].val + (d - ofs_tab[oi].min_len)});
+      ret.write<b8hn_h>({l.bitlen, l.val + (cmd.len - l.min)});
+      ret.write<b8hn_h>({o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min)});
     } break;
     default: assert(0);
     }
@@ -100,7 +78,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   ret.write<b1h>(true);
   ret.write<b8hn_h>({15, 1 << 14});
   assert(adr == input.size());
-  assert((dp.total_cost() + 7 + 16) / 8 + (mixed ? 0 : 2) == raw.size() + ret.size());
+  assert(dp.total_cost() + 1 + 15 + (mixed ? 0 : 2) * 8 == 8 * raw.size() + ret.bit_length());
 
   if (!mixed) {
     if (ret.size() >= 0x10000) throw std::runtime_error("This algorithm cannot compress the given data.");

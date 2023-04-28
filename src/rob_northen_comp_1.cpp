@@ -40,11 +40,11 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
   struct CompType {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
-      if (tag == uncomp) return len_no == rhs.len_no;
-      return len_no == rhs.len_no;
+      if (tag == uncomp) return li == rhs.li;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t ofs_no, len_no;
+    size_t oi, li;
   };
 
   static constexpr size_t lz_max_ofs_bits = 15;
@@ -209,10 +209,10 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           else cmd = dp0[adr], ty = 1;
           adr -= cmd.len;
           if (cmd.type.tag == uncomp) {
-            counter.uncomp[cmd.type.len_no] += 1;
+            counter.uncomp[cmd.type.li] += 1;
           } else {
-            counter.lz_ofs[cmd.type.ofs_no] += 1;
-            counter.lz_len[cmd.type.len_no] += 1;
+            counter.lz_ofs[cmd.type.oi] += 1;
+            counter.lz_len[cmd.type.li] += 1;
           }
           ret.emplace_back(cmd);
         }
@@ -287,7 +287,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         for (const auto& cmd : best_commands) {
           switch (cmd.type.tag) {
           case uncomp: {
-            const size_t k = cmd.type.len_no;
+            const size_t k = cmd.type.li;
             const auto c = best_huff.uncomp_len.codewords[k];
             assert(c.bitlen >= 0);
             ret.write<b8ln_h>({size_t(c.bitlen), c.val});
@@ -299,7 +299,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
             }
           } break;
           case lz: {
-            const size_t k = cmd.type.len_no, o = cmd.type.ofs_no;
+            const size_t k = cmd.type.li, o = cmd.type.oi;
             const auto c_len = best_huff.lz_len.codewords[k];
             const auto c_ofs = best_huff.lz_ofs.codewords[o];
 

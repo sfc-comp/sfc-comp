@@ -48,15 +48,15 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
 
     size_t rem2 = i % 2;
     c16[rem2] = encode::common_lo16_hint(input, i, c16[rem2].len);
-    dp.update_k<2>(i, 8, 0x206, c16[rem2].len, LinearQ<1, 6 + 1, 2>(), common_lo16);
+    dp.update_k<2>(i, 8, 0x206, c16[rem2].len, LinearQ<1, 6, 2>(), common_lo16);
 
     size_t rem3 = i % 3;
     c24[rem3] = encode::common_lo24_16_hint(input, i, c24[rem3].len);
-    dp.update_k<3>(i, 9, 0x306, c24[rem3].len, LinearQ<1, 12 + 2, 3>(), common_lo24);
+    dp.update_k<3>(i, 9, 0x306, c24[rem3].len, LinearQ<1, 12, 3>(), common_lo24);
 
     size_t rem4 = i % 4;
     c32[rem4] = encode::common_lo32_24_hint(input, i, c32[rem4].len);
-    dp.update_k<4>(i, 8, 0x404, c32[rem4].len, LinearQ<1, 20 + 3, 4>(), common_lo32);
+    dp.update_k<4>(i, 8, 0x404, c32[rem4].len, LinearQ<1, 20, 4>(), common_lo32);
 
     if (i + 1 < input.size()) {
       rlen8i = encode::run_length_delta(input, i, rlen8i);

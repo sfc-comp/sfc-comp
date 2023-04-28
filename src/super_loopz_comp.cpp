@@ -8,43 +8,33 @@ namespace sfc_comp {
 std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   check_size(in.size(), 0, 0xffff);
 
-  enum Tag {
-    uncomp, lz
-  };
+  enum Tag { uncomp, lz };
   struct CompType {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
-      if (tag == uncomp) return len_no == rhs.len_no;
-      return len_no == rhs.len_no;
+      if (tag == uncomp) return li == rhs.li;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t ofs_no, len_no;
+    size_t oi, li;
   };
 
-  struct tup {
-    size_t min_len;
-    size_t val;
-    size_t prefix_bits;
-    size_t bits;
+  static constexpr std::array<vrange, 3> ofs_tab = {
+    vrange(0x0001, 0x001f,  7, 0x0041), // 10_____
+    vrange(0x0020, 0x021f, 10, 0x0000), // 0_________
+    vrange(0x0220, 0x421f, 16, 0xc000), // 11______________
   };
+  static constexpr std::array<size_t, ofs_tab.size()> ofs_prefix = {2, 1, 2};
 
-  static constexpr std::array<tup, 5> len_tab = {
-    tup({0x0002, 0x0000,  1, 2}),  // 0_
-    tup({0x0004, 0x0008,  2, 4}),  // 10__
-    tup({0x0008, 0x0060,  3, 7}),  // 110____
-    tup({0x0017, 0x0700,  3, 11}), // 111________
-    tup({0x0117, 0x0000,  0, 0})
+  static constexpr std::array<vrange, 4> len_tab = {
+    vrange(0x0002, 0x0003,  2, 0x0000), // 0_
+    vrange(0x0004, 0x0007,  4, 0x0008), // 10__
+    vrange(0x0008, 0x0016,  7, 0x0060), // 110____
+    vrange(0x0017, 0x0116, 11, 0x0700), // 111________
   };
+  static constexpr std::array<size_t, len_tab.size()> len_prefix = {1, 2, 3, 3};
 
-  static constexpr std::array<tup, 4> ofs_tab = {
-    tup({0x0001, 0x0041, 2, 7}),  // 10_____
-    tup({0x0020, 0x0000, 1, 10}), // 0_________
-    tup({0x0220, 0xc000, 2, 16}), // 11______________
-    tup({0x4220, 0x0000, 0, 0})
-  };
-
-  std::vector<uint8_t> input(in.begin(), in.end());
-  std::reverse(input.begin(), input.end());
+  std::vector<uint8_t> input(in.rbegin(), in.rend());
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
@@ -58,25 +48,11 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
     dp.update_u(i + 1, u1.len, {uncomp, 0, 1}, u1.cost + 14);
     const auto u2 = u_helper.find(i + 1, 0x0f, 0x0f + 0x3fff);
     dp.update_u(i + 1, u2.len, {uncomp, 0, 2}, u2.cost + 23);
-
-    const auto cost = dp[i].cost;
-    for (ptrdiff_t oi = ofs_tab.size() - 2; oi >= 0; --oi) {
-      const size_t min_ofs = ofs_tab[oi].min_len;
-      if (min_ofs > i) continue;
-      const size_t max_ofs = ofs_tab[oi + 1].min_len - 1;
-      const size_t ofs_bitsize = ofs_tab[oi].bits;
-      auto res_lz = lz_helper.find_best(i, max_ofs);
-      if (res_lz.len <= 1) break;
-      if ((i - res_lz.ofs) < min_ofs) continue;
-      for (size_t li = 0; li < len_tab.size() - 1; ++li) {
-        const size_t min_len = len_tab[li].min_len;
-        if (min_len > res_lz.len) break;
-        const size_t max_len = len_tab[li + 1].min_len - 1;
-        const size_t len_bitsize = len_tab[li].bits;
-        dp.update_lz(i, min_len, max_len, res_lz,
-                     Constant<0>(), {lz, size_t(oi), li}, cost + 1 + ofs_bitsize + len_bitsize);
-      }
-    }
+    dp.update_lz_matrix(i, ofs_tab, len_tab,
+      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi, size_t li) -> CompType { return {lz, oi, li}; },
+      1
+    );
     lz_helper.add_element(i);
   }
 
@@ -89,11 +65,11 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
-      if (cmd.type.len_no == 0) {
+      if (cmd.type.li == 0) {
         ret.write<b1l>(true);
       } else {
         ret.write<b8ln_h, b8ln_l>({4, 6}, {4, 0x0f});
-        if (cmd.type.len_no == 1) {
+        if (cmd.type.li == 1) {
           ret.write<b1l, b8ln_l>(true, {5, cmd.len - 0x0f});
         } else {
           ret.write<b1l, b8ln_l>(false, {14, cmd.len - 0x0f});
@@ -102,14 +78,14 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
       for (size_t i = 0; i < cmd.len; ++i) ret.write<b8ln_l>({8, input[adr + i]});
     } break;
     case lz: {
-      const auto wr = [&ret](const tup& tp, size_t v) {
-        const size_t x = tp.val + (v - tp.min_len);
-        ret.write<b8ln_h>({tp.prefix_bits, x >> (tp.bits - tp.prefix_bits)});
-        ret.write<b8ln_l>({tp.bits - tp.prefix_bits, x});
+      const auto wr = [&ret](const vrange& tp, size_t prefix_bits, size_t v) {
+        const size_t x = tp.val + (v - tp.min);
+        ret.write<b8ln_h>({prefix_bits, x >> (tp.bitlen - prefix_bits)});
+        ret.write<b8ln_l>({tp.bitlen - prefix_bits, x});
       };
       ret.write<b1h>(false);
-      wr(len_tab[cmd.type.len_no], cmd.len);
-      wr(ofs_tab[cmd.type.ofs_no], adr - cmd.lz_ofs);
+      wr(len_tab[cmd.type.li], len_prefix[cmd.type.li], cmd.len);
+      wr(ofs_tab[cmd.type.oi], ofs_prefix[cmd.type.oi], adr - cmd.lz_ofs);
     } break;
     default: assert(0);
     }
@@ -123,7 +99,7 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   write32b(ret.out, 6, input.size());
   write32b(ret.out, 10, ret.size() - 14);
   assert(adr == input.size());
-  assert((dp.total_cost() + (input.size() > 0 ? 1 : 0) + 7) / 8 + 14 + 2 == ret.size());
+  assert(dp.total_cost() + (input.size() > 0 ? 1 : 0) + (14 + 2) * 8 == ret.bit_length());
 
   return ret.out;
 }

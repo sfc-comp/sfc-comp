@@ -12,8 +12,7 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> input) {
     lz2, lz3, lz4, lz5
   };
 
-  std::vector<uint8_t> input2(input.begin(), input.end());
-  std::reverse(input2.begin(), input2.end());
+  std::vector<uint8_t> input2(input.rbegin(), input.rend());
 
   lz_helper lz_helper(input2);
   sssp_solver<CompType> dp(input2.size());
@@ -71,7 +70,7 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> input) {
   write16(ret.out, 4, 0x8000 | (read16(ret.out, 4) >> 1));
   std::reverse(ret.out.begin() + 4, ret.out.end());
   for (size_t i = 4; i < ret.size(); i += 2) std::swap(ret.out[i], ret.out[i + 1]);
-  assert((dp.total_cost() + 1 + 15) / 16 * 2 + 4 == ret.size());
+  assert(dp.total_cost() + 1 + 4 * 8 == ret.bit_length());
   assert(adr == input.size());
   return ret.out;
 }
@@ -83,8 +82,7 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> input) {
     rle, lzs, lz
   };
 
-  std::vector<uint8_t> input2(input.begin(), input.end());
-  std::reverse(input2.begin(), input2.end());
+  std::vector<uint8_t> input2(input.rbegin(), input.rend());
 
   lz_helper lz_helper(input2);
   sssp_solver<CompType> dp(input2.size());

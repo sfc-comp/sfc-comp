@@ -13,10 +13,10 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
   struct CompType {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
-      return len_no == rhs.len_no;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t len_no;
+    size_t li;
   };
 
   static constexpr size_t uncomp_max_len_bits = 15;
@@ -82,9 +82,9 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 2);
-  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
   assert(adr == input.size());
-  assert((dp.total_cost() + 7) / 8 + 4 == ret.size());
+  assert(dp.total_cost() + 32 == flags.bit_length() + 8 * ret.size());
+  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
 
   return ret.out;
 }

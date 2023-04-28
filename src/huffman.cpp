@@ -18,7 +18,7 @@ huffman_result create_codewords(const size_t n, std::vector<Leaf>& leaves, bool 
 
   size_t codeword = 0;
   ptrdiff_t depth = 0;
-  std::vector<huffman_data> codewords(n, huffman_data({-1, 0}));
+  std::vector<encode::codeword> codewords(n, encode::codeword({-1, 0}));
   std::vector<size_t> words(leaves.size());
 
   const size_t mask_bit = (zero_to_one) ? 0 : 1;
@@ -60,7 +60,7 @@ huffman_result length_limited_huffman(std::span<const size_t> counts, const size
   std::sort(weights.begin(), weights.end());
   const size_t num_codes = words.size();
 
-  std::vector<huffman_node> nodes;
+  std::vector<node> nodes;
   size_t node_id = num_codes;
 
   std::vector<Count> items;
@@ -109,7 +109,7 @@ huffman_result huffman(std::span<const size_t> counts, bool zero_to_one) {
   if (words.size() == 0) return huffman_result();
 
   const size_t num_codes = words.size();
-  std::vector<huffman_node> nodes;
+  std::vector<node> nodes;
 
   size_t node_id = num_codes;
   while (pqueue.size() >= 2) {

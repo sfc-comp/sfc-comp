@@ -13,10 +13,10 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
       if (tag != rle0) return true;
-      return len_no == rhs.len_no;
+      return li == rhs.li;
     }
     Tag tag;
-    size_t len_no;
+    size_t li;
   };
   static constexpr std::array<size_t, 8> rle_max_lens = {
     2, 4, 8, 16, 32, 64, 128, 255
@@ -57,7 +57,7 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
       ret.write<b1h, b1h>(true, false);
     } break;
     case rle0: {
-      const auto k = cmd.type.len_no;
+      const auto k = cmd.type.li;
       ret.write<b1h, b1h, b1h>(true, true, false);
       ret.write<b8hn_h>({k, (size_t(1) << k) - 1});
       ret.write<b1h>(false);
@@ -71,7 +71,7 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  assert((dp.total_cost() + 7) / 8 + 10 == raw.size() + ret.size());
+  assert(dp.total_cost() + 10 * 8 == raw.size() * 8 + ret.bit_length());
   assert(adr == input.size());
 
   write32b(ret.out, 0, 0x4e4d5030); // NMP0
