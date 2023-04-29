@@ -5,6 +5,8 @@
 
 namespace sfc_comp {
 
+namespace {
+
 std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> input, const bool use_old_version) {
   check_size(input.size(), 0, 0x10000);
   enum CompType {
@@ -66,6 +68,8 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> input, const bool
   assert(adr - pad == input.size());
   return ret.out;
 }
+
+} // namespace
 
 std::vector<uint8_t> konami_comp_1(std::span<const uint8_t> input) {
   return konami_comp_core(input, true);

@@ -32,6 +32,8 @@ struct cost_traits<lha_cost> {
   static constexpr lha_cost unspecified() { return lha_cost(cost_traits<size_t>::unspecified()); }
 };
 
+namespace {
+
 struct lha_config {
   bool use_old_encoding = true;
   bool allow_empty = true;
@@ -393,6 +395,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
 
   return ret.out;
 }
+
+} // namespace
 
 std::vector<uint8_t> doraemon_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);

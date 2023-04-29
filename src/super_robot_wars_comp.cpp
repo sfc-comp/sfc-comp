@@ -5,6 +5,8 @@
 
 namespace sfc_comp {
 
+namespace {
+
 std::vector<uint8_t> super_robot_wars_comp_core(
     std::span<const uint8_t> input, const size_t lz_max_len, const size_t header_size, const size_t skip_size) {
   enum CompType {
@@ -51,6 +53,8 @@ std::vector<uint8_t> super_robot_wars_comp_core(
   assert(dp.total_cost() + 2 + 3 * 8 + (header_size + skip_size) * 8 == ret.bit_length());
   return ret.out;
 }
+
+} // namespace
 
 std::vector<uint8_t> super_robot_wars_comp(std::span<const uint8_t> input) {
   return super_robot_wars_comp_core(input, 256, 0, 0);

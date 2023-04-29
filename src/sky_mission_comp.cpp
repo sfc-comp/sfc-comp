@@ -5,6 +5,8 @@
 
 namespace sfc_comp {
 
+namespace {
+
 std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const bool mixed) {
   check_size(input.size(), 0, 0x800000);
   enum Tag {
@@ -87,6 +89,8 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   }
   return ret.out;
 }
+
+} // namespace
 
 std::vector<uint8_t> sky_mission_comp(std::span<const uint8_t> input) {
   return sky_mission_comp_core(input, true);

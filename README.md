@@ -149,7 +149,7 @@ $ ./bench <input-dir>
 | slap_stick_comp                          |    5 | 622E | 39B5 | 81B7 | 2CA8 | 389F | 6C17 | 2BDE |  21ADB | 0.0694 | F4566128 |
 | slayers_comp                             |    C | 52BE | 2D4A | 7048 | 1DD2 | 2FC4 | 5C40 | 146E |  1AEA0 | 0.1548 | EA68BBA3 |
 | smurfs_comp                              |    7 | 5BA6 | 33AC | 7762 | 2290 | 343D | 645F | 2172 |  1E359 | 0.1100 | 6DFBEF98 |
-| soccer_kid_comp                          |    F | 5C96 | 34F3 | 7797 | 22FB | 3590 | 654A | 1AB0 |  1E1B4 | 0.1716 | 8E32C3CA |
+| soccer_kid_comp                          |    F | 5C96 | 34F3 | 7797 | 22FB | 3590 | 654A | 1AB0 |  1E1B4 | 0.1636 | 1B8BEC7B |
 | sotsugyou_bangai_hen_comp                |    3 | 622C | 39B3 | 81B5 | 2CA6 | 389D | 6C15 | 2BDC |  21ACB | 0.0705 | 4F745F24 |
 | soul_and_sword_comp                      |    6 | 5BEB | 338C | 77A1 | 21AD | 35ED | 64C4 | 1A46 |  1DDC2 | 0.1016 | 4A7448C5 |
 | spirou_comp                              |    7 | 58E5 | 316B | 75DF | 1F9E | 3250 | 622E | 1965 |  1CDB7 | 0.1182 | FED6862A |

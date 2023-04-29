@@ -5,6 +5,8 @@
 
 namespace sfc_comp {
 
+namespace {
+
 std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
   enum Tag {
@@ -88,6 +90,8 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
 
   return ret.out;
 }
+
+} // namespace
 
 std::vector<uint8_t> shadowrun_comp(std::span<const uint8_t> input) {
   return shadowrun_comp_core(input);

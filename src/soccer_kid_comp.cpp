@@ -64,12 +64,13 @@ std::vector<uint8_t> soccer_kid_comp(std::span<const uint8_t> in) {
   v >>= 1;
   for (size_t i = 4; i < s; ++i) ret[i] = v & 0xff, v >>= 8;
 
+  uint32_t checksum = 0;
+  for (size_t i = 4; i + 3 < ret.size(); i += 4) checksum ^= read32(ret.out, i);
+  for (size_t r = ret.size() % 4, j = 0; j < r; ++j) checksum ^= ret[ret.size() - r + j] << (8 * j);
+
   std::reverse(ret.out.begin() + 4, ret.out.end());
-  ret.write<d16b, d16b, d32b>(0, 0, 0);
   write32b(ret.out, 0, ret.size() - 4);
-  write16b(ret.out, ret.size() - 8, 0); // [TODO] Unknown
-  write16b(ret.out, ret.size() - 6, 0); // [TODO] Unknown
-  write32b(ret.out, ret.size() - 4, input.size());
+  ret.write<d32b, d32b>(checksum, input.size());
 
   return ret.out;
 }

@@ -5,6 +5,8 @@
 
 namespace sfc_comp {
 
+namespace {
+
 std::vector<uint8_t> zelda_comp_core(std::span<const uint8_t> input, const bool use_little_endian) {
   check_size(input.size(), 0, 0x10000);
 
@@ -79,6 +81,8 @@ std::vector<uint8_t> zelda_comp_core(std::span<const uint8_t> input, const bool 
 
   return ret.out;
 }
+
+} // namespace
 
 std::vector<uint8_t> zelda_comp_1(std::span<const uint8_t> input) {
   return zelda_comp_core(input, true);

@@ -2,6 +2,8 @@
 
 namespace sfc_comp {
 
+namespace {
+
 std::vector<uint8_t> action_pachio_comp_core(
     std::span<const uint8_t> input, const size_t pad, const bool always_compress) {
   check_size(input.size(), 0, 0x8000);
@@ -34,6 +36,8 @@ std::vector<uint8_t> action_pachio_comp_core(
   }
   return ret;
 }
+
+} // namespace
 
 std::vector<uint8_t> super_dunk_star_comp(std::span<const uint8_t> input) {
   return action_pachio_comp_core(input, 0x01, true);
