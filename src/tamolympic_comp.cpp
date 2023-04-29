@@ -78,7 +78,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16_hasty ret; ret.write<d16>(0);
+  writer_b16_hasty_h ret(2);
   ret.write<none>(none());
 
   const auto write_len = [&](const size_t li, const size_t len) -> void {
@@ -86,9 +86,9 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     const size_t b = len_tab[li].bitlen;
     const size_t v = len_tab[li].val;
     assert(len >= min_len);
-    if (b <= 9) ret.write<b8hn_h>({b, v + (len - min_len)});
+    if (b <= 9) ret.write<bnh>({b, v + (len - min_len)});
     else {
-      ret.write<b8hn_h>({b - 8, v}); ret.trim();
+      ret.write<bnh>({b - 8, v}); ret.trim();
       ret.write<d8, none>(len - min_len, none());
     }
   };
@@ -101,39 +101,39 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
 
     switch (cmd.type.tag) {
     case uncomp: {
-      ret.write<b1h>(true); ret.trim();
+      ret.write<b1>(true); ret.trim();
       ret.write<d8, none>(input[adr], none());
     } break;
 
     case uncompl: {
-      ret.write<b1h, d8, b8hn_h, d8, b1h>(false, 0, {2, 2}, cmd.len - 0x14, true);
+      ret.write<b1, d8, bnh, d8, b1>(false, 0, {2, 2}, cmd.len - 0x14, true);
       for (size_t i = 0; i < cmd.len; ++i) ret.write<d8>(input[adr + i]);
     } break;
 
     case lz2: {
-      ret.write<b1h, d8, b8hn_h>(false, d & 0xff, {1, 0});
-      if (oi == 0) ret.write<b1h>(false);
-      else ret.write<b1h, b8hn_h>(true, {3, (d - 0x100) >> 8});
+      ret.write<b1, d8, bnh>(false, d & 0xff, {1, 0});
+      if (oi == 0) ret.write<b1>(false);
+      else ret.write<b1, bnh>(true, {3, (d - 0x100) >> 8});
     } break;
 
     case rle:
     case rle0: {
-      if (cmd.type.tag == rle0) ret.write<b1h, d8, b1h, b1h>(false, 0, false, false);
-      else ret.write<b1h, d8, b8hn_h, d8, b1h>(false, 0, {2, 2}, input[adr], false);
+      if (cmd.type.tag == rle0) ret.write<b1, d8, b1, b1>(false, 0, false, false);
+      else ret.write<b1, d8, bnh, d8, b1>(false, 0, {2, 2}, input[adr], false);
       write_len(li, cmd.len);
     } break;
 
     case lz: {
       const auto min_dist = ofs_tab[oi].min - (oi == 0 ? 1 : 0);
-      ret.write<b1h, d8, b1h>(false, d & 0xff, true);
+      ret.write<b1, d8, b1>(false, d & 0xff, true);
       assert(d >= min_dist);
       size_t h = (d - min_dist) >> 8, t = 0;
       if (min_dist >= 0x3f00) t = h & 1, h >>= 1;
       for (size_t s = oi; s > 0; ) {
         --s;
-        ret.write<b8hn_h>({2, 2 + ((h >> s) & 1)});
+        ret.write<bnh>({2, 2 + ((h >> s) & 1)});
       }
-      ret.write<b1h>(t);
+      ret.write<b1>(t);
       write_len(li, cmd.len);
     } break;
     default: assert(0);

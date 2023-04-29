@@ -96,38 +96,38 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
   };
 
   using namespace data_type;
-  writer_b ret; ret.write<b8ln_h, b1l>({32, 0}, 0);
+  writer_b8_l ret(4); ret.write<b1>(false);
   size_t adr = 0;
   for (auto&& cmd : commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type.tag) {
       case none: {
-        ret.write<b8ln_h>({3, 0});
+        ret.write<bnh>({3, 0});
       } break;
 
       case uncomp: {
         const size_t li = cmd.type.li;
-        if (li == 0) ret.write<b8ln_h>({3, cmd.len});                             // ___
-        else if (li == 1) ret.write<b8ln_h, b8ln_h>({4, 0x0e}, {4, cmd.len - 7}); // 1110____
-        else ret.write<b8ln_h, b8ln_h>({4, 0x0f}, {10, cmd.len});                 // 1111__________
-        for (size_t i = 0; i < cmd.len; ++i) ret.write<b8ln_h>({8, input[adr + i]});
+        if (li == 0) ret.write<bnh>({3, cmd.len});                             // ___
+        else if (li == 1) ret.write<bnh, bnh>({4, 0x0e}, {4, cmd.len - 7}); // 1110____
+        else ret.write<bnh, bnh>({4, 0x0f}, {10, cmd.len});                 // 1111__________
+        for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input[adr + i]});
       } break;
 
       case lz2: {
-        ret.write<b8ln_h, b8ln_h>({2, 0}, {8, d});
+        ret.write<bnh, bnh>({2, 0}, {8, d});
       } break;
 
       case lz3: {
-        ret.write<b8ln_h>({2, 1});
-        if (d < 0x100) ret.write<b8ln_h, b8ln_h>({1, 1}, {8, d}); // 1________
-        else ret.write<b8ln_h, b8ln_h>({1, 0}, {14, d});          // 0______________
+        ret.write<bnh>({2, 1});
+        if (d < 0x100) ret.write<bnh, bnh>({1, 1}, {8, d}); // 1________
+        else ret.write<bnh, bnh>({1, 0}, {14, d});          // 0______________
       } break;
 
       case lz: {
         const auto l = len_tab[cmd.type.li];
         const auto o = ofs_tab[cmd.type.oi];
-        ret.write<b8ln_h>({l.bitlen, l.val + (cmd.len - l.min)});
-        ret.write<b8ln_h>({o.bitlen, o.val + (d - o.min)});
+        ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
+        ret.write<bnh>({o.bitlen, o.val + (d - o.min)});
       } break;
 
       default: assert(0);

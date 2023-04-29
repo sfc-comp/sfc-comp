@@ -52,29 +52,29 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer ret; ret.write<d16, d16>(0, 0);
-  writer_b flags;
+  writer ret(4);
+  writer_b8_h flags;
 
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
-      flags.write<b1h>(false);
+      flags.write<b1>(false);
       for (size_t s = (1 << ilog2(cmd.len)) >> 1; s > 0; s >>= 1) {
-        flags.write<b1h, b1h>(false, (cmd.len & s) != 0);
+        flags.write<b1, b1>(false, (cmd.len & s) != 0);
       }
-      flags.write<b1h>(true);
+      flags.write<b1>(true);
       ret.write<d8n>({cmd.len, &input[adr]});
     } break;
     case lz: {
       assert(adr > 0);
-      flags.write<b1h>(true);
-      flags.write<b8hn_h>({ilog2(2 * adr + 1), cmd.lz_ofs});
+      flags.write<b1>(true);
+      flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
       const size_t l = (cmd.len - lz_max_lens[0]) + 1;
       for (size_t s = (1 << ilog2(l)) >> 1; s > 0; s >>= 1) {
-        flags.write<b1h, b1h>(false, (l & s) != 0);
+        flags.write<b1, b1>(false, (l & s) != 0);
       }
-      flags.write<b1h>(true);
+      flags.write<b1>(true);
     } break;
     default: assert(0);
     }

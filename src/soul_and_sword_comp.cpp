@@ -78,26 +78,24 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
-  writer raws;
-  ret.write<d16, d16>(0, 0);
-  raws.write<d8, d8>(input[0], input[1]);
+  writer_b8_h ret(4);
+  writer raws; raws.write<d8, d8>(input[0], input[1]);
 
   size_t adr = 2;
   for (const auto& cmd : dp.commands(2)) {
     switch (cmd.type.tag) {
     case uncomp: {
       const auto& l = uncomp_len_tab[cmd.type.li];
-      ret.write<b8hn_h>({l.bitlen, l.val + (cmd.len - l.min)});
+      ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
       raws.write<d8n>({cmd.len, &input[adr]});
     } break;
     case lz: {
       const size_t d = adr - cmd.lz_ofs;
       const auto& l = lz_len_tab[cmd.type.li];
-      ret.write<b1h>(true);
+      ret.write<b1>(true);
       assert(d < (size_t(1) << cmd.type.oi));
-      ret.write<b8hn_h>({cmd.type.oi, d});
-      ret.write<b8hn_h>({l.bitlen, l.val + (cmd.len - l.min)});
+      ret.write<bnh>({cmd.type.oi, d});
+      ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
     } break;
     default: assert(0);
     }

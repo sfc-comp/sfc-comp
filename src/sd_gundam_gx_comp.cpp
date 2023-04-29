@@ -254,35 +254,35 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
       auto shannon_fano = shannon_fano_encode(code_counts, add_header_cost);
 
       using namespace data_type;
-      writer_b16 ret;
+      writer_b16_h ret;
 
       if (!is_dsp3_ver) {
-        ret.write<b8hn_h>({16, input.size()});
+        ret.write<bnh>({16, input.size()});
       }
-      ret.write<b8hn_h>({16, shannon_fano.words.size()});
-      ret.write<b8hn_h>({16, num_commands});
+      ret.write<bnh>({16, shannon_fano.words.size()});
+      ret.write<bnh>({16, num_commands});
 
       size_t previous_word = (max_code + 1); // (i.e. invalid word)
       for (const auto word : shannon_fano.words) {
         if (word <= previous_word || word >= previous_word + 0x14) {
-          ret.write<b8hn_h>({11, word});
+          ret.write<bnh>({11, word});
         } else {
           size_t d = word - previous_word;
           if (d == 1) {
-            ret.write<b8hn_h>({2, 1});
+            ret.write<bnh>({2, 1});
           } else if (d <= 3) {
-            ret.write<b8hn_h>({3, 4 | (d - 2)});
+            ret.write<bnh>({3, 4 | (d - 2)});
           } else {
-            ret.write<b8hn_h>({6, 0x30 | (d - 4)});
+            ret.write<bnh>({6, 0x30 | (d - 4)});
           }
         }
         previous_word = word;
       }
 
       assert(shannon_fano.bits.size() == 4 || shannon_fano.bits.size() == 8);
-      ret.write<b1h>(shannon_fano.bits.size() == 4 ? 0 : 1);
+      ret.write<b1>(shannon_fano.bits.size() == 4 ? 0 : 1);
       for (const auto suffix_bitsize : shannon_fano.bits) {
-        ret.write<b8hn_h>({3, suffix_bitsize - 1});
+        ret.write<bnh>({3, suffix_bitsize - 1});
       }
 
       size_t adr = 0;
@@ -290,17 +290,17 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
         switch (cmd.type) {
         case uncomp: {
           const auto& c = shannon_fano.codewords[input[adr]];
-          ret.write<b8hn_h>({size_t(c.bitlen), c.val});
+          ret.write<bnh>({size_t(c.bitlen), c.val});
         } break;
         case lzs:
         case lzl: {
           const auto& c = shannon_fano.codewords[cmd.len + lz_sf_offset];
-          ret.write<b8hn_h>({size_t(c.bitlen), c.val});
+          ret.write<bnh>({size_t(c.bitlen), c.val});
           size_t d = adr - cmd.lz_ofs - 1;
           if (cmd.type == lzs) {
-            ret.write<b1h, b8hn_h>(false, {lzs_ofs_bits, d});
+            ret.write<b1, bnh>(false, {lzs_ofs_bits, d});
           } else {
-            ret.write<b1h, b8hn_h>(true, {lzl_ofs_bits, d});
+            ret.write<b1, bnh>(true, {lzl_ofs_bits, d});
           }
         } break;
         default: assert(0);

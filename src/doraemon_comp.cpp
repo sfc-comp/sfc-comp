@@ -95,8 +95,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
   };
 
   using namespace data_type;
-  writer_b ret;
-  for (size_t i = 0; i < config.header_size; ++i) ret.write<d8>(0);
+  writer_b8_h ret(config.header_size);
 
   using command_type = sssp_solver<CompType, lha_cost>::vertex_type;
   sssp_solver<CompType, lha_cost> dp(input.size());
@@ -263,40 +262,40 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
 
           if (!config.allow_empty) {
             if (huff.words.size() == 0) {
-              ret.write<b8hn_h>({s, 1});
-              ret.write<b8hn_h>({3, 0});
+              ret.write<bnh>({s, 1});
+              ret.write<bnh>({3, 0});
               return;
             }
           }
 
           if (config.use_old_encoding) {
             if (huff.words.size() == 0) {
-              ret.write<b8hn_h>({s, 1});
-              ret.write<b8hn_h>({3, 0});
+              ret.write<bnh>({s, 1});
+              ret.write<bnh>({3, 0});
               return;
             } else if (huff.words.size() == 1) {
               // Caution: These codes might not work on the original LHA algorithm.
-              ret.write<b8hn_h>({s, 0});
-              ret.write<b8hn_h>({s, huff.words[0]});
+              ret.write<bnh>({s, 0});
+              ret.write<bnh>({s, huff.words[0]});
               return;
             }
           }
 
-          ret.write<b8hn_h>({s, bits.size()});
+          ret.write<bnh>({s, bits.size()});
           for (size_t i = 0; i < bits.size(); ) {
             if (bits[i] < 7) {
-              ret.write<b8hn_h>({3, bits[i]});
+              ret.write<bnh>({3, bits[i]});
             } else {
-              ret.write<b8hn_h>({3, 7});
-              for (size_t j = bits[i]; j >= 8; --j) ret.write<b8hn_h>({1, 1});
-              ret.write<b8hn_h>({1, 0});
+              ret.write<bnh>({3, 7});
+              for (size_t j = bits[i]; j >= 8; --j) ret.write<bnh>({1, 1});
+              ret.write<bnh>({1, 0});
             }
             i += 1;
             if (i == t) {
               size_t l = encode::run_length(bits, i, 0);
               l = std::min<size_t>(l, 3);
               if (bits[i] != 0) l = 0;
-              ret.write<b8hn_h>({2, l});
+              ret.write<bnh>({2, l});
               i += l;
             }
           }
@@ -315,22 +314,22 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
             if (words.size() == 1) {
               if (use_zero_bits(true, words[0])) {
                 // Caution: These codes might not work on the original LHA algorithm.
-                ret.write<b8hn_h>({9, 0});
-                ret.write<b8hn_h>({9, words[0]});
+                ret.write<bnh>({9, 0});
+                ret.write<bnh>({9, words[0]});
                 return;
               }
             }
           }
 
-          ret.write<b8hn_h>({9, table.size()});
+          ret.write<bnh>({9, table.size()});
 
           const auto write_zeros = [&](size_t l, const size_t z_code, const size_t b, const size_t min_len) -> size_t {
             const size_t max_len = min_len + (1 << b) - 1;
             while (l >= min_len) {
               const size_t t = std::min<size_t>(l, max_len);
               const auto c = enc.bits.codewords[z_code];
-              ret.write<b8hn_h>({size_t(c.bitlen), c.val});
-              if (b > 0) ret.write<b8hn_h>({b, t - min_len});
+              ret.write<bnh>({size_t(c.bitlen), c.val});
+              if (b > 0) ret.write<bnh>({b, t - min_len});
               l -= t;
             }
             return l;
@@ -350,13 +349,13 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
                 throw std::logic_error("This algorithm cannot compress the given data.");
               }
               const auto c = enc.bits.codewords[table[i] + 2];
-              ret.write<b8hn_h>({size_t(c.bitlen), c.val});
+              ret.write<bnh>({size_t(c.bitlen), c.val});
               i += 1;
             }
           }
         };
 
-        ret.write<b8hn_h>({16, commands.size()});
+        ret.write<bnh>({16, commands.size()});
         write_huff_bits(best_enc.bits, 5, 3, 0x13);
         write_table(best_enc);
         write_huff_bits(best_enc.lz_ofs, 4, -1, 0x0e);
@@ -366,11 +365,11 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
           switch (cmd.type.tag) {
           case uncomp: {
             const auto c = best_enc.code.codewords[input[adr]];
-            ret.write<b8hn_h>({size_t(c.bitlen), c.val});
+            ret.write<bnh>({size_t(c.bitlen), c.val});
           } break;
           case lz: {
             const auto cl = best_enc.code.codewords[cmd.len + lz_huff_offset];
-            ret.write<b8hn_h>({size_t(cl.bitlen), cl.val});
+            ret.write<bnh>({size_t(cl.bitlen), cl.val});
 
             const size_t o = cmd.type.ofs_no;
             const size_t d = adr - cmd.lz_ofs;
@@ -378,8 +377,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
             assert(min_ofs <= d && d <= lz_ofs_table[o]);
 
             const auto co = best_enc.lz_ofs.codewords[o];
-            ret.write<b8hn_h>({size_t(co.bitlen), co.val});
-            if (o >= 2) ret.write<b8hn_h>({o - 1, d - min_ofs});
+            ret.write<bnh>({size_t(co.bitlen), co.val});
+            if (o >= 2) ret.write<bnh>({o - 1, d - min_ofs});
           } break;
           default: assert(0);
           }

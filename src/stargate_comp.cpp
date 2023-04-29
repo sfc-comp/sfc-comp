@@ -61,8 +61,8 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer ret; ret.write<d16, d16>(0, 0);
-  writer_b flags;
+  writer ret(4);
+  writer_b8_h flags;
 
   using command_type = decltype(dp0)::vertex_type;
   const std::vector<command_type> commands = [&] {
@@ -85,24 +85,24 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
   for (const auto cmd : commands) {
     switch (cmd.type.tag) {
     case none: {
-      flags.write<b1h>(false);
+      flags.write<b1>(false);
     } break;
     case uncomp: {
-      if (adr > 0) flags.write<b1h>(true);
+      if (adr > 0) flags.write<b1>(true);
       for (size_t s = (1 << ilog2(cmd.len)) >> 1; s > 0; s >>= 1) {
-        flags.write<b1h, b1h>(true, (cmd.len & s) != 0);
+        flags.write<b1, b1>(true, (cmd.len & s) != 0);
       }
-      flags.write<b1h>(false);
+      flags.write<b1>(false);
       ret.write<d8n>({cmd.len, &input[adr]});
     } break;
     case lz: {
       assert(adr > 0);
-      flags.write<b8hn_h>({ilog2(2 * adr + 1), cmd.lz_ofs});
+      flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
       const size_t l = (cmd.len - lz_max_lens[0]) + 1;
       for (size_t s = (1 << ilog2(l)) >> 1; s > 0; s >>= 1) {
-        flags.write<b1h, b1h>(true, (l & s) != 0);
+        flags.write<b1, b1>(true, (l & s) != 0);
       }
-      flags.write<b1h>(false);
+      flags.write<b1>(false);
     } break;
     default: assert(0);
     }

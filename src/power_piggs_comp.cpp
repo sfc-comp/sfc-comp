@@ -22,24 +22,24 @@ std::vector<uint8_t> power_piggs_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b8_h ret;
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     switch (cmd.type) {
     case uncomp: {
-      ret.write<b1h, b8hn_h>(true, {8, input[adr]});
+      ret.write<b1, bnh>(true, {8, input[adr]});
     } break;
     case lz: {
-      ret.write<b1h>(false);
-      ret.write<b8hn_h, b8hn_h>({15, cmd.lz_ofs + 1}, {4, cmd.len - 3});
+      ret.write<b1>(false);
+      ret.write<bnh, bnh>({15, cmd.lz_ofs + 1}, {4, cmd.len - 3});
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b8hn_h>({16, 0x0000});
+  ret.write<bnh>({16, 0x0000});
   assert(adr == input.size());
-  assert((dp.total_cost() + 16 + 7) / 8 == ret.size());
+  assert(dp.total_cost() + 16 == ret.bit_length());
   return ret.out;
 }
 

@@ -28,22 +28,21 @@ std::vector<uint8_t> chrono_trigger_comp(std::span<const uint8_t> input) {
     }
 
     using namespace data_type;
-    writer_b ret;
+    writer_b8_l ret(2);
     size_t adr = 0;
-    ret.write<d16>(0);
     for (const auto cmd : dp.commands()) {
       switch (cmd.type) {
-      case uncomp: ret.write<b1l, d8>(false, input[adr]); break;
+      case uncomp: ret.write<b1, d8>(false, input[adr]); break;
       case lz: {
         uint16_t d = adr - cmd.lz_ofs;
-        ret.write<b1l, d16>(true, d | (cmd.len - 3) << (12 - ty));
+        ret.write<b1, d16>(true, d | (cmd.len - 3) << (12 - ty));
       } break;
       default: assert(0);
       }
       adr += cmd.len;
     }
-    assert((dp.total_cost() + 7) / 8 + 2 == ret.size());
     assert(adr == input.size());
+    assert(dp.total_cost() + 2 * 8 == ret.bit_length());
 
     size_t comp_type_bit = (ty == 0) ? 0x00 : 0x40;
     if (ret.bit == 0) {

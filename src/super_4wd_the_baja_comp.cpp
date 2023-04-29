@@ -34,11 +34,11 @@ std::vector<uint8_t> super_4wd_the_baja_comp(std::span<const uint8_t> in) {
   }
 
   using namespace data_type;
-  writer_b16 ret; ret.write<d16, b1l>(0, false);
+  writer_b16_l ret(2); ret.write<b1>(false);
 
   const auto write8 = [&ret](size_t v) {
-    if (ret.bit == 0 || ret.bit >= 8) ret.write<b8ln_l>({8, v});
-    else ret.write<b8ln_h>({8, v});
+    if (ret.bit == 0 || ret.bit >= 8) ret.write<bnl>({8, v});
+    else ret.write<bnh>({8, v});
   };
 
   size_t adr = 0;
@@ -47,14 +47,14 @@ std::vector<uint8_t> super_4wd_the_baja_comp(std::span<const uint8_t> in) {
     switch (cmd.type) {
     case uncomp:
     case uncompl: {
-      if (cmd.type == uncomp) ret.write<b8ln_h, b8ln_h>({2, 0}, {3, cmd.len - 1});
-      else { ret.write<b8ln_h>({3, 7}); write8(cmd.len - 9); }
+      if (cmd.type == uncomp) ret.write<bnh, bnh>({2, 0}, {3, cmd.len - 1});
+      else { ret.write<bnh>({3, 7}); write8(cmd.len - 9); }
       for (size_t i = 0; i < cmd.len; ++i) write8(input[adr + i]);
     } break;
-    case lz2: { ret.write<b8ln_h>({2, 1}); write8(d); } break;
-    case lz3: { ret.write<b8ln_h, b8ln_h>({3, 4}, {9, d}); } break;
-    case lz4: { ret.write<b8ln_h, b8ln_h>({3, 5}, {10, d}); } break;
-    case lz:  { ret.write<b8ln_h>({3, 6}); write8(cmd.len - 5); write8(d); } break;
+    case lz2: { ret.write<bnh>({2, 1}); write8(d); } break;
+    case lz3: { ret.write<bnh, bnh>({3, 4}, {9, d}); } break;
+    case lz4: { ret.write<bnh, bnh>({3, 5}, {10, d}); } break;
+    case lz:  { ret.write<bnh>({3, 6}); write8(cmd.len - 5); write8(d); } break;
     default: assert(0);
     }
     adr += cmd.len;

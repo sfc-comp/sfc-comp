@@ -68,6 +68,7 @@ void benchmark(const std::string& path) {
     // P(keiba_eight_special_2_comp),
     // P(keirin_ou_comp),
     P(kiki_kaikai_comp),
+    P(knights_of_the_round_comp),
     P(koei_comp),
     P(konami_comp_1),
     P(konami_comp_2),

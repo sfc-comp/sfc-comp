@@ -57,33 +57,32 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   }
 
   using namespace data_type;
-  writer_b ret;
-  for (size_t i = 0; i < 0x0e; ++i) ret.write<d8>(0);
-  if (input.size() > 0) ret.write<b1l>(false);
+  writer_b8_l ret(0x0e);
+  if (input.size() > 0) ret.write<b1>(false);
 
   size_t adr = 0;
   for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
       if (cmd.type.li == 0) {
-        ret.write<b1l>(true);
+        ret.write<b1>(true);
       } else {
-        ret.write<b8ln_h, b8ln_l>({4, 6}, {4, 0x0f});
+        ret.write<bnh, bnl>({4, 6}, {4, 0x0f});
         if (cmd.type.li == 1) {
-          ret.write<b1l, b8ln_l>(true, {5, cmd.len - 0x0f});
+          ret.write<b1, bnl>(true, {5, cmd.len - 0x0f});
         } else {
-          ret.write<b1l, b8ln_l>(false, {14, cmd.len - 0x0f});
+          ret.write<b1, bnl>(false, {14, cmd.len - 0x0f});
         }
       }
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<b8ln_l>({8, input[adr + i]});
+      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnl>({8, input[adr + i]});
     } break;
     case lz: {
       const auto wr = [&ret](const vrange& tp, size_t prefix_bits, size_t v) {
         const size_t x = tp.val + (v - tp.min);
-        ret.write<b8ln_h>({prefix_bits, x >> (tp.bitlen - prefix_bits)});
-        ret.write<b8ln_l>({tp.bitlen - prefix_bits, x});
+        ret.write<bnh>({prefix_bits, x >> (tp.bitlen - prefix_bits)});
+        ret.write<bnl>({tp.bitlen - prefix_bits, x});
       };
-      ret.write<b1h>(false);
+      ret.write<b1>(false);
       wr(len_tab[cmd.type.li], len_prefix[cmd.type.li], cmd.len);
       wr(ofs_tab[cmd.type.oi], ofs_prefix[cmd.type.oi], adr - cmd.lz_ofs);
     } break;

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.2.0
+  VERSION 0.2.1
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -74,6 +74,7 @@ set(sfc_comp_src
   src/heberekes_popoon_comp.cpp
   src/kamen_rider_sd_comp.cpp
   src/kiki_kaikai_comp.cpp
+  src/knights_of_the_round_comp.cpp
   src/koei_comp.cpp
   src/konami_comp.cpp
   src/legend_comp.cpp
@@ -187,6 +188,7 @@ set(comp_ext_list
   keiba_eight_special_2_comp comp
   keirin_ou_comp comp
   kiki_kaikai_comp comp
+  knights_of_the_round_comp comp
   koei_comp comp
   konami_comp_1 comp
   konami_comp_2 comp

@@ -25,34 +25,34 @@ std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer ret; ret.write<d32b, d32b>(0, 0);
-  writer_b flags;
+  writer ret(8);
+  writer_b8_h flags;
 
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     switch (cmd.type) {
     case uncomp: {
-      flags.write<b1h>(false);
+      flags.write<b1>(false);
       ret.write<d8>(input[adr]);
     } break;
     case lz2:
     case lzs:
     case lzm:
     case lzl: {
-      flags.write<b1h>(true);
+      flags.write<b1>(true);
       if (cmd.type == lz2) {
-        flags.write<b8hn_h>({1, 1});
+        flags.write<bnh>({1, 1});
       } else if (cmd.type == lzs) {
-        flags.write<b8hn_h>({5, 8 | (cmd.len - 3)});
+        flags.write<bnh>({5, 8 | (cmd.len - 3)});
       } else if (cmd.type == lzm) {
-        flags.write<b8hn_h>({6, 8 | (cmd.len - 11)});
+        flags.write<bnh>({6, 8 | (cmd.len - 11)});
       } else {
-        flags.write<b8hn_h>({3, 0});
+        flags.write<bnh>({3, 0});
         ret.write<d8>(cmd.len - 19);
       }
       const size_t d = adr - cmd.lz_ofs - 1;
       ret.write<d8>(d >> 4);
-      flags.write<b8hn_h>({4, d & 0x0f});
+      flags.write<bnh>({4, d & 0x0f});
     } break;
     default: assert(0);
     }

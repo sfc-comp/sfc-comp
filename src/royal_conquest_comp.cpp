@@ -153,18 +153,16 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
       }
       using namespace data_type;
 
-      writer_b ret;
-      for (size_t i = 0; i < 4 + 0x77 + word_max_count; ++i) ret.write<d8>(0);
-
-      writer_b tree;
+      writer_b8_l ret(4 + 0x77 + word_max_count);
+      writer_b8_h tree;
       for (size_t i = 0; i < huff.words.size(); ++i) {
         const auto w = huff.words[i];
         const auto c = huff.codewords[w];
         for (ptrdiff_t b = 0; b < c.bitlen; ++b) {
           if ((c.val >> b) & 1) break;
-          tree.write<b1h>(true);
+          tree.write<b1>(true);
         }
-        tree.write<b1h>(false);
+        tree.write<b1>(false);
         ret[4 + 0x4f + (i >> 3)] |= (w >> 8) << (7 - (i & 7));
         ret[4 + 0x77 + i] = w & 0xff;
       }
@@ -176,13 +174,13 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
         switch (cmd.type.tag) {
         case uncomp: {
           const auto& c = huff.codewords[input[adr]];
-          ret.write<b8ln_h>({size_t(c.bitlen), c.val});
+          ret.write<bnh>({size_t(c.bitlen), c.val});
         } break;
         case lz: {
           const auto& c = huff.codewords[cmd.len + lz_huff_offset];
-          ret.write<b8ln_h>({size_t(c.bitlen), c.val});
+          ret.write<bnh>({size_t(c.bitlen), c.val});
           const auto tp = lz_ofs_table[cmd.type.ofs_no];
-          ret.write<b8ln_h>({tp.bits, tp.val + (adr - cmd.lz_ofs - tp.min)});
+          ret.write<bnh>({tp.bits, tp.val + (adr - cmd.lz_ofs - tp.min)});
         } break;
         default: assert(0);
         }

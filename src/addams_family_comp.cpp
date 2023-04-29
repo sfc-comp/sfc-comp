@@ -24,29 +24,29 @@ std::vector<uint8_t> addams_family_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b8_h ret;
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     switch (cmd.type) {
     case uncomp: {
-      ret.write<b1h, b8hn_h>(false, {8, input[adr]});
+      ret.write<b1, bnh>(false, {8, input[adr]});
     } break;
     case lzs:
     case lzm:
     case lzl: {
-      ret.write<b1h>(true);
-      if (cmd.type == lzs) ret.write<b8hn_h>({1, 0});
-      else if (cmd.type == lzm) ret.write<b8hn_h>({4, 8 + (cmd.len - 2)});
-      else ret.write<b8hn_h, b8hn_h>({4, 8}, {8, cmd.len - 9});
-      ret.write<b8hn_h>({10, adr - cmd.lz_ofs - 1});
+      ret.write<b1>(true);
+      if (cmd.type == lzs) ret.write<bnh>({1, 0});
+      else if (cmd.type == lzm) ret.write<bnh>({4, 8 + (cmd.len - 2)});
+      else ret.write<bnh, bnh>({4, 8}, {8, cmd.len - 9});
+      ret.write<bnh>({10, adr - cmd.lz_ofs - 1});
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b8hn_h>({13, 0x1800});
+  ret.write<bnh>({13, 0x1800});
   assert(adr == input.size());
-  assert((dp.total_cost() + 13 + 7) / 8 == ret.size());
+  assert(dp.total_cost() + 13 == ret.bit_length());
   return ret.out;
 }
 

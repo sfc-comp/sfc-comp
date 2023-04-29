@@ -165,19 +165,19 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
       }
     } else {
       using namespace data_type;
-      writer_b ret; ret.write<b8hn_h>({16, input.size()});
+      writer_b8_h ret; ret.write<bnh>({16, input.size()});
 
       assert(huff.words.size() >= 2);
-      ret.write<b8hn_h>({9, huff.words.size()});
+      ret.write<bnh>({9, huff.words.size()});
       for (size_t i = 0; i < huff.words.size(); ++i) {
-        ret.write<b8hn_h>({9, huff.words[i]});
+        ret.write<bnh>({9, huff.words[i]});
       }
       size_t prev = 0;
       auto write_child = [&](size_t v) {
         if (v == prev) {
-          ret.write<b1h>(false);
+          ret.write<b1>(false);
         } else {
-          ret.write<b1h, b8hn_h>(true, {10, v});
+          ret.write<b1, bnh>(true, {10, v});
           prev = v;
         }
         ++prev;
@@ -193,17 +193,17 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
         switch (cmd.type) {
         case uncomp: {
           const auto& c = huff.codewords[input[adr]];
-          ret.write<b8hn_h>({size_t(c.bitlen), c.val});
+          ret.write<bnh>({size_t(c.bitlen), c.val});
         } break;
         case lzs:
         case lzl: {
           const auto& c = huff.codewords[cmd.len + lz_huff_offset];
-          ret.write<b8hn_h>({size_t(c.bitlen), c.val});
+          ret.write<bnh>({size_t(c.bitlen), c.val});
           size_t d = adr - cmd.lz_ofs - 1;
           if (cmd.type == lzs) {
-            ret.write<b1h, b8hn_h>(false, {7, d});
+            ret.write<b1, bnh>(false, {7, d});
           } else {
-            ret.write<b1h, b8hn_h>(true, {10, d});
+            ret.write<b1, bnh>(true, {10, d});
           }
         } break;
         default: assert(0);

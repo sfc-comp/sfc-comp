@@ -25,7 +25,7 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16_hasty ret;
+  writer_b16_hasty_l ret;
   ret.write<none>(none());
 
   size_t adr = 0;
@@ -33,13 +33,13 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
     const size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
     case uncomp: {
-      ret.write<b8ln_h, d8>({1, 1}, input[adr]);
+      ret.write<bnh, d8>({1, 1}, input[adr]);
     } break;
     case lzs: {
-      ret.write<b8ln_h, d8>({4, cmd.len - 2}, 0x100 - d);
+      ret.write<bnh, d8>({4, cmd.len - 2}, 0x100 - d);
     } break;
     case lzls: case lzll: {
-      ret.write<b8ln_h, d8>({2, 1}, (0x2000 - d) & 0x00ff);
+      ret.write<bnh, d8>({2, 1}, (0x2000 - d) & 0x00ff);
       if (cmd.type == lzls) {
         ret.write<d8>((cmd.len - 2) | ((0x2000 - d) & 0x1f00) >> 5);
       } else {
@@ -50,10 +50,10 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  ret.write<b8ln_h, d16, d8>({2, 1}, 0xf000, 0);
+  ret.write<bnh, d16, d8>({2, 1}, 0xf000, 0);
   ret.trim();
   assert(adr == input.size());
-  assert((dp.total_cost() + 2 + 7) / 8 + 3 <= ret.size() && ret.size() <= (dp.total_cost() + 2 + 7) / 8 + 5);
+  assert(dp.total_cost() + 2 + 3 * 8 == ret.bit_length());
   return ret.out;
 }
 

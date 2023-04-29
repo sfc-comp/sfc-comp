@@ -39,21 +39,21 @@ std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t> input) {
       }
 
       using namespace data_type;
-      writer_b ret;
+      writer_b8_l ret;
       size_t adr = 0;
       ret.write<d8, d16>((long_len) << 7 | lz_min_len, 0);
       for (const auto cmd : dp.commands()) {
         const size_t d = adr - cmd.lz_ofs;
         switch (cmd.type) {
-        case uncomp: ret.write<b1l, d8>(true, input[adr]); break;
-        case lz: ret.write<b1l, d16>(false, (cmd.len - lz_min_len) << 12 | (d - 1)); break;
-        case lzl: ret.write<b1l, d16, d8>(false, 0xf000 | (d - 1), (cmd.len - lz_min_len - 0x0f)); break;
+        case uncomp: ret.write<b1, d8>(true, input[adr]); break;
+        case lz: ret.write<b1, d16>(false, (cmd.len - lz_min_len) << 12 | (d - 1)); break;
+        case lzl: ret.write<b1, d16, d8>(false, 0xf000 | (d - 1), (cmd.len - lz_min_len - 0x0f)); break;
         default: assert(0);
         }
         adr += cmd.len;
       }
-      assert((dp.total_cost() + 7) / 8 + 3 == ret.size());
       assert(adr == input.size());
+      assert(dp.total_cost() + 3 * 8 == ret.bit_length());
       write16(ret.out, 1, input.size());
       if (best.empty() || ret.size() < best.size()) {
         best = std::move(ret.out);

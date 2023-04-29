@@ -34,15 +34,15 @@ std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t> input) {
     }
 
     using namespace data_type;
-    writer_b ret; ret.write<d8, d32, d32>(0, 0, 0);
+    writer_b8_l ret(9);
     size_t adr = 0;
     for (const auto cmd : dp.commands()) {
       size_t d = adr - cmd.lz_ofs;
       switch (cmd.type) {
-      case uncomp: ret.write<b1l, d8>(true, input[adr]); break;
-      case lz: ret.write<b1l, d16>(false, d | (cmd.len - 3) << 12); break;
-      case rle: ret.write<b1l, d8, d8>(false, input[adr], 0xf0 | ((cmd.len - 4) + 1)); break;
-      case rlel: ret.write<b1l, d8, d8, d8>(false, cmd.len - 0x13, 0xf0, input[adr]); break;
+      case uncomp: ret.write<b1, d8>(true, input[adr]); break;
+      case lz: ret.write<b1, d16>(false, d | (cmd.len - 3) << 12); break;
+      case rle: ret.write<b1, d8, d8>(false, input[adr], 0xf0 | ((cmd.len - 4) + 1)); break;
+      case rlel: ret.write<b1, d8, d8, d8>(false, cmd.len - 0x13, 0xf0, input[adr]); break;
       default: assert(0);
       }
       adr += cmd.len;
@@ -50,8 +50,8 @@ std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t> input) {
     ret.out[0] = comp_type;
     write32(ret.out, 1, ret.out.size() - 9);
     write32(ret.out, 5, input.size());
-    assert((dp.total_cost() + 7) / 8 + 9 == ret.size());
     assert(adr == input.size());
+    assert(dp.total_cost() + 9 * 8 == ret.bit_length());
     if (best.size() == 0 || ret.out.size() < best.size()) {
       best = std::move(ret.out);
     }

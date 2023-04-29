@@ -32,20 +32,20 @@ std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret; ret.write<d16>(0);
+  writer_b8_h ret(2);
   size_t adr = pad;
   for (const auto cmd : dp.commands(pad)) {
     switch (cmd.type) {
-    case uncomp: ret.write<b8hn_h>({9, size_t(0x100 | input2[adr])}); break;
-    case lz: ret.write<b8hn_h, b8hn_h>({9, (cmd.lz_ofs - pad * 2) & 0xff}, {4, cmd.len - 2}); break;
+    case uncomp: ret.write<bnh>({9, size_t(0x100 | input2[adr])}); break;
+    case lz: ret.write<bnh, bnh>({9, (cmd.lz_ofs - pad - 0x11) & 0xff}, {4, cmd.len - 2}); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
   write16(ret.out, 0, input.size());
 
-  assert((dp.total_cost() + 7) / 8 + 2 == ret.size());
   assert(adr - pad == input.size());
+  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
 
   return ret.out;
 }

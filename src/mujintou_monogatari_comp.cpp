@@ -22,20 +22,20 @@ std::vector<uint8_t> mujintou_monogatari_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret; ret.write<d16>(0);
+  writer_b8_h ret(2);
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     const size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
-    case uncomp: ret.write<b1h, d8>(false, input[adr]); break;
-    case lz: ret.write<b1h, d16>(true, d << 4 | (cmd.len - 3)); break;
-    case lzl: ret.write<b1h, d16, d8>(true, d << 4 | 0x000f, cmd.len - 3 - 0x0f); break;
+    case uncomp: ret.write<b1, d8>(false, input[adr]); break;
+    case lz: ret.write<b1, d16>(true, d << 4 | (cmd.len - 3)); break;
+    case lzl: ret.write<b1, d16, d8>(true, d << 4 | 0x000f, cmd.len - 3 - 0x0f); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  assert((dp.total_cost() + 7) / 8 + 2 == ret.size());
   assert(adr == input.size());
+  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
   write16(ret.out, 0, input.size());
   return ret.out;
 }

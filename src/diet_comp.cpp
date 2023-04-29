@@ -65,23 +65,22 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16_hasty ret;
-  for (size_t i = 0; i < 17; ++i) ret.write<d8>(0);
+  writer_b16_hasty_l ret(17);
   ret.write<none>(none());
 
   size_t adr = 0;
   for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
-      ret.write<b1l, d8>(true, input[adr]);
+      ret.write<b1, d8>(true, input[adr]);
     } break;
     case lz2: {
       const size_t d = adr - cmd.lz_ofs;
-      ret.write<b8ln_h, d8>({2, 0}, (0x900 - d) & 0xff);
+      ret.write<bnh, d8>({2, 0}, (0x900 - d) & 0xff);
       if (cmd.type.oi == 0) {
-        ret.write<b8ln_h>({1, 0});
+        ret.write<bnh>({1, 0});
       } else {
-        ret.write<b8ln_h>({4, 0x08 | (0x900 - d) >> 8});
+        ret.write<bnh>({4, 0x08 | (0x900 - d) >> 8});
       }
     } break;
     case lz: {
@@ -89,7 +88,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
       const size_t oi = cmd.type.oi;
       const auto& o = ofs_tab[oi];
 
-      ret.write<b8ln_h, d8>({2, 1}, -d & 0xff);
+      ret.write<bnh, d8>({2, 1}, -d & 0xff);
       size_t v = (o.max - d) >> 8;
       if (oi == 0) {
         v <<= 1;
@@ -107,25 +106,25 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
         v += v & ~7;
         v += (v & 0x20) * 3;
       }
-      ret.write<b8ln_h>({o.bitlen - 8, v | o.val});
+      ret.write<bnh>({o.bitlen - 8, v | o.val});
 
       const auto& l = len_tab[cmd.type.li];
       const size_t len_v = cmd.len - l.min;
       if (l.bitlen < 10) {
-        ret.write<b8ln_h>({l.bitlen, len_v | l.val});
+        ret.write<bnh>({l.bitlen, len_v | l.val});
       } else {
-        ret.write<b8ln_h, d8>({l.bitlen - 8, l.val}, len_v);
+        ret.write<bnh, d8>({l.bitlen - 8, l.val}, len_v);
       }
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b8ln_h, d8, b8ln_h>({2, 0}, 0xff, {1, 0});
+  ret.write<bnh, d8, bnh>({2, 0}, 0xff, {1, 0});
   ret.trim();
 
-  assert(dp.total_cost() + 11 + 0x11 * 8 == ret.bit_length());
   assert(adr == input.size());
+  assert(dp.total_cost() + 11 + 0x11 * 8 == ret.bit_length());
 
   std::array<uint8_t, 9> header = {
     0xb4, 0x4c, 0xcd, 0x21, 0x9d, 0x89, 0x64, 0x6c, 0x7a

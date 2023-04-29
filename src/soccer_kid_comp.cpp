@@ -35,7 +35,7 @@ std::vector<uint8_t> soccer_kid_comp(std::span<const uint8_t> in) {
   }
 
   using namespace data_type;
-  writer_b ret; ret.write<d32b, b1l>(0, false);
+  writer_b8_l ret(4); ret.write<b1>(false);
 
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
@@ -43,14 +43,14 @@ std::vector<uint8_t> soccer_kid_comp(std::span<const uint8_t> in) {
     switch (cmd.type) {
     case uncomp:
     case uncompl: {
-      if (cmd.type == uncomp) ret.write<b8ln_h, b8ln_h>({2, 0}, {3, cmd.len - 1});
-      else ret.write<b8ln_h, b8ln_h>({3, 7}, {8, cmd.len - 9});
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<b8ln_h>({8, input[adr + i]});
+      if (cmd.type == uncomp) ret.write<bnh, bnh>({2, 0}, {3, cmd.len - 1});
+      else ret.write<bnh, bnh>({3, 7}, {8, cmd.len - 9});
+      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input[adr + i]});
     } break;
-    case lz2: ret.write<b8ln_h, b8ln_h>({2, 1}, {8, d}); break;
-    case lz3: ret.write<b8ln_h, b8ln_h>({3, 4}, {9, d}); break;
-    case lz4: ret.write<b8ln_h, b8ln_h>({3, 5}, {10, d}); break;
-    case lz: ret.write<b8ln_h, b8ln_h, b8ln_h>({3, 6}, {8, cmd.len - 1}, {12, d}); break;
+    case lz2: ret.write<bnh, bnh>({2, 1}, {8, d}); break;
+    case lz3: ret.write<bnh, bnh>({3, 4}, {9, d}); break;
+    case lz4: ret.write<bnh, bnh>({3, 5}, {10, d}); break;
+    case lz: ret.write<bnh, bnh, bnh>({3, 6}, {8, cmd.len - 1}, {12, d}); break;
     default: assert(0);
     }
     adr += cmd.len;

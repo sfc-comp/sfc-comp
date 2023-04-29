@@ -34,32 +34,32 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16 ret; ret.write<d16, d16>(0, 0);
+  writer_b16_l ret; ret.write<d16, d16>(0, 0);
 
-  ret.write<b1l>(0);
+  ret.write<b1>(0);
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
     case uncomp: {
-      ret.write<b8ln_h>({5, cmd.len - 1});
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<b8ln_h>({8, input2[adr + i]});
+      ret.write<bnh>({5, cmd.len - 1});
+      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input2[adr + i]});
     } break;
     case lz2: {
-      ret.write<b8ln_h, b8ln_h>({2, 1}, {8, d});
+      ret.write<bnh, bnh>({2, 1}, {8, d});
     } break;
     case lz3: {
-      ret.write<b8ln_h, b8ln_h>({3, 4}, {9, d});
+      ret.write<bnh, bnh>({3, 4}, {9, d});
     } break;
     case lz4: {
-      ret.write<b8ln_h, b8ln_h>({3, 5}, {10, d});
+      ret.write<bnh, bnh>({3, 5}, {10, d});
     } break;
     case lz5: {
-      ret.write<b8ln_h, b8ln_h, b8ln_h>({3, 6}, {8, cmd.len - 5}, {12, d});
+      ret.write<bnh, bnh, bnh>({3, 6}, {8, cmd.len - 5}, {12, d});
     } break;
     case uncompl: {
-      ret.write<b8ln_h>({11, 0x700 | (cmd.len - 9)});
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<b8ln_h>({8, input2[adr + i]});
+      ret.write<bnh>({11, 0x700 | (cmd.len - 9)});
+      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input2[adr + i]});
     } break;
     default: assert(0);
     }
@@ -70,8 +70,8 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> input) {
   write16(ret.out, 4, 0x8000 | (read16(ret.out, 4) >> 1));
   std::reverse(ret.out.begin() + 4, ret.out.end());
   for (size_t i = 4; i < ret.size(); i += 2) std::swap(ret.out[i], ret.out[i + 1]);
-  assert(dp.total_cost() + 1 + 4 * 8 == ret.bit_length());
   assert(adr == input.size());
+  assert(dp.total_cost() + 1 + 4 * 8 == ret.bit_length());
   return ret.out;
 }
 
@@ -128,8 +128,8 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, input.size());
   ret.write<d8>(0x00);
-  assert(dp.total_cost() + 4 == ret.size());
   assert(adr == input.size());
+  assert(dp.total_cost() + 4 == ret.size());
   return ret.out;
 }
 

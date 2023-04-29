@@ -28,14 +28,14 @@ std::vector<uint8_t> front_mission_comp_2(std::span<const uint8_t> input) {
     lz_helper.add_element(i);
   }
   using namespace data_type;
-  writer_b ret; ret.write<d16>(0);
+  writer_b8_l ret(2);
   size_t adr = 0, num_codes = 0;
   for (const auto cmd : dp.commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
-    case uncomp: ret.write<b1l, d8>(false, input[adr]); break;
-    case rle: ret.write<b1l, d8>(true, (cmd.len - 3) << 1); break;
-    case lz: ret.write<b1l, d16b>(true,
+    case uncomp: ret.write<b1, d8>(false, input[adr]); break;
+    case rle: ret.write<b1, d8>(true, (cmd.len - 3) << 1); break;
+    case lz: ret.write<b1, d16b>(true,
       (d & 0xf00) << 4 | (cmd.len - 4) << 8 | 0x100 | (d & 0x0ff)); break;
     default: assert(0);
     }
@@ -43,8 +43,8 @@ std::vector<uint8_t> front_mission_comp_2(std::span<const uint8_t> input) {
     num_codes += 1;
   }
   write16(ret.out, 0, num_codes);
-  assert((dp.total_cost() + 7) / 8 + 2 == ret.size());
   assert(adr == input.size());
+  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
   return ret.out;
 }
 

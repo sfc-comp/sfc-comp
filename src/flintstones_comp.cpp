@@ -58,45 +58,44 @@ std::vector<uint8_t> flintstones_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret; ret.write<d8, d16>(0, 0);
-
+  writer_b8_h ret(3);
   size_t adr = 0;
   for (const auto& cmd : dp.commands()) {
     const size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
     case uncomp: {
-      ret.write<b1h, d8>(false, input[adr]);
+      ret.write<b1, d8>(false, input[adr]);
     } break;
     case lzs: {
-      ret.write<b1h, d8>(true, 0x00 | (cmd.len - 2) << 6 | (d - 1));
+      ret.write<b1, d8>(true, 0x00 | (cmd.len - 2) << 6 | (d - 1));
     } break;
     case lzm: {
-      ret.write<b1h, d8>(true, 0xc0 | (cmd.len - 3) << 3 | (d - 1) >> 9);
-      ret.write<b1h, d8>(((d - 1) >> 8) & 1, (d - 1) & 0x00ff);
+      ret.write<b1, d8>(true, 0xc0 | (cmd.len - 3) << 3 | (d - 1) >> 9);
+      ret.write<b1, d8>(((d - 1) >> 8) & 1, (d - 1) & 0x00ff);
     } break;
     case lzds: {
       const size_t k = cmd.val();
-      ret.write<b1h, d8>(true, 0xf0 | (cmd.len - 5));
-      ret.write<b8hn_h>({4, k});
+      ret.write<b1, d8>(true, 0xf0 | (cmd.len - 5));
+      ret.write<bnh>({4, k});
     } break;
     case lzdl: {
       const size_t k = cmd.val();
-      ret.write<b1h, d8>(true, 0xf8 | k >> 3);
-      ret.write<b1h, d8>((k >> 2) & 1, (k & 0x03) << 6 | (cmd.len - 9));
+      ret.write<b1, d8>(true, 0xf8 | k >> 3);
+      ret.write<b1, d8>((k >> 2) & 1, (k & 0x03) << 6 | (cmd.len - 9));
     } break;
     case lzl: {
       assert(!(cmd.len == 0x43 && (d - 1) >= 0x3e00));
-      ret.write<b1h, d8>(true, 0xfc | (cmd.len - 4) >> 4);
-      ret.write<b1h, d8>(((cmd.len - 4) >> 3) & 1, ((cmd.len - 4) & 0x07) << 5 | (d - 1) >> 9);
-      ret.write<b1h, d8>(((d - 1) >> 8) & 1, (d - 1) & 0x00ff);
+      ret.write<b1, d8>(true, 0xfc | (cmd.len - 4) >> 4);
+      ret.write<b1, d8>(((cmd.len - 4) >> 3) & 1, ((cmd.len - 4) & 0x07) << 5 | (d - 1) >> 9);
+      ret.write<b1, d8>(((d - 1) >> 8) & 1, (d - 1) & 0x00ff);
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b1h, d8, b1h, d8>(true, 0xff, true, 0xff);
+  ret.write<b1, d8, b1, d8>(true, 0xff, true, 0xff);
   assert(adr == input.size());
-  assert((dp.total_cost() + 18 + 7) / 8 + 3 == ret.size());
+  assert(dp.total_cost() + 18 + 3 * 8 == ret.bit_length());
 
   ret[0] = 0x9a;
   write16(ret.out, 1, input.size());

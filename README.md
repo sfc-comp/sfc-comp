@@ -20,11 +20,11 @@ $ cmake ..
 $ make
 ```
 
-## Programs
+## Tools
 
 ### *_comp (e.g. fe4_comp)
 
-This program will output compressed files for the given input files.
+This tool compresses the given input files.
 
 #### Usage
 
@@ -38,7 +38,7 @@ $ ./*_comp [file1] [file2] ...
 
 ```text
 $ ./fe4_comp fe3_1.4bpp
-SFC Compress version 0.1.0
+SFC Compress version 0.2.1 (fe4_comp)
 
    fe3_1.4bpp
 -> fe3_1.4bpp.comp
@@ -52,7 +52,7 @@ Press Enter to exit.
 
 ### bench
 
-This program will perform every compression for each input file in `<input-dir>`.
+This tool performs every compression algorithm for each input file in `<input-dir>`.
 
 #### Usage
 
@@ -106,6 +106,7 @@ $ ./bench <input-dir>
 | jurassic_park_comp                       |    4 | 5B8E | 33A0 | 7BB2 | 2294 | 34EE | 64AE | 219A |  1E8AE | 0.0599 | 34541B52 |
 | kamen_rider_sd_comp                      |    5 | 5B0B | 378B | 7D2C | 28A7 | 34B5 | 656E | 23EB |  1F67C | 0.1207 | 01EDB505 |
 | kiki_kaikai_comp                         |    5 | 61AF | 36E4 | 8003 | 24ED | 3A01 | 6CA2 | 1C39 |  20064 | 0.0503 | E4A4C89E |
+| knights_of_the_round_comp                |    9 | 58DF | 3496 | 74FD | 256C | 342C | 61B4 | 1897 |  1D65E | 0.2115 | 188B914B |
 | koei_comp                                |    5 | 5587 | 2F66 | 77A8 | 1FA0 | 3051 | 5FEA | 1851 |  1C4C6 | 0.1134 | E344CF3E |
 | konami_comp_1                            |    5 | 5D6A | 3798 | 770A | 28D3 | 394F | 6504 | 1DCE |  1F105 | 0.0634 | 3A7D7CB0 |
 | konami_comp_2                            |    5 | 5D62 | 373B | 770A | 28D3 | 394F | 6504 | 1DB5 |  1F087 | 0.0642 | DBF893B8 |

@@ -44,40 +44,40 @@ std::vector<uint8_t> burai_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b8_h ret;
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     const auto d = adr - cmd.lz_ofs;
     switch (cmd.type) {
     case uncomp: {
       const auto c = codewords[input[adr]];
-      ret.write<b8hn_h>({c.bits, c.val});
+      ret.write<bnh>({c.bits, c.val});
     } break;
     case lzs1:
     case lzs2:
     case lzs3: {
-      if (cmd.type == lzs1) ret.write<b8hn_h>({2, 0});
-      else if (cmd.type == lzs2) ret.write<b8hn_h>({3, 2});
-      else ret.write<b8hn_h>({4, 6});
-      ret.write<b8hn_h>({4, d});
+      if (cmd.type == lzs1) ret.write<bnh>({2, 0});
+      else if (cmd.type == lzs2) ret.write<bnh>({3, 2});
+      else ret.write<bnh>({4, 6});
+      ret.write<bnh>({4, d});
     } break;
     case lzl2:
     case lzl3:
     case lzl4:
     case lzl: {
-      if (cmd.type == lzl2) ret.write<b8hn_h>({5, 0x0e});
-      else if (cmd.type == lzl3) ret.write<b8hn_h>({6, 0x1e});
-      else if (cmd.type == lzl4) ret.write<b8hn_h>({7, 0x3e});
-      else ret.write<b8hn_h, b8hn_h>({8, 0x7e}, {4, cmd.len - 5});
-      ret.write<b8hn_h>({8, d});
+      if (cmd.type == lzl2) ret.write<bnh>({5, 0x0e});
+      else if (cmd.type == lzl3) ret.write<bnh>({6, 0x1e});
+      else if (cmd.type == lzl4) ret.write<bnh>({7, 0x3e});
+      else ret.write<bnh, bnh>({8, 0x7e}, {4, cmd.len - 5});
+      ret.write<bnh>({8, d});
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b8hn_h>({8, 0x7f});
-  assert((dp.total_cost() + 8 + 7) / 8 == ret.size());
+  ret.write<bnh>({8, 0x7f});
   assert(adr == input.size());
+  assert(dp.total_cost() + 8 == ret.bit_length());
   return ret.out;
 }
 

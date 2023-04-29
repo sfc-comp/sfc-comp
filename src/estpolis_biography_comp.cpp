@@ -28,24 +28,23 @@ std::vector<uint8_t> estpolis_biography_comp(std::span<const uint8_t> input) {
     lz_helper.add_element(i);
   }
   using namespace data_type;
-  writer_b ret; ret.write<d16>(0);
+  writer_b8_h ret(2);
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
     case uncomp0: ret.write<none, d8>(none(), input[adr]); break;
-    case uncomp1: ret.write<b1h, d8>(false, input[adr]); break;
-    case lzs: ret.write<b1h, d16b>(true, (0x1000 - d) << 4 | (cmd.len - 2)); break;
-    case lzl: ret.write<b1h, d24b>(true,
+    case uncomp1: ret.write<b1, d8>(false, input[adr]); break;
+    case lzs: ret.write<b1, d16b>(true, (0x1000 - d) << 4 | (cmd.len - 2)); break;
+    case lzl: ret.write<b1, d24b>(true,
       ((0x4000 - d) & ~3) << 10 | ((0x4000 - d) & 3) << 6 | (cmd.len - 3)); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
   write16(ret.out, 0, input.size());
-  assert((dp.total_cost() + 7) / 8 + 2 == ret.size() ||
-         (dp.total_cost() + 7) / 8 + 3 == ret.size());
   assert(adr == input.size());
+  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
   return ret.out;
 }
 

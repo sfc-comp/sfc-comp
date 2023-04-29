@@ -28,22 +28,21 @@ std::vector<uint8_t> sd_gundam_gnext_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b8_l ret(2);
   size_t adr = pad;
-  ret.write<d16>(0);
   for (const auto cmd : dp.commands(pad)) {
     switch (cmd.type) {
-    case uncomp: ret.write<b1l, d8>(true, input2[adr]); break;
+    case uncomp: ret.write<b1, d8>(true, input2[adr]); break;
     case lz: {
       assert(cmd.len & 1);
       uint16_t d = (cmd.lz_ofs - pad) & 0x0fff;
-      ret.write<b1l, d8, d8>(false, d & 0x00ff, (d & 0x0f00) >> 8 | (cmd.len - 3) << 3);
+      ret.write<b1, d8, d8>(false, d & 0x00ff, (d & 0x0f00) >> 8 | (cmd.len - 3) << 3);
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  assert((dp.total_cost() + 7) / 8 + 2 == ret.size());
+  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
   assert(adr - pad == input.size());
 
   if (ret.size() < input.size() + 2) {

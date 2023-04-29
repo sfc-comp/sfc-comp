@@ -31,25 +31,24 @@ std::vector<uint8_t> super_robot_wars_comp_core(
   }
 
   using namespace data_type;
-  writer_b ret;
-  for (size_t i = 0; i < header_size; ++i) ret.write<d8>(0);
+  writer_b8_h ret(header_size);
   size_t adr = 0;
   for (size_t i = 0; i < skip_size; ++i) ret.write<d8>(input[adr++]);
 
   for (const auto cmd : dp.commands(adr)) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
-    case uncomp: ret.write<b1h, d8>(true, input[adr]); break;
-    case lzs: ret.write<b8hn_h, d8>({4, cmd.len - 2}, 0x100 - d); break;
-    case lzl: ret.write<b1h, b1h, d16b>(false, true, (0x2000 - d) << 3 | (cmd.len - 2)); break;
-    case lzll: ret.write<b1h, b1h, d24b>(false, true, (0x2000 - d) << 11 | (cmd.len - (lz_max_len - 0xFF))); break;
+    case uncomp: ret.write<b1, d8>(true, input[adr]); break;
+    case lzs: ret.write<bnh, d8>({4, cmd.len - 2}, 0x100 - d); break;
+    case lzl: ret.write<b1, b1, d16b>(false, true, (0x2000 - d) << 3 | (cmd.len - 2)); break;
+    case lzll: ret.write<b1, b1, d24b>(false, true, (0x2000 - d) << 11 | (cmd.len - (lz_max_len - 0xFF))); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b1h, b1h, d24b>(false, true, 0);
-  assert((dp.total_cost() + 2 + 7) / 8 + 3 + header_size + skip_size == ret.size());
+  ret.write<b1, b1, d24b>(false, true, 0);
   assert(adr == input.size());
+  assert(dp.total_cost() + 2 + 3 * 8 + (header_size + skip_size) * 8 == ret.bit_length());
   return ret.out;
 }
 

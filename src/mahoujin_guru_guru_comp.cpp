@@ -42,37 +42,36 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b8_h ret(10);
   writer raw;
-  for (size_t i = 0; i < 10; ++i) ret.write<d8>(0);
 
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
-      ret.write<b1h>(false);
+      ret.write<b1>(false);
       raw.write<d8>(input[adr]);
     } break;
     case uncomp0: {
-      ret.write<b1h, b1h>(true, false);
+      ret.write<b1, b1>(true, false);
     } break;
     case rle0: {
       const auto k = cmd.type.li;
-      ret.write<b1h, b1h, b1h>(true, true, false);
-      ret.write<b8hn_h>({k, (size_t(1) << k) - 1});
-      ret.write<b1h>(false);
+      ret.write<b1, b1, b1>(true, true, false);
+      ret.write<bnh>({k, (size_t(1) << k) - 1});
+      ret.write<b1>(false);
       const size_t l = cmd.len - rle_max_lens[0] + 1;
-      ret.write<b8hn_h>({k, l ^ (1 << k)});
+      ret.write<bnh>({k, l ^ (1 << k)});
     } break;
     case prev2: {
-      ret.write<b1h, b1h, b1h>(true, true, true);
+      ret.write<b1, b1, b1>(true, true, true);
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() + 10 * 8 == raw.size() * 8 + ret.bit_length());
   assert(adr == input.size());
+  assert(dp.total_cost() + 10 * 8 == raw.size() * 8 + ret.bit_length());
 
   write32b(ret.out, 0, 0x4e4d5030); // NMP0
   write16(ret.out, 4, raw.size());

@@ -48,7 +48,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b8_h ret;
   writer raw;
 
   if (!mixed) ret.write<d16>(0);
@@ -57,9 +57,9 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
-      ret.write<b1h>(false);
+      ret.write<b1>(false);
       if (mixed) {
-        ret.write<b8hn_h>({8, input[adr]});
+        ret.write<bnh>({8, input[adr]});
       } else {
         raw.write<d8>(input[adr]);
       }
@@ -67,16 +67,16 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
     case lz: {
       const auto& l = len_tab[cmd.type.li];
       const auto& o = ofs_tab[cmd.type.oi];
-      ret.write<b1h>(true);
-      ret.write<b8hn_h>({l.bitlen, l.val + (cmd.len - l.min)});
-      ret.write<b8hn_h>({o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min)});
+      ret.write<b1>(true);
+      ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
+      ret.write<bnh>({o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min)});
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b1h>(true);
-  ret.write<b8hn_h>({15, 1 << 14});
+  ret.write<b1>(true);
+  ret.write<bnh>({15, 1 << 14});
   assert(adr == input.size());
   assert(dp.total_cost() + 1 + 15 + (mixed ? 0 : 2) * 8 == 8 * raw.size() + ret.bit_length());
 

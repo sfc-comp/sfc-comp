@@ -12,45 +12,6 @@ namespace sfc_comp {
 
 namespace data_type {
 
-struct none {
-
-};
-
-struct b1l {
-  b1l(bool b) : b(b) {}
-  bool b;
-};
-
-struct b1h {
-  b1h(bool b) : b(b) {}
-  bool b;
-};
-
-struct b4h {
-  b4h(uint8_t x) : x(x) {}
-  uint8_t x;
-};
-
-struct b8ln_h {
-  b8ln_h(size_t n, size_t x) : n(n), x(x) {}
-  size_t n, x;
-};
-
-struct b8ln_l {
-  b8ln_l(size_t n, size_t x) : n(n), x(x) {}
-  size_t n, x;
-};
-
-struct b8hn_h {
-  b8hn_h(size_t n, size_t x) : n(n), x(x) {}
-  size_t n, x;
-};
-
-struct b8hn_l {
-  b8hn_l(size_t n, size_t x) : n(n), x(x) {}
-  size_t n, x;
-};
-
 struct d8 {
   d8(uint8_t x) : x(x) {}
   uint8_t x;
@@ -67,12 +28,12 @@ struct d16b {
 };
 
 struct d24 {
-  d24(uint32_t x) : x(x) {}
+  d24(uint32_t x) : x(x & 0xffffff) {}
   uint32_t x;
 };
 
 struct d24b {
-  d24b(uint32_t x) : x(x) {}
+  d24b(uint32_t x) : x(x & 0xffffff) {}
   uint32_t x;
 };
 
@@ -127,15 +88,15 @@ struct d8nk {
 } // namespace data_type
 
 struct writer {
-  writer() {}
+  writer(size_t s = 0) : out(s) {}
 
   template <typename Head, typename... Args>
-  void write(const Head& h, Args... args) {
+  void write(const Head& h, const Args&... args) {
     write(h);
-    write(args...);
+    if constexpr (sizeof... (args) >= 1) {
+      write(args...);
+    }
   }
-
-  void write() {}
 
   void write(const data_type::d8& d) {
     out.push_back(d.x);
@@ -210,29 +171,67 @@ struct writer {
   std::vector<uint8_t> out;
 };
 
+namespace data_type {
+
+struct none {
+
+};
+
+struct b1 {
+  b1(bool b) : b(b) {}
+  bool b;
+};
+
+struct b4 {
+  b4(uint8_t x) : x(x & 0x0f) {}
+  uint8_t x;
+};
+
+struct bnh {
+  bnh(size_t n, size_t x) : n(n), x(x) {}
+  size_t n, x;
+};
+
+struct bnl {
+  bnl(size_t n, size_t x) : n(n), x(x) {}
+  size_t n, x;
+};
+
+} // namespace data_type
+
+template <bool LowNibbleFirst>
 struct writer_b4 : public writer {
-  writer_b4() : lo(false) {}
+  writer_b4(size_t s = 0) : writer(s), nibble(0), nibble_pos(-1) {}
 
   template <typename Head, typename... Args>
-  void write(const Head& h, Args... args) {
+  void write(const Head& h, const Args&... args) {
     write(h);
-    write(args...);
+    if constexpr (sizeof... (args) >= 1) {
+      write(args...);
+    }
   }
 
-  void write() {}
-
-  void write(const data_type::b4h& d) {
-    if (!lo) {
-      out.push_back(d.x << 4);
-    } else {
-      out.back() |= d.x;
+  void write(const data_type::none&) {
+    if (nibble == 0) {
+      nibble_pos = out.size();
+      out.push_back(0);
+      nibble = 2;
     }
-    lo = !lo;
+  }
+
+  void write(const data_type::b4& d) {
+    write<data_type::none>({});
+    --nibble;
+    if constexpr (LowNibbleFirst) {
+      out[nibble_pos] |= (d.x & 0x0f) << (4 * (1 - nibble));
+    } else {
+      out[nibble_pos] |= (d.x & 0x0f) << (4 * nibble);
+    }
   }
 
   void write(const data_type::d8& d) {
-    write<data_type::b4h>(d.x >> 4);
-    write<data_type::b4h>(d.x & 0x0f);
+    write<data_type::b4>(d.x >> 4);
+    write<data_type::b4>(d.x & 0x0f);
   }
 
   void write(const data_type::d16b& d) {
@@ -244,34 +243,41 @@ struct writer_b4 : public writer {
     for (size_t i = 0; i < d.n; ++i) write<data_type::d8>(d.ptr[i]);
   }
 
-  bool lo;
+  size_t nibble_size() const {
+    return size() * 2 - nibble;
+  }
+
+  size_t nibble;
+  size_t nibble_pos;
 };
 
-template <size_t BlockBytes, bool PreRead>
+using writer_b4_l = writer_b4<true>;
+using writer_b4_h = writer_b4<false>;
+
+template <size_t BlockBytes, bool LSBFirst, bool PreRead>
 struct bitstream_writer : public writer {
   static constexpr size_t block_bitsize = BlockBytes * 8;
-
   using writer::write;
 
-  bitstream_writer() : bit(0), bits_pos(0) {}
+  bitstream_writer(size_t s = 0) : writer(s), bit(0), bits_pos(-1) {}
 
   template <typename Head, typename... Args>
-  void write(const Head& h, Args... args) {
+  void write(const Head& h, const Args&... args) {
     write(h);
-    write(args...);
+    if constexpr (sizeof... (args) >= 1) {
+      write(args...);
+    }
   }
 
-  void write(const data_type::b1l& d) {
+  void write(const data_type::b1& d) {
     if constexpr (!PreRead) write(data_type::none());
     --bit;
-    if (size_t b = block_bitsize - 1 - bit; d.b) out[bits_pos + b / 8] |= 1 << (b % 8);
-    if constexpr (PreRead) write(data_type::none());
-  }
-
-  void write(const data_type::b1h& d) {
-    if constexpr (!PreRead) write(data_type::none());
-    --bit;
-    if (d.b) out[bits_pos + bit / 8] |= 1 << (bit % 8);
+    if constexpr (LSBFirst) {
+      const size_t b = block_bitsize - 1 - bit;
+      if (d.b) out[bits_pos + b / 8] |= 1 << (b % 8);
+    } else {
+      if (d.b) out[bits_pos + bit / 8] |= 1 << (bit % 8);
+    }
     if constexpr (PreRead) write(data_type::none());
   }
 
@@ -283,27 +289,15 @@ struct bitstream_writer : public writer {
     }
   }
 
-  void write(const data_type::b8ln_l& d) {
+  void write(const data_type::bnl& d) {
     for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1l>((d.x >> i) & 1);
+      write<data_type::b1>((d.x >> i) & 1);
     }
   }
 
-  void write(const data_type::b8ln_h& d) {
+  void write(const data_type::bnh& d) {
     for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1l>((d.x >> (d.n - 1 - i)) & 1);
-    }
-  }
-
-  void write(const data_type::b8hn_l& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1h>((d.x >> i) & 1);
-    }
-  }
-
-  void write(const data_type::b8hn_h& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1h>((d.x >> (d.n - 1 - i)) & 1);
+      write<data_type::b1>((d.x >> (d.n - 1 - i)) & 1);
     }
   }
 
@@ -315,16 +309,27 @@ struct bitstream_writer : public writer {
   }
 
   size_t bit_length() const {
-    return out.size() * 8 - bit;
+    return size() * 8 - bit;
   }
 
   size_t bit;
   size_t bits_pos;
 };
 
-struct writer_b : public bitstream_writer<1, false> {};
-struct writer_b8 : public bitstream_writer<1, false> {};
-struct writer_b16 : public bitstream_writer<2, false> {};
-struct writer_b16_hasty : public bitstream_writer<2, true> {};
+template <bool LSBFirst> using writer_b = bitstream_writer<1, LSBFirst, false>;
+using writer_b_l = writer_b<true>;
+using writer_b_h = writer_b<false>;
+
+template <bool LSBFirst> using writer_b8 = bitstream_writer<1, LSBFirst, false>;
+using writer_b8_l = writer_b8<true>;
+using writer_b8_h = writer_b8<false>;
+
+template <bool LSBFirst> using writer_b16 = bitstream_writer<2, LSBFirst, false>;
+using writer_b16_l = writer_b16<true>;
+using writer_b16_h = writer_b16<false>;
+
+template <bool LSBFirst> using writer_b16_hasty = bitstream_writer<2, LSBFirst, true>;
+using writer_b16_hasty_l = writer_b16_hasty<true>;
+using writer_b16_hasty_h = writer_b16_hasty<false>;
 
 } // namespace sfc_comp

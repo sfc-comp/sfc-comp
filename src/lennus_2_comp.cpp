@@ -48,19 +48,19 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
     }
 
     using namespace data_type;
-    writer_b ret; ret.write<d16, d24, d24>(0, 0, 0);
+    writer_b8_h ret(8);
     size_t adr = pad;
     for (const auto& cmd : dp.commands(pad)) {
       const size_t d = adr - cmd.lz_ofs;
       switch (cmd.type) {
-      case uncomp: ret.write<b1h, d8>(false, input[adr]); break;
-      case lz2_0: ret.write<b1h, d8>(true, 0x80 | 0); break;
-      case lz2: ret.write<b1h, d8>(true, 0x80 | d); break;
+      case uncomp: ret.write<b1, d8>(false, input[adr]); break;
+      case lz2_0: ret.write<b1, d8>(true, 0x80 | 0); break;
+      case lz2: ret.write<b1, d8>(true, 0x80 | d); break;
       case lz: {
         if (comp_type == 0x5059) {
-          ret.write<b1h, d16>(true, (d & 0x0fff) << 4 | len_code[cmd.len]); break;
+          ret.write<b1, d16>(true, (d & 0x0fff) << 4 | len_code[cmd.len]); break;
         } else {
-          ret.write<b1h, d16b>(true, (d & 0x07ff) << 4 | len_code[cmd.len]); break;
+          ret.write<b1, d16b>(true, (d & 0x07ff) << 4 | len_code[cmd.len]); break;
         }
       }
       default: assert(0);
@@ -70,8 +70,8 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
     write16(ret.out, 0, comp_type);
     write24(ret.out, 2, in.size());
     write24(ret.out, 5, ret.size() - 8);
-    assert((dp.total_cost() + 7) / 8 + 8 == ret.size());
     assert(adr == input.size());
+    assert(dp.total_cost() + 8 * 8 == ret.bit_length());
     if (best.empty() || ret.size() < best.size()) best = std::move(ret.out);
   }
   return best;

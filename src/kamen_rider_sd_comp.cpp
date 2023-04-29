@@ -57,7 +57,7 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
     }
     std::vector<uint8_t> vals;
     for (size_t i = 0; i < gain.size(); ++i) if (gain[i] > 0) vals.push_back(i);
-    std::sort(vals.begin(), vals.end(), [gain](size_t a, size_t b) { return gain[a] > gain[b]; });
+    std::sort(vals.begin(), vals.end(), [&](size_t a, size_t b) { return gain[a] > gain[b]; });
     return pre_rle(vals, vals.size());
   }();
 
@@ -118,7 +118,7 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
       return {{}, ret};
     } else {
       if (!pre.valid()) throw std::logic_error("Broken RLE table.");
-      writer_b ret;
+      writer_b8_h ret;
       if (header_val >= 0x20) {
         ret.write<d8>(header_val);
       } else {
@@ -128,16 +128,16 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
       for (const auto& cmd : commands) {
         const size_t d = adr - cmd.lz_ofs;
         switch (cmd.type) {
-        case uncomp: ret.write<b1h, d8>(false, input[adr]); break;
-        case lzs: ret.write<b1h, d8>(true, 0x00 | (cmd.len - 2) << 5 | (d - 1)); break;
-        case rle0: ret.write<b1h, d8>(true, 0xa0 | (cmd.val() << 3) | (cmd.len - 2)); break;
-        case rle1: ret.write<b1h, d8>(true, 0xb0 | cmd.val()); break;
-        case lz: ret.write<b1h, d16b>(true, 0xc000 | (cmd.len - 3) << 12 | (d - 1)); break;
+        case uncomp: ret.write<b1, d8>(false, input[adr]); break;
+        case lzs: ret.write<b1, d8>(true, 0x00 | (cmd.len - 2) << 5 | (d - 1)); break;
+        case rle0: ret.write<b1, d8>(true, 0xa0 | (cmd.val() << 3) | (cmd.len - 2)); break;
+        case rle1: ret.write<b1, d8>(true, 0xb0 | cmd.val()); break;
+        case lz: ret.write<b1, d16b>(true, 0xc000 | (cmd.len - 3) << 12 | (d - 1)); break;
         default: break;
         }
         adr += cmd.len;
       }
-      ret.write<b1h, d8>(true, 0xbf);
+      ret.write<b1, d8>(true, 0xbf);
       assert(adr == input.size());
       if (header_val >= 0x20) {
         assert(dp.total_cost() + 1 + (1 + 1) * 8 == ret.bit_length());

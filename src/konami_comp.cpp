@@ -44,11 +44,10 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> input, const bool
   }
 
   using namespace data_type;
-  writer ret;
+  writer ret(2);
   size_t adr = pad;
-  ret.write<d16>(0);
   for (const auto cmd : dp.commands(pad)) {
-    size_t d = (cmd.lz_ofs - 2 * pad) & 0x03ff;
+    size_t d = (cmd.lz_ofs - pad - 0x21) & 0x03ff;
     switch (cmd.type) {
     case lz: ret.write<d16b>((cmd.len - 2) << 10 | d); break;
     case uncomp: ret.write<d8, d8n>(0x80 + cmd.len, {cmd.len, &input2[adr]}); break;

@@ -28,20 +28,20 @@ std::vector<uint8_t> wizardry5_comp_1(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret;
+  writer_b8_h ret;
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
-    case uncomp0: ret.write<b8hn_h>({5, 0x10}); break;
-    case uncomp: ret.write<b8hn_h>({9, input[adr]}); break;
-    case lz: ret.write<b8hn_h>({14, (1 << 13) | code[cmd.len] << 9 | (d - 1)}); break;
+    case uncomp0: ret.write<bnh>({5, 0x10}); break;
+    case uncomp: ret.write<bnh>({9, input[adr]}); break;
+    case lz: ret.write<bnh>({14, (1 << 13) | code[cmd.len] << 9 | (d - 1)}); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b8hn_h>({9, 0});
-  assert((dp.total_cost() + 7 + 9) / 8 == ret.size());
+  ret.write<bnh>({9, 0});
+  assert(dp.total_cost() + 9 == ret.bit_length());
   assert(adr == input.size());
   return ret.out;
 }

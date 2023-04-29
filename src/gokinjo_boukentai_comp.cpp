@@ -14,21 +14,20 @@ std::vector<uint8_t> gokinjo_boukentai_comp_1(std::span<const uint8_t> input, co
 
   const auto huff = encode::huffman(utility::freq_u8(input), true);
   using namespace data_type;
-  writer_b ret;
-  for (size_t i = 0; i < header_size; ++i) ret.write<d8>(0);
+  writer_b8_h ret(header_size);
 
   for (size_t i = 0; i < huff.words.size(); ++i) {
     const auto w = huff.words[i];
     const auto c = huff.codewords[w];
     for (ptrdiff_t b = 0; b < c.bitlen; ++b) {
       if ((c.val >> b) & 1) break;
-      ret.write<b1h>(true);
+      ret.write<b1>(true);
     }
-    ret.write<b1h, b8hn_h>(false, {8, w});
+    ret.write<b1, bnh>(false, {8, w});
   }
   for (const auto v : input) {
     const auto c = huff.codewords[v];
-    ret.write<b8hn_h>({size_t(c.bitlen), c.val});
+    ret.write<bnh>({size_t(c.bitlen), c.val});
   }
   return ret.out;
 }

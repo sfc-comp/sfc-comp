@@ -131,8 +131,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
       candidate.resize(next_k);
     } else {
       using namespace data_type;
-      writer_b4 ret;
-      for (size_t i = 0; i < 0x27; ++i) ret.write<d8>(0);
+      writer_b4_h ret(0x27);
       size_t adr = 0;
       for (const auto cmd : dp.commands()) {
         size_t d = adr - cmd.lz_ofs;
@@ -141,59 +140,59 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
           ret.write<d8, d8n>(cmd.len, {cmd.len, &input[adr]});
         } break;
         case uncomp1: {
-          ret.write<b4h, d8>(1, input[adr]);
+          ret.write<b4, d8>(1, input[adr]);
         } break;
         case uncomp2: {
-          ret.write<b4h, d8, d8>(2, input[adr], input[adr + 1]);
+          ret.write<b4, d8, d8>(2, input[adr], input[adr + 1]);
         } break;
         case rle: {
-          ret.write<b4h, b4h, d8>(3, cmd.len - 3, input[adr]);
+          ret.write<b4, b4, d8>(3, cmd.len - 3, input[adr]);
         } break;
         case pre_rle8_1: {
-          ret.write<b4h, b4h>(4, cmd.len - 3);
+          ret.write<b4, b4>(4, cmd.len - 3);
         } break;
         case pre_rle8_2: {
-          ret.write<b4h, b4h>(5, cmd.len - 3);
+          ret.write<b4, b4>(5, cmd.len - 3);
         } break;
         case pre16_1: {
-          ret.write<b4h>(6);
+          ret.write<b4>(6);
         } break;
         case pre8_1: {
-          ret.write<b4h>(7);
+          ret.write<b4>(7);
         } break;
         case pre8_2: {
-          ret.write<b4h>(8);
+          ret.write<b4>(8);
         } break;
         case lzvs: {
           assert(d >= 2);
-          ret.write<b4h, b4h>(9, d - 2);
+          ret.write<b4, b4>(9, d - 2);
         } break;
         case lzs: {
           assert(d >= cmd.len);
           assert(d - cmd.len < 0x100);
-          ret.write<b4h, b4h, d8>(10, cmd.len - 3, d - cmd.len);
+          ret.write<b4, b4, d8>(10, cmd.len - 3, d - cmd.len);
         } break;
         case lzm: {
           assert(d >= 0x103 && d < 0x1103);
-          ret.write<b4h, b4h, b4h, d8>(11, cmd.len - 3, (d - 0x103) >> 8, d - 0x103);
+          ret.write<b4, b4, b4, d8>(11, cmd.len - 3, (d - 0x103) >> 8, d - 0x103);
         } break;
         case lzl: {
-          ret.write<b4h, b4h, d16b>(12, cmd.len - 3, d);
+          ret.write<b4, b4, d16b>(12, cmd.len - 3, d);
         } break;
         case prev8: {
-          ret.write<b4h>(13);
+          ret.write<b4>(13);
         } break;
         case prev16: {
-          ret.write<b4h>(14);
+          ret.write<b4>(14);
         } break;
         case pre16s: {
-          ret.write<b4h, b4h>(15, cmd.val() - 1);
+          ret.write<b4, b4>(15, cmd.val() - 1);
         } break;
         }
         adr += cmd.len;
       }
-      assert(0x27 + (dp.total_cost() + 1) / 2 == ret.size());
       assert(adr == input.size());
+      assert(dp.total_cost() + 0x27 * 2 == ret.nibble_size());
       ret.write<d8>(0x00);
       for (size_t i = 0; i < 2; ++i) ret[i + 1] = pre.rle_b8[i];
       for (size_t i = 0; i < 2; ++i) ret[i + 3] = pre.b8[i];

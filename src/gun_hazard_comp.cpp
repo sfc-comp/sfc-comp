@@ -12,16 +12,16 @@ std::vector<uint8_t> gun_hazard_comp_1(std::span<const uint8_t> input, const uin
   check_size(input.size(), 0x0020, 0x10000);
 
   using namespace data_type;
-  writer_b4 ret; ret.write<d8, d8, d8>(0, 0, 0);
+  writer_b4_h ret(3);
   const auto indexed_256 = snes4bpp::to_indexed256_8_1(input);
   for (size_t i = 0; i < indexed_256.size(); ) {
     const auto v = indexed_256[i];
-    ret.write<b4h>(v);
+    ret.write<b4>(v);
     size_t len = encode::run_length(indexed_256, i, 0);
     i += len;
     for (--len; len > 0; ) {
       size_t l = std::min<size_t>(0x10, len);
-      ret.write<b4h, b4h>(v, l - 1),
+      ret.write<b4, b4>(v, l - 1),
       len -= l;
     }
   }
@@ -147,7 +147,7 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
   }
 
   using namespace data_type;
-  writer_b ret; ret.write<d8, d16, d8>(0, 0, 0);
+  writer_b8_l ret(4);
   if (best_conf & 0x80) {
     for (size_t i = 0; i < 16; i += 2) ret.write<d8>(best_perm[i] << 4 | best_perm[i + 1]);
     perm_type iperm;
@@ -167,7 +167,7 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
             break;
           }
         }
-        ret.write<b1l>(!zero);
+        ret.write<b1>(!zero);
         if (zero) continue;
         for (size_t j = 0; j < block_size; ++j) {
           ret.write<d8>(permuted_4bpp[i + o + 2 * j]);
@@ -185,10 +185,10 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
 
 std::vector<uint8_t> gun_hazard_comp_3(std::span<const uint8_t> input, const uint8_t header_val) {
   check_size(input.size(), 1, 0x10000);
-  auto ret = lzss(
+  auto ret = lzss<writer_b8_l>(
     input, 0, [](std::span<const uint8_t>) {},
     0x0fff, 3, 0x12,
-    3, true, true,
+    3, true,
     [&] (size_t i, size_t o, size_t l) {
       size_t d = (i - o);
       return (d & 0x0f00) << 4 | (l - 3) << 8 | (d & 0x00ff);
@@ -220,22 +220,22 @@ std::vector<uint8_t> gun_hazard_comp_4(std::span<const uint8_t> input, const uin
   }
 
   using namespace data_type;
-  writer_b ret; ret.write<d8, d16>(0, 0);
+  writer_b8_l ret(3);
 
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
-    case uncomp: ret.write<b1l, d8>(true, input[adr]); break;
-    case lzs: ret.write<b8ln_h, d8>({4, cmd.len - 3}, d); break;
-    case lzl: ret.write<b1l, b1l, d8, d8>(false, true, d & 0xff,  (d >> 8) << 3 | (cmd.len - 2)); break;
-    case lzll: ret.write<b1l, b1l, d8, d8, d8>(false, true, d & 0xff, (d >> 8) << 3 | 0, cmd.len - 1); break;
+    case uncomp: ret.write<b1, d8>(true, input[adr]); break;
+    case lzs: ret.write<bnh, d8>({4, cmd.len - 3}, d); break;
+    case lzl: ret.write<b1, b1, d8, d8>(false, true, d & 0xff,  (d >> 8) << 3 | (cmd.len - 2)); break;
+    case lzll: ret.write<b1, b1, d8, d8, d8>(false, true, d & 0xff, (d >> 8) << 3 | 0, cmd.len - 1); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  assert((dp.total_cost() + 7) / 8 + 3 == ret.size());
   assert(adr == input.size());
+  assert(dp.total_cost() + 3 * 8 == ret.bit_length());
 
   ret[0] = header_val | 0x04;
   write16(ret.out, 1, input.size());

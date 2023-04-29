@@ -5,10 +5,10 @@ namespace sfc_comp {
 namespace {
 
 std::vector<uint8_t> dq12_comp_core(std::span<const uint8_t> input, const size_t header_size, const size_t max_dist) {
-  auto ret = lzss(
+  auto ret = lzss<writer_b8_l>(
     input, 0x12, [](std::span<const uint8_t>) {},
     max_dist, 3, 0x12,
-    header_size, true, true,
+    header_size, true,
     [&](size_t, size_t o, size_t l) {
       size_t d = (o - 0x24) & 0xfff;
       return (d & 0x00ff) | (l - 3) << 8 | (d & 0x0f00) << 4;

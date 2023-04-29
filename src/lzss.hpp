@@ -7,14 +7,13 @@
 
 namespace sfc_comp {
 
-template <typename InitFunc, typename LzEncoding>
+template <class Writer, typename InitFunc, typename LzEncoding>
 std::vector<uint8_t> lzss(
     std::span<const uint8_t> input,
     const size_t pad, InitFunc init,
     const size_t lz_max_ofs,
     const size_t lz_min_len, const size_t lz_max_len,
     const size_t header_size,
-    const bool from_lsb_to_msb,
     const bool uncomp_flag, LzEncoding lz_enc) {
 
   enum CompType { uncomp, lz };
@@ -37,31 +36,18 @@ std::vector<uint8_t> lzss(
   }
 
   using namespace data_type;
-  writer_b ret;
-  size_t adr = pad;
-  for (size_t i = 0; i < header_size; ++i) ret.write<d8>(0);
+  Writer ret(header_size);
 
+  size_t adr = pad;
   for (const auto cmd : dp.commands(pad)) {
     switch (cmd.type) {
-    case uncomp: {
-      if (from_lsb_to_msb) {
-        ret.write<b1l, d8>(uncomp_flag, input2[adr]);
-      } else {
-        ret.write<b1h, d8>(uncomp_flag, input2[adr]);
-      }
-    } break;
-    case lz: {
-      if (from_lsb_to_msb) {
-        ret.write<b1l, d16>(!uncomp_flag, lz_enc(adr, cmd.lz_ofs, cmd.len));
-      } else {
-        ret.write<b1h, d16>(!uncomp_flag, lz_enc(adr, cmd.lz_ofs, cmd.len));
-      }
-    } break;
+    case uncomp: ret.template write<b1, d8>(uncomp_flag, input2[adr]); break;
+    case lz: ret.template write<b1, d16>(!uncomp_flag, lz_enc(adr, cmd.lz_ofs, cmd.len)); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  assert((dp.total_cost() + 7) / 8 + header_size == ret.size());
+  assert(dp.total_cost() + header_size * 8 == ret.bit_length());
   assert(adr - pad == input.size());
   return ret.out;
 }

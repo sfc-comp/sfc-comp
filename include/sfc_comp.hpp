@@ -59,6 +59,7 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t>);
 std::vector<uint8_t> keiba_eight_special_2_comp(std::span<const uint8_t>);
 std::vector<uint8_t> keirin_ou_comp(std::span<const uint8_t>);
 std::vector<uint8_t> kiki_kaikai_comp(std::span<const uint8_t>);
+std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t>);
 std::vector<uint8_t> koei_comp(std::span<const uint8_t>);
 std::vector<uint8_t> konami_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> konami_comp_2(std::span<const uint8_t>);

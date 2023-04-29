@@ -5,12 +5,12 @@ namespace sfc_comp {
 std::vector<uint8_t> action_pachio_comp_core(
     std::span<const uint8_t> input, const size_t pad, const bool always_compress) {
   check_size(input.size(), 0, 0x8000);
-  auto ret = lzss(
+  auto ret = lzss<writer_b8_l>(
     input, pad, [pad](std::span<uint8_t> in) {
       for (size_t i = 0; i < pad; ++i) in[i] = 0x20;
     },
     0x1000, 3, 0x12,
-    4, true, true,
+    4, true,
     [&] (size_t, size_t o, size_t l) {
       size_t d = (o - 0x12 - pad) & 0x0fff;
       return (d & 0x00ff) | (l - 3) << 8 | (d & 0x0f00) << 4;

@@ -1,49 +1,25 @@
-#include "algorithm.hpp"
-#include "encode.hpp"
-#include "utility.hpp"
-#include "writer.hpp"
+#include "lzss.hpp"
 
 namespace sfc_comp {
 
 std::vector<uint8_t> kiki_kaikai_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
-
-  enum CompType { uncomp, lz };
-
-  lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
-
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x800);
-    dp.update_lz(i, 3, 0x22, res_lz, Constant<17>(), lz);
-    lz_helper.add_element(i);
-  }
-
-  using namespace data_type;
-  writer_b16 ret; ret.write<d8, d16>(0, 0);
-  size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
-    size_t d = adr - cmd.lz_ofs;
-    switch (cmd.type) {
-    case uncomp: ret.write<b1l, d8>(false, input[adr]); break;
-    case lz: ret.write<b1l, d16>(true, (cmd.len - 3) << 11 | (d - 1)); break;
-    default: assert(0);
+  auto ret = lzss<writer_b16_l>(
+    input, 0, [](std::span<const uint8_t>) {},
+    0x800, 3, 0x22,
+    3, false,
+    [&](size_t i, size_t o, size_t l) {
+      return (l - 3) << 11 | ((i - o) - 1);
     }
-    adr += cmd.len;
-  }
-  ret.out[0] = 0x01;
-  write16(ret.out, 1, input.size());
-  assert((dp.total_cost() + 7) / 8 + 3 == ret.size() ||
-         (dp.total_cost() + 7) / 8 + 4 == ret.size());
-  assert(adr == input.size());
-
+  );
+  ret[0] = 0x01;
+  write16(ret, 1, input.size());
   if (input.size() > 0 && input.size() + 3 <= ret.size()) {
-    ret.out.resize(input.size() + 3);
-    std::copy(input.begin(), input.end(), ret.out.begin() + 3);
+    ret.resize(input.size() + 3);
+    std::copy(input.begin(), input.end(), ret.begin() + 3);
     ret[0] = 0x00;
   }
-  return ret.out;
+  return ret;
 }
 
 namespace {

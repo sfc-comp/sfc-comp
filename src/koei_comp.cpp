@@ -57,19 +57,19 @@ std::vector<uint8_t> koei_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b ret; ret.write<d16>(0);
+  writer_b8_h ret(2);
 
-  size_t curr16 = 0, next16 = 0, bit16_pos = 0;
+  size_t curr16 = 0, next16 = 0, bit = 0;
   auto write_b16 = [&](size_t bitlen, size_t v) {
     while (bitlen > 0) {
       --bitlen;
-      if (!bit16_pos) {
-        bit16_pos = 16;
+      if (!bit) {
+        bit = 16;
         curr16 = next16; next16 = ret.size(); ret.write<d16>(0);
       }
-      --bit16_pos;
+      --bit;
       if ((v >> bitlen) & 1) {
-        ret.out[curr16 + (bit16_pos >> 3)] |= 1 << (bit16_pos & 7);
+        ret.out[curr16 + (bit >> 3)] |= 1 << (bit & 7);
       }
     }
   };
@@ -78,12 +78,12 @@ std::vector<uint8_t> koei_comp(std::span<const uint8_t> input) {
   for (const auto& cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
-      ret.write<b1h, d8>(true, input[adr]); break;
+      ret.write<b1, d8>(true, input[adr]); break;
     }
     case lz: {
       const auto& l = len_tab[cmd.type.li];
       const auto& o = ofs_tab[cmd.type.oi];
-      ret.write<b1h>(false);
+      ret.write<b1>(false);
       write_b16(l.bitlen, l.val + (cmd.len - l.min));
       write_b16(o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min));
     } break;
@@ -91,9 +91,8 @@ std::vector<uint8_t> koei_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  ret.write<b1h>(false);
+  ret.write<b1>(false);
   write_b16(14, 0x007f);
-
   if (ret.size() == next16 + 2) {
     ret.out.resize(ret.size() - 2);
   }

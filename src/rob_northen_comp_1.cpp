@@ -80,9 +80,8 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16 ret;
-  for (size_t i = 0; i < 0x12; ++i) ret.write<d8>(0);
-  ret.write<b8ln_l>({2, 0});
+  writer_b16_l ret(0x12);
+  ret.write<bnl>({2, 0});
 
   size_t chunk = 0;
 
@@ -266,7 +265,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
       } else {
         auto write_cost = [&](const encode::huffman_result& huff) {
           const size_t total_count = max_elem(huff.words) + 1;
-          ret.write<b8ln_l>({5, total_count});
+          ret.write<bnl>({5, total_count});
           for (size_t i = 0; i < total_count; ++i) {
             ptrdiff_t bits = huff.codewords[i].bitlen;
             if (bits <= 0) bits = 0;
@@ -274,14 +273,14 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
               // this would not happen.
               throw std::runtime_error("Failed to compress the given data.");
             }
-            ret.write<b8ln_l>({4, size_t(bits)});
+            ret.write<bnl>({4, size_t(bits)});
           }
         };
         write_cost(best_huff.uncomp_len);
         write_cost(best_huff.lz_ofs);
         write_cost(best_huff.lz_len);
         assert(best_commands.size() % 2 == 1 && (best_commands.size() + 1) / 2 <= command_limit);
-        ret.write<b8ln_l>({16, (best_commands.size() + 1) / 2});
+        ret.write<bnl>({16, (best_commands.size() + 1) / 2});
 
         size_t adr = begin;
         for (const auto& cmd : best_commands) {
@@ -290,11 +289,11 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
             const size_t k = cmd.type.li;
             const auto c = best_huff.uncomp_len.codewords[k];
             assert(c.bitlen >= 0);
-            ret.write<b8ln_h>({size_t(c.bitlen), c.val});
+            ret.write<bnh>({size_t(c.bitlen), c.val});
             if (cmd.len > 0) {
               const size_t min_len = ((k >= 1) ? uncomp_len_table[k - 1] + 1 : uncomp_len_table[0]);
               assert(min_len <= cmd.len && cmd.len <= uncomp_len_table[k]);
-              if (k >= 2) ret.write<b8ln_l>({k - 1, cmd.len - min_len});
+              if (k >= 2) ret.write<bnl>({k - 1, cmd.len - min_len});
               ret.write<d8n>({cmd.len, &input[adr]});
             }
           } break;
@@ -306,13 +305,13 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
             const size_t d = (adr - cmd.lz_ofs);
             const size_t min_ofs = ((o >= 1) ? lz_ofs_table[o - 1] + 1 : lz_ofs_table[0]);
             assert(min_ofs <= d && d <= lz_ofs_table[o]);
-            ret.write<b8ln_h>({size_t(c_ofs.bitlen), c_ofs.val});
-            if (o >= 2) ret.write<b8ln_l>({o - 1, d - min_ofs});
+            ret.write<bnh>({size_t(c_ofs.bitlen), c_ofs.val});
+            if (o >= 2) ret.write<bnl>({o - 1, d - min_ofs});
 
             const size_t min_len = ((k >= 1) ? lz_len_table[k - 1] + 1 : lz_len_table[0]);
             assert(min_len <= cmd.len && cmd.len <= lz_len_table[k]);
-            ret.write<b8ln_h>({size_t(c_len.bitlen), c_len.val});
-            if (k >= 2) ret.write<b8ln_l>({k - 1, cmd.len - min_len});
+            ret.write<bnh>({size_t(c_len.bitlen), c_len.val});
+            if (k >= 2) ret.write<bnl>({k - 1, cmd.len - min_len});
           } break;
           default: assert(0);
           }

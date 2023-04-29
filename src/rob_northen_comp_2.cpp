@@ -47,27 +47,26 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   }
 
   using namespace data_type;
-  writer_b ret;
-  for (size_t i = 0; i < header_size; ++i) ret.write<d8>(0);
-  ret.write<b1h, b1h>(false, false);
+  writer_b8_h ret(header_size);
+  ret.write<b1, b1>(false, false);
 
   size_t adr = 0;
   for (const auto& cmd : dp.commands()) {
     const size_t d = adr - cmd.lz_ofs;
     switch (cmd.type.tag) {
     case uncomp: {
-      ret.write<b1h, d8>(false, input[adr]);
+      ret.write<b1, d8>(false, input[adr]);
     } break;
     case uncompl: {
-      ret.write<b8hn_h, d8n>({9, 0x170 + (cmd.len - 12) / 4}, {cmd.len, &input[adr]});
+      ret.write<bnh, d8n>({9, 0x170 + (cmd.len - 12) / 4}, {cmd.len, &input[adr]});
     } break;
     case lz2: {
-      ret.write<b1h, b8hn_h, d8>(true, {2, 2}, d - 1);
+      ret.write<b1, bnh, d8>(true, {2, 2}, d - 1);
     } break;
     case lz: {
       const size_t li = cmd.type.li;
       const auto& l = len_tab[li];
-      ret.write<b1h>(true);
+      ret.write<b1>(true);
       size_t v = cmd.len - l.min;
       if (li == 1) {
         v <<= 1;
@@ -75,9 +74,9 @@ std::vector<uint8_t> rob_northen_comp_2_core(
         v += (v & ~1);
       }
       if (l.bitlen < 8) {
-        ret.write<b8hn_h>({l.bitlen, v | l.val});
+        ret.write<bnh>({l.bitlen, v | l.val});
       } else {
-        ret.write<b8hn_h>({l.bitlen - 8, l.val});
+        ret.write<bnh>({l.bitlen - 8, l.val});
         ret.write<d8>(cmd.len - (l.min - 1));
       }
 
@@ -92,14 +91,14 @@ std::vector<uint8_t> rob_northen_comp_2_core(
         ov += ov & ~1;
         ov += ov & ~7;
       }
-      ret.write<b8hn_h>({o.bitlen - 8, ov | o.val});
+      ret.write<bnh>({o.bitlen - 8, ov | o.val});
       ret.write<d8>(delta & 0xff);
     } break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  ret.write<b8hn_h, d8, b1h>({4, 0x0f}, 0, false);
+  ret.write<bnh, d8, b1>({4, 0x0f}, 0, false);
   assert(header_size * 8 + 2 + dp.total_cost() + 4 + 8 + 1 == ret.bit_length());
   return ret.out;
 }

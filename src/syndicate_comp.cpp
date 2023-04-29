@@ -110,17 +110,17 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
     }(curr_len_bits);
 
     using namespace data_type;
-    writer_b ret; ret.write<b8ln_l>({32, 0});
-    ret.out[0] = curr_len_bits; // initial len bits
-    ret.out[1] = ofs_bits;
-    ret.out[2] = min_lens[curr_len_bits + ofs_bits] - 1;
-    ret.out[3] = len_bits_limit;
+    writer_b8_l ret(4);
+    ret[0] = curr_len_bits; // initial len bits
+    ret[1] = ofs_bits;
+    ret[2] = min_lens[curr_len_bits + ofs_bits] - 1;
+    ret[3] = len_bits_limit;
 
     size_t adr = 0;
     for (const auto& cmd : commands) {
       switch (cmd.type.tag) {
       case uncomp: {
-        ret.write<b1l, b8ln_l>(true, {8, input[adr]});
+        ret.write<b1, bnl>(true, {8, input[adr]});
       } break;
       case lz1: case lz2: case lz3: {
         const size_t d = adr - cmd.lz_ofs;
@@ -128,7 +128,7 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
         assert(cmd.len >= min_len);
         const size_t mask = len_masks[curr_len_bits];
         const size_t l = cmd.len - min_len;
-        ret.write<b1l, b8ln_l, b8ln_l>(false, {ofs_bits, d}, {curr_len_bits, l});
+        ret.write<b1, bnl, bnl>(false, {ofs_bits, d}, {curr_len_bits, l});
         if (l & mask) {
           if ((l & mask) == mask && curr_len_bits < len_bits_limit) ++curr_len_bits;
         } else if (curr_len_bits > min_len_bits) {
@@ -139,9 +139,9 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
       }
       adr += cmd.len;
     }
-    ret.write<b1l, b8ln_l>(0, {ofs_bits, 0});
+    ret.write<b1, bnl>(0, {ofs_bits, 0});
     assert(adr == input.size());
-    assert((min_cost + (1 + ofs_bits) + 7) / 8 + 4 == ret.size());
+    assert(min_cost + (1 + ofs_bits) + 4 * 8 == ret.bit_length());
     if (best.empty() || ret.size() < best.size()) {
       best = std::move(ret.out);
     }

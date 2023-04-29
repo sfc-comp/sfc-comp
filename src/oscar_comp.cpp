@@ -50,7 +50,7 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b8 ret; ret.write<d16b, d16b>(0, 0);
+  writer_b8_h ret(4);
   writer raw;
   size_t adr = 0, counter = 0;
   for (const auto cmd : dp.commands()) {
@@ -59,22 +59,22 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
     switch (cmd.type.tag) {
     case uncomp: {
       const auto& l = ulen_tab[li];
-      ret.write<b8hn_h, b8hn_h>({4, 0}, {l.bitlen, l.val + (cmd.len - l.min)});
+      ret.write<bnh, bnh>({4, 0}, {l.bitlen, l.val + (cmd.len - l.min)});
       raw.write<d8n>({cmd.len, &input[adr]});
     } break;
     case lz: {
       const auto& l = len_tab[li];
       const auto& o = ofs_tab[cmd.type.oi];
-      ret.write<b8hn_h>({o.bitlen, o.val + (d - o.min)});
-      ret.write<b8hn_h>({l.bitlen, l.val + (cmd.len - l.min)});
+      ret.write<bnh>({o.bitlen, o.val + (d - o.min)});
+      ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
     } break;
     default: assert(0);
     }
     adr += cmd.len;
     ++counter;
   }
-  assert(dp.total_cost() + 32 == raw.size() * 8 + ret.bit_length());
   assert(adr == input.size());
+  assert(dp.total_cost() + 32 == raw.size() * 8 + ret.bit_length());
   write16b(ret.out, 0, ret.size() - 4);
   write16b(ret.out, 2, counter);
   std::copy(raw.out.begin(), raw.out.end(), std::back_inserter(ret.out));
