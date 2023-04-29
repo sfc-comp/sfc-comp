@@ -47,26 +47,12 @@ std::array<T, K> k_most(std::span<const size_t> counts) {
 
 } // namespace utility
 
-inline int popcount32(uint32_t x) {
-#ifdef _MSC_VER
-  return __popcnt(x);
-#elif __GNUC__
-  return __builtin_popcount(x);
-#else
-  x -= (x >> 1) & 0x55555555;
-  x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
-  return (((x + (x >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24;
-#endif
+inline constexpr int popcount32(uint32_t x) {
+  return std::popcount(x);
 }
 
-inline size_t ilog2(size_t n) {
-#ifdef __GLIBCXX__
-  return std::__lg(n);
-#else
-  size_t ret = 0;
-  while (n >= 2) ret++, n >>= 1;
-  return ret;
-#endif
+inline constexpr size_t ilog2(size_t n) {
+  return std::bit_width(n) - 1;
 }
 
 inline uint16_t read16(std::span<const uint8_t> input, size_t i) {
@@ -113,7 +99,7 @@ inline void write32b(std::span<uint8_t> c, size_t i, uint32_t v) {
   c[i + 3] = v >> 0;
 }
 
-inline uint16_t swap16(uint16_t x) {
+inline constexpr uint16_t swap16(uint16_t x) {
   return (x >> 8) | (x << 8);
 }
 

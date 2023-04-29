@@ -329,8 +329,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
             const size_t max_len = min_len + (1 << b) - 1;
             while (l >= min_len) {
               const size_t t = std::min<size_t>(l, max_len);
-              const auto c = enc.bits.codewords[z_code];
-              ret.write<bnh>({size_t(c.bitlen), c.val});
+              ret.write<bnh>(enc.bits.codewords[z_code]);
               if (b > 0) ret.write<bnh>({b, t - min_len});
               l -= t;
             }
@@ -350,8 +349,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
                 // this should not happen.
                 throw std::logic_error("This algorithm cannot compress the given data.");
               }
-              const auto c = enc.bits.codewords[table[i] + 2];
-              ret.write<bnh>({size_t(c.bitlen), c.val});
+              ret.write<bnh>(enc.bits.codewords[table[i] + 2]);
               i += 1;
             }
           }
@@ -366,20 +364,17 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
         for (const auto& cmd : best_commands) {
           switch (cmd.type.tag) {
           case uncomp: {
-            const auto c = best_enc.code.codewords[input[adr]];
-            ret.write<bnh>({size_t(c.bitlen), c.val});
+            ret.write<bnh>(best_enc.code.codewords[input[adr]]);
           } break;
           case lz: {
-            const auto cl = best_enc.code.codewords[cmd.len + lz_huff_offset];
-            ret.write<bnh>({size_t(cl.bitlen), cl.val});
+            ret.write<bnh>(best_enc.code.codewords[cmd.len + lz_huff_offset]);
 
             const size_t o = cmd.type.ofs_no;
             const size_t d = adr - cmd.lz_ofs;
             const size_t min_ofs = (o == 0) ? 1 : lz_ofs_table[o - 1] + 1;
             assert(min_ofs <= d && d <= lz_ofs_table[o]);
 
-            const auto co = best_enc.lz_ofs.codewords[o];
-            ret.write<bnh>({size_t(co.bitlen), co.val});
+            ret.write<bnh>(best_enc.lz_ofs.codewords[o]);
             if (o >= 2) ret.write<bnh>({o - 1, d - min_ofs});
           } break;
           default: assert(0);

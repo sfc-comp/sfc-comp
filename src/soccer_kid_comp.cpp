@@ -45,7 +45,7 @@ std::vector<uint8_t> soccer_kid_comp(std::span<const uint8_t> in) {
     case uncompl: {
       if (cmd.type == uncomp) ret.write<bnh, bnh>({2, 0}, {3, cmd.len - 1});
       else ret.write<bnh, bnh>({3, 7}, {8, cmd.len - 9});
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input[adr + i]});
+      ret.write<b8hn>({cmd.len, &input[adr]});
     } break;
     case lz2: ret.write<bnh, bnh>({2, 1}, {8, d}); break;
     case lz3: ret.write<bnh, bnh>({3, 4}, {9, d}); break;

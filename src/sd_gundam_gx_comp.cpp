@@ -11,14 +11,9 @@ namespace sfc_comp {
 
 namespace {
 
-struct sf_code {
-  ptrdiff_t bitlen;
-  size_t val;
-};
-
 struct shannon_fano {
   std::vector<size_t> words;
-  std::vector<sf_code> codewords;
+  std::vector<encode::codeword> codewords;
   std::vector<size_t> bits;
 };
 
@@ -128,7 +123,7 @@ shannon_fano shannon_fano_encode(std::span<const size_t> counts, bool add_header
   const sf_data best_8 = solve(0, 3, 0, 1, 4 * cumu[0] + 8 * 3);
   const sf_data best = std::move((best_4.cost < best_8.cost) ? best_4 : best_8);
 
-  std::vector<sf_code> codewords(counts.size(), sf_code({-1, 0}));
+  std::vector<encode::codeword> codewords(counts.size(), {-1, 0});
 
   // bucket sort
   std::copy(best.offsets.begin(), best.offsets.end(), temp_offsets);
@@ -289,18 +284,16 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
       for (const auto& cmd : commands) {
         switch (cmd.type) {
         case uncomp: {
-          const auto& c = shannon_fano.codewords[input[adr]];
-          ret.write<bnh>({size_t(c.bitlen), c.val});
+          ret.write<bnh>(shannon_fano.codewords[input[adr]]);
         } break;
         case lzs:
         case lzl: {
-          const auto& c = shannon_fano.codewords[cmd.len + lz_sf_offset];
-          ret.write<bnh>({size_t(c.bitlen), c.val});
-          size_t d = adr - cmd.lz_ofs - 1;
+          ret.write<bnh>(shannon_fano.codewords[cmd.len + lz_sf_offset]);
+          const size_t d = adr - cmd.lz_ofs;
           if (cmd.type == lzs) {
-            ret.write<b1, bnh>(false, {lzs_ofs_bits, d});
+            ret.write<b1, bnh>(false, {lzs_ofs_bits, d - 1});
           } else {
-            ret.write<b1, bnh>(true, {lzl_ofs_bits, d});
+            ret.write<b1, bnh>(true, {lzl_ofs_bits, d - 1});
           }
         } break;
         default: assert(0);

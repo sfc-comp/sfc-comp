@@ -107,7 +107,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
 
     case uncompl: {
       ret.write<b1, d8, bnh, d8, b1>(false, 0, {2, 2}, cmd.len - 0x14, true);
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<d8>(input[adr + i]);
+      ret.write<d8n>({cmd.len, &input[adr]});
     } break;
 
     case lz2: {

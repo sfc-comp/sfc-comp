@@ -50,9 +50,9 @@ std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
         flags.write<bnh>({3, 0});
         ret.write<d8>(cmd.len - 19);
       }
-      const size_t d = adr - cmd.lz_ofs - 1;
-      ret.write<d8>(d >> 4);
-      flags.write<bnh>({4, d & 0x0f});
+      const size_t d = adr - cmd.lz_ofs;
+      ret.write<d8>((d - 1) >> 4);
+      flags.write<bnh>({4, (d - 1) & 0x0f});
     } break;
     default: assert(0);
     }

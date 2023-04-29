@@ -287,9 +287,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           switch (cmd.type.tag) {
           case uncomp: {
             const size_t k = cmd.type.li;
-            const auto c = best_huff.uncomp_len.codewords[k];
-            assert(c.bitlen >= 0);
-            ret.write<bnh>({size_t(c.bitlen), c.val});
+            ret.write<bnh>(best_huff.uncomp_len.codewords[k]);
             if (cmd.len > 0) {
               const size_t min_len = ((k >= 1) ? uncomp_len_table[k - 1] + 1 : uncomp_len_table[0]);
               assert(min_len <= cmd.len && cmd.len <= uncomp_len_table[k]);
@@ -299,18 +297,16 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           } break;
           case lz: {
             const size_t k = cmd.type.li, o = cmd.type.oi;
-            const auto c_len = best_huff.lz_len.codewords[k];
-            const auto c_ofs = best_huff.lz_ofs.codewords[o];
-
             const size_t d = (adr - cmd.lz_ofs);
+
             const size_t min_ofs = ((o >= 1) ? lz_ofs_table[o - 1] + 1 : lz_ofs_table[0]);
             assert(min_ofs <= d && d <= lz_ofs_table[o]);
-            ret.write<bnh>({size_t(c_ofs.bitlen), c_ofs.val});
+            ret.write<bnh>(best_huff.lz_ofs.codewords[o]);
             if (o >= 2) ret.write<bnl>({o - 1, d - min_ofs});
 
             const size_t min_len = ((k >= 1) ? lz_len_table[k - 1] + 1 : lz_len_table[0]);
             assert(min_len <= cmd.len && cmd.len <= lz_len_table[k]);
-            ret.write<bnh>({size_t(c_len.bitlen), c_len.val});
+            ret.write<bnh>(best_huff.lz_len.codewords[k]);
             if (k >= 2) ret.write<bnl>({k - 1, cmd.len - min_len});
           } break;
           default: assert(0);

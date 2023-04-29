@@ -74,7 +74,7 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
           ret.write<b1, bnl>(false, {14, cmd.len - 0x0f});
         }
       }
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnl>({8, input[adr + i]});
+      ret.write<b8ln>({cmd.len, &input[adr]});
     } break;
     case lz: {
       const auto wr = [&ret](const vrange& tp, size_t prefix_bits, size_t v) {

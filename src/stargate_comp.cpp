@@ -89,7 +89,7 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
     } break;
     case uncomp: {
       if (adr > 0) flags.write<b1>(true);
-      for (size_t s = (1 << ilog2(cmd.len)) >> 1; s > 0; s >>= 1) {
+      for (size_t s = std::bit_floor(cmd.len) >> 1; s > 0; s >>= 1) {
         flags.write<b1, b1>(true, (cmd.len & s) != 0);
       }
       flags.write<b1>(false);
@@ -99,7 +99,7 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
       assert(adr > 0);
       flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
       const size_t l = (cmd.len - lz_max_lens[0]) + 1;
-      for (size_t s = (1 << ilog2(l)) >> 1; s > 0; s >>= 1) {
+      for (size_t s = std::bit_floor(l) >> 1; s > 0; s >>= 1) {
         flags.write<b1, b1>(true, (l & s) != 0);
       }
       flags.write<b1>(false);

@@ -30,13 +30,8 @@ std::vector<uint8_t> danzarb_comp(std::span<const uint8_t> input) {
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     switch (cmd.type) {
-    case uncomp: {
-      ret.write<b1, bnh>(false, {3, cmd.len & 7});
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input[adr + i]});
-    } break;
-    case lz: {
-      ret.write<b1, bnh, bnh>(true, {ilog2(2 * adr - 1), cmd.lz_ofs}, {5, cmd.len & 0x1f});
-    } break;
+    case uncomp: ret.write<b1, bnh, b8hn>(false, {3, cmd.len & 7}, {cmd.len, &input[adr]}); break;
+    case lz: ret.write<b1, bnh, bnh>(true, {ilog2(2 * adr - 1), cmd.lz_ofs}, {5, cmd.len & 0x1f}); break;
     default: assert(0);
     }
     adr += cmd.len;

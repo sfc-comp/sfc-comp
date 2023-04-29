@@ -62,7 +62,7 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
     switch (cmd.type.tag) {
     case uncomp: {
       flags.write<b1>(false);
-      for (size_t s = (1 << ilog2(cmd.len)) >> 1; s > 0; s >>= 1) {
+      for (size_t s = std::bit_floor(cmd.len) >> 1; s > 0; s >>= 1) {
         flags.write<b1, b1>(false, (cmd.len & s) != 0);
       }
       flags.write<b1>(true);
@@ -73,7 +73,7 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
       flags.write<b1>(true);
       flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
       const size_t l = (cmd.len - lz_max_lens[0]) + 1;
-      for (size_t s = (1 << ilog2(l)) >> 1; s > 0; s >>= 1) {
+      for (size_t s = std::bit_floor(l) >> 1; s > 0; s >>= 1) {
         flags.write<b1, b1>(false, (l & s) != 0);
       }
       flags.write<b1>(true);

@@ -16,19 +16,12 @@ std::vector<uint8_t> gokinjo_boukentai_comp_1(std::span<const uint8_t> input, co
   using namespace data_type;
   writer_b8_h ret(header_size);
 
-  for (size_t i = 0; i < huff.words.size(); ++i) {
-    const auto w = huff.words[i];
+  for (const auto w : huff.words) {
     const auto c = huff.codewords[w];
-    for (ptrdiff_t b = 0; b < c.bitlen; ++b) {
-      if ((c.val >> b) & 1) break;
-      ret.write<b1>(true);
-    }
-    ret.write<b1, bnh>(false, {8, w});
+    const size_t r_zero = std::min<size_t>(std::countr_zero(c.val), c.bitlen);
+    ret.write<bnh, b1, bnh>({r_zero, (size_t(1) << r_zero) - 1}, false, {8, w});
   }
-  for (const auto v : input) {
-    const auto c = huff.codewords[v];
-    ret.write<bnh>({size_t(c.bitlen), c.val});
-  }
+  for (const auto v : input) ret.write<bnh>(huff.codewords[v]);
   return ret.out;
 }
 

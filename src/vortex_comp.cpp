@@ -110,7 +110,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
         if (li == 0) ret.write<bnh>({3, cmd.len});                          // ___
         else if (li == 1) ret.write<bnh, bnh>({4, 0x0e}, {4, cmd.len - 7}); // 1110____
         else ret.write<bnh, bnh>({4, 0x0f}, {10, cmd.len});                 // 1111__________
-        for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input[adr + i]});
+        ret.write<b8hn>({cmd.len, &input[adr]});
       } break;
 
       case lz2: {

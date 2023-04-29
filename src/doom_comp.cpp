@@ -5,19 +5,19 @@
 
 namespace sfc_comp {
 
-std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> input) {
-  check_size(input.size(), 1, 0xffff);
+std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> in) {
+  check_size(in.size(), 1, 0xffff);
   enum CompType {
     uncomp, uncompl,
     lz2, lz3, lz4, lz5
   };
 
-  std::vector<uint8_t> input2(input.rbegin(), input.rend());
+  std::vector<uint8_t> input(in.rbegin(), in.rend());
 
-  lz_helper lz_helper(input2);
-  sssp_solver<CompType> dp(input2.size());
+  lz_helper lz_helper(input);
+  sssp_solver<CompType> dp(input.size());
 
-  for (size_t i = 0; i < input2.size(); ++i) {
+  for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 8, Linear<8, 5>(), uncomp);
     dp.update(i, 9, 0x108, Linear<8, 11>(), uncompl);
 
@@ -41,57 +41,43 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> input) {
   for (const auto cmd : dp.commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
-    case uncomp: {
-      ret.write<bnh>({5, cmd.len - 1});
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input2[adr + i]});
-    } break;
-    case lz2: {
-      ret.write<bnh, bnh>({2, 1}, {8, d});
-    } break;
-    case lz3: {
-      ret.write<bnh, bnh>({3, 4}, {9, d});
-    } break;
-    case lz4: {
-      ret.write<bnh, bnh>({3, 5}, {10, d});
-    } break;
-    case lz5: {
-      ret.write<bnh, bnh, bnh>({3, 6}, {8, cmd.len - 5}, {12, d});
-    } break;
-    case uncompl: {
-      ret.write<bnh>({11, 0x700 | (cmd.len - 9)});
-      for (size_t i = 0; i < cmd.len; ++i) ret.write<bnh>({8, input2[adr + i]});
-    } break;
+    case uncomp: ret.write<bnh, b8hn>({5, cmd.len - 1}, {cmd.len, &input[adr]}); break;
+    case lz2: ret.write<bnh, bnh>({2, 1}, {8, d}); break;
+    case lz3: ret.write<bnh, bnh>({3, 4}, {9, d}); break;
+    case lz4: ret.write<bnh, bnh>({3, 5}, {10, d}); break;
+    case lz5: ret.write<bnh, bnh, bnh>({3, 6}, {8, cmd.len - 5}, {12, d}); break;
+    case uncompl: ret.write<bnh, b8hn>({11, 0x700 | (cmd.len - 9)}, {cmd.len, &input[adr]}); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  write16(ret.out, 0, input.size());
+  write16(ret.out, 0, in.size());
   write16(ret.out, 2, ret.size() - 2);
   write16(ret.out, 4, 0x8000 | (read16(ret.out, 4) >> 1));
   std::reverse(ret.out.begin() + 4, ret.out.end());
   for (size_t i = 4; i < ret.size(); i += 2) std::swap(ret.out[i], ret.out[i + 1]);
-  assert(adr == input.size());
+  assert(adr == in.size());
   assert(dp.total_cost() + 1 + 4 * 8 == ret.bit_length());
   return ret.out;
 }
 
-std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> input) {
-  check_size(input.size(), 0, 0xffff);
+std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> in) {
+  check_size(in.size(), 0, 0xffff);
   enum CompType {
     uncomp,
     rle, lzs, lz
   };
 
-  std::vector<uint8_t> input2(input.rbegin(), input.rend());
+  std::vector<uint8_t> input(in.rbegin(), in.rend());
 
-  lz_helper lz_helper(input2);
-  sssp_solver<CompType> dp(input2.size());
+  lz_helper lz_helper(input);
+  sssp_solver<CompType> dp(input.size());
 
   size_t rlen = 0;
   encode::lz_data curr_lz = {0, 0};
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 0x40, Linear<1, 1>(), uncomp);
-    rlen = encode::run_length(input2, i, rlen);
+    rlen = encode::run_length(input, i, rlen);
     dp.update(i, 3, 0x21, rlen, Constant<2>(), rle);
 
     auto res_lzs = lz_helper.find_best(i, 0x20);
@@ -110,13 +96,13 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> input) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
     case rle: {
-      ret.write<d8, d8>(cmd.len - 2, input2[adr]);
+      ret.write<d8, d8>(cmd.len - 2, input[adr]);
     } break;
     case lzs: {
       ret.write<d8>(0x20 | (d - 1));
     } break;
     case uncomp: {
-      ret.write<d8, d8n>(0x40 | (cmd.len - 1), {cmd.len, &input[input.size() - adr - cmd.len]});
+      ret.write<d8, d8n>(0x40 | (cmd.len - 1), {cmd.len, &in[in.size() - adr - cmd.len]});
     } break;
     case lz: {
       assert(d >= 2);
@@ -126,9 +112,9 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  write16(ret.out, 0, input.size());
+  write16(ret.out, 0, in.size());
   ret.write<d8>(0x00);
-  assert(adr == input.size());
+  assert(adr == in.size());
   assert(dp.total_cost() + 4 == ret.size());
   return ret.out;
 }

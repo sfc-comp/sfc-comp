@@ -192,18 +192,16 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
       for (const auto& cmd : commands) {
         switch (cmd.type) {
         case uncomp: {
-          const auto& c = huff.codewords[input[adr]];
-          ret.write<bnh>({size_t(c.bitlen), c.val});
+          ret.write<bnh>(huff.codewords[input[adr]]);
         } break;
         case lzs:
         case lzl: {
-          const auto& c = huff.codewords[cmd.len + lz_huff_offset];
-          ret.write<bnh>({size_t(c.bitlen), c.val});
-          size_t d = adr - cmd.lz_ofs - 1;
+          ret.write<bnh>(huff.codewords[cmd.len + lz_huff_offset]);
+          const size_t d = adr - cmd.lz_ofs;
           if (cmd.type == lzs) {
-            ret.write<b1, bnh>(false, {7, d});
+            ret.write<b1, bnh>(false, {7, d - 1});
           } else {
-            ret.write<b1, bnh>(true, {10, d});
+            ret.write<b1, bnh>(true, {10, d - 1});
           }
         } break;
         default: assert(0);

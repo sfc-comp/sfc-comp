@@ -8,6 +8,8 @@
 
 #include <span>
 
+#include "encode.hpp"
+
 namespace sfc_comp {
 
 namespace data_type {
@@ -48,31 +50,23 @@ struct d32b {
 };
 
 struct d8n {
-  d8n(size_t n, const uint8_t* ptr) : n(n), ptr(ptr) {}
-  size_t n;
-  const uint8_t* ptr;
-};
-
-struct d8n_l {
-  d8n_l(size_t n, const uint8_t* ptr) : n(n), ptr(ptr) {}
-  size_t n;
-  const uint8_t* ptr;
-};
-
-struct d8n_h {
-  d8n_h(size_t n, const uint8_t* ptr) : n(n), ptr(ptr) {}
-  size_t n;
-  const uint8_t* ptr;
+  d8n(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
+  d8n(std::span<const uint8_t> v) : v(v) {}
+  std::span<const uint8_t> v;
 };
 
 struct d8n_lb {
   d8n_lb(size_t n, const uint8_t* ptr) : n(n), ptr(ptr) {}
+  uint8_t operator [](size_t i) const { return ptr[i] & 0x0f; }
+  uint8_t back() const {return (*this)[n - 1]; }
   size_t n;
   const uint8_t* ptr;
 };
 
 struct d8n_hb {
   d8n_hb(size_t n, const uint8_t* ptr) : n(n), ptr(ptr) {}
+  uint8_t operator [](size_t i) const { return ptr[i] >> 4; }
+  uint8_t back() const {return (*this)[n - 1]; }
   size_t n;
   const uint8_t* ptr;
 };
@@ -87,77 +81,16 @@ struct d8nk {
 
 } // namespace data_type
 
-struct writer {
+class writer {
+ public:
   writer(size_t s = 0) : out(s) {}
 
   template <typename Head, typename... Args>
   void write(const Head& h, const Args&... args) {
-    write(h);
+    write_(h);
     if constexpr (sizeof... (args) >= 1) {
       write(args...);
     }
-  }
-
-  void write(const data_type::d8& d) {
-    out.push_back(d.x);
-  }
-
-  void write(const data_type::d16& d) {
-    out.push_back(d.x);
-    out.push_back(d.x >> 8);
-  }
-
-  void write(const data_type::d16b& d) {
-    out.push_back(d.x >> 8);
-    out.push_back(d.x);
-  }
-
-  void write(const data_type::d24& d) {
-    out.push_back(d.x);
-    out.push_back(d.x >> 8);
-    out.push_back(d.x >> 16);
-  }
-
-  void write(const data_type::d24b& d) {
-    out.push_back(d.x >> 16);
-    out.push_back(d.x >> 8);
-    out.push_back(d.x);
-  }
-
-  void write(const data_type::d32& d) {
-    out.push_back(d.x);
-    out.push_back(d.x >> 8);
-    out.push_back(d.x >> 16);
-    out.push_back(d.x >> 24);
-  }
-
-  void write(const data_type::d32b& d) {
-    out.push_back(d.x >> 24);
-    out.push_back(d.x >> 16);
-    out.push_back(d.x >> 8);
-    out.push_back(d.x);
-  }
-
-  void write(const data_type::d8n& d) {
-    for (size_t i = 0; i < d.n; ++i) out.push_back(d.ptr[i]);
-  }
-
-  void write(const data_type::d8nk& d) {
-    for (size_t i = 0; i < d.n; i += d.delta) out.push_back(d.ptr[i]);
-  }
-
-  void write(const data_type::d8n_lb& d) {
-    for (size_t i = 0; i < (d.n & ~1); i += 2) {
-      out.push_back((d.ptr[i] << 4) | (d.ptr[i + 1] & 0x0f));
-    }
-    if (d.n & 1) out.push_back(d.ptr[d.n - 1] << 4);
-  }
-
-  void write(const data_type::d8n_hb& d) {
-    for (size_t i = 0; i < (d.n & ~1); i += 2) {
-      out.push_back((d.ptr[i] & 0xf0) | (d.ptr[i + 1] >> 4));
-    }
-    if (d.n & 1) out.push_back(d.ptr[d.n - 1] & 0xf0);
   }
 
   uint8_t& operator [] (size_t i) {
@@ -168,6 +101,70 @@ struct writer {
     return out.size();
   }
 
+ protected:
+  void write_(const data_type::d8& d) {
+    out.push_back(d.x);
+  }
+
+  void write_(const data_type::d16& d) {
+    out.push_back(d.x);
+    out.push_back(d.x >> 8);
+  }
+
+  void write_(const data_type::d16b& d) {
+    out.push_back(d.x >> 8);
+    out.push_back(d.x);
+  }
+
+  void write_(const data_type::d24& d) {
+    out.push_back(d.x);
+    out.push_back(d.x >> 8);
+    out.push_back(d.x >> 16);
+  }
+
+  void write_(const data_type::d24b& d) {
+    out.push_back(d.x >> 16);
+    out.push_back(d.x >> 8);
+    out.push_back(d.x);
+  }
+
+  void write_(const data_type::d32& d) {
+    out.push_back(d.x);
+    out.push_back(d.x >> 8);
+    out.push_back(d.x >> 16);
+    out.push_back(d.x >> 24);
+  }
+
+  void write_(const data_type::d32b& d) {
+    out.push_back(d.x >> 24);
+    out.push_back(d.x >> 16);
+    out.push_back(d.x >> 8);
+    out.push_back(d.x);
+  }
+
+  void write_(const data_type::d8n& d) {
+    for (const auto v : d.v) out.push_back(v);
+  }
+
+  void write_(const data_type::d8nk& d) {
+    for (size_t i = 0; i < d.n; i += d.delta) out.push_back(d.ptr[i]);
+  }
+
+  void write_(const data_type::d8n_lb& d) {
+    for (size_t i = 0; i + 1 < d.n; i += 2) {
+      out.push_back(d[i] << 4 | d[i + 1]);
+    }
+    if (d.n & 1) out.push_back(d.back() << 4);
+  }
+
+  void write_(const data_type::d8n_hb& d) {
+    for (size_t i = 0; i + 1 < d.n; i += 2) {
+      out.push_back(d[i] << 4 | d[i + 1]);
+    }
+    if (d.n & 1) out.push_back(d.back() << 4);
+  }
+
+ public:
   std::vector<uint8_t> out;
 };
 
@@ -188,30 +185,50 @@ struct b4 {
 };
 
 struct bnh {
-  bnh(size_t n, size_t x) : n(n), x(x) {}
-  size_t n, x;
+  bnh(size_t n, size_t x) : n(n), v(x) {}
+  bnh(const encode::codeword& c) : n(c.bitlen), v(c.val) {}
+  size_t n, v;
 };
 
 struct bnl {
-  bnl(size_t n, size_t x) : n(n), x(x) {}
-  size_t n, x;
+  bnl(size_t n, size_t x) : n(n), v(x) {}
+  bnl(const encode::codeword& c) : n(c.bitlen), v(c.val) {}
+  size_t n, v;
+};
+
+struct b8hn {
+  b8hn(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
+  b8hn(std::span<const uint8_t> v) : v(v) {}
+  std::span<const uint8_t> v;
+};
+
+struct b8ln {
+  b8ln(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
+  b8ln(std::span<const uint8_t> v) : v(v) {}
+  std::span<const uint8_t> v;
 };
 
 } // namespace data_type
 
 template <bool LowNibbleFirst>
-struct writer_b4 : public writer {
+class writer_b4 : public writer {
+ public:
   writer_b4(size_t s = 0) : writer(s), nibble(0), nibble_pos(-1) {}
 
   template <typename Head, typename... Args>
   void write(const Head& h, const Args&... args) {
-    write(h);
+    write_(h);
     if constexpr (sizeof... (args) >= 1) {
       write(args...);
     }
   }
 
-  void write(const data_type::none&) {
+  size_t nibble_size() const {
+    return size() * 2 - nibble;
+  }
+
+ private:
+  void write_(const data_type::none&) {
     if (nibble == 0) {
       nibble_pos = out.size();
       out.push_back(0);
@@ -219,7 +236,7 @@ struct writer_b4 : public writer {
     }
   }
 
-  void write(const data_type::b4& d) {
+  void write_(const data_type::b4& d) {
     write<data_type::none>({});
     --nibble;
     if constexpr (LowNibbleFirst) {
@@ -229,24 +246,21 @@ struct writer_b4 : public writer {
     }
   }
 
-  void write(const data_type::d8& d) {
+  void write_(const data_type::d8& d) {
     write<data_type::b4>(d.x >> 4);
     write<data_type::b4>(d.x & 0x0f);
   }
 
-  void write(const data_type::d16b& d) {
+  void write_(const data_type::d16b& d) {
     write<data_type::d8>(d.x >> 8);
     write<data_type::d8>(d.x >> 0);
   }
 
-  void write(const data_type::d8n& d) {
-    for (size_t i = 0; i < d.n; ++i) write<data_type::d8>(d.ptr[i]);
+  void write_(const data_type::d8n& d) {
+    for (const auto v : d.v) write<data_type::d8>(v);
   }
 
-  size_t nibble_size() const {
-    return size() * 2 - nibble;
-  }
-
+ public:
   size_t nibble;
   size_t nibble_pos;
 };
@@ -255,49 +269,17 @@ using writer_b4_l = writer_b4<true>;
 using writer_b4_h = writer_b4<false>;
 
 template <size_t BlockBytes, bool LSBFirst, bool PreRead>
-struct bitstream_writer : public writer {
+class bitstream_writer : public writer {
+ public:
   static constexpr size_t block_bitsize = BlockBytes * 8;
-  using writer::write;
 
   bitstream_writer(size_t s = 0) : writer(s), bit(0), bits_pos(-1) {}
 
   template <typename Head, typename... Args>
   void write(const Head& h, const Args&... args) {
-    write(h);
+    write_(h);
     if constexpr (sizeof... (args) >= 1) {
       write(args...);
-    }
-  }
-
-  void write(const data_type::b1& d) {
-    if constexpr (!PreRead) write(data_type::none());
-    --bit;
-    if constexpr (LSBFirst) {
-      const size_t b = block_bitsize - 1 - bit;
-      if (d.b) out[bits_pos + b / 8] |= 1 << (b % 8);
-    } else {
-      if (d.b) out[bits_pos + bit / 8] |= 1 << (bit % 8);
-    }
-    if constexpr (PreRead) write(data_type::none());
-  }
-
-  void write(const data_type::none&) {
-    if (bit == 0) {
-      bits_pos = out.size();
-      for (size_t i = 0; i < BlockBytes; ++i) out.push_back(0);
-      bit = block_bitsize;
-    }
-  }
-
-  void write(const data_type::bnl& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1>((d.x >> i) & 1);
-    }
-  }
-
-  void write(const data_type::bnh& d) {
-    for (size_t i = 0; i < d.n; ++i) {
-      write<data_type::b1>((d.x >> (d.n - 1 - i)) & 1);
     }
   }
 
@@ -312,6 +294,50 @@ struct bitstream_writer : public writer {
     return size() * 8 - bit;
   }
 
+ private:
+  using writer::write_;
+
+  void write_(const data_type::b1& d) {
+    if constexpr (!PreRead) write(data_type::none());
+    --bit;
+    if constexpr (LSBFirst) {
+      const size_t b = block_bitsize - 1 - bit;
+      if (d.b) out[bits_pos + b / 8] |= 1 << (b % 8);
+    } else {
+      if (d.b) out[bits_pos + bit / 8] |= 1 << (bit % 8);
+    }
+    if constexpr (PreRead) write(data_type::none());
+  }
+
+  void write_(const data_type::none&) {
+    if (bit == 0) {
+      bits_pos = out.size();
+      for (size_t i = 0; i < BlockBytes; ++i) out.push_back(0);
+      bit = block_bitsize;
+    }
+  }
+
+  void write_(const data_type::bnl& d) {
+    for (size_t i = 0; i < d.n; ++i) {
+      write<data_type::b1>((d.v >> i) & 1);
+    }
+  }
+
+  void write_(const data_type::bnh& d) {
+    for (size_t i = 0; i < d.n; ++i) {
+      write<data_type::b1>((d.v >> (d.n - 1 - i)) & 1);
+    }
+  }
+
+  void write_(const data_type::b8ln& d) {
+    for (const auto v : d.v) write<data_type::bnl>({8, v});
+  }
+
+  void write_(const data_type::b8hn& d) {
+    for (const auto v : d.v) write<data_type::bnh>({8, v});
+  }
+
+ public:
   size_t bit;
   size_t bits_pos;
 };

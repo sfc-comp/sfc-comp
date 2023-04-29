@@ -168,12 +168,11 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
           ret.write<b4, b4>(9, d - 2);
         } break;
         case lzs: {
-          assert(d >= cmd.len);
-          assert(d - cmd.len < 0x100);
+          assert(cmd.len <= d && d < 0x100 + cmd.len);
           ret.write<b4, b4, d8>(10, cmd.len - 3, d - cmd.len);
         } break;
         case lzm: {
-          assert(d >= 0x103 && d < 0x1103);
+          assert(0x103 <= d && d < 0x1103);
           ret.write<b4, b4, b4, d8>(11, cmd.len - 3, (d - 0x103) >> 8, d - 0x103);
         } break;
         case lzl: {
