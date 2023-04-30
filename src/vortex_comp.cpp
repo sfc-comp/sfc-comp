@@ -20,18 +20,18 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
   };
 
   static constexpr std::array<vrange, 4> len_tab = {
-                                        // 00 (len == 2)
-                                        // 01 (len == 3)
-    vrange( 4,   4,  2, 0x0002),        // 10
-    vrange( 5,   6,  4, 0x000c),        // 110_
-    vrange( 7,  10,  6, 0x0038),        // 1110__
-    vrange(11, 255, 12, 0x0f00 + 0x0b)  // 1111________
+                       // 00 (len == 2)
+                       // 01 (len == 3)
+    vrange( 4,   4,  2, 0b10),
+    vrange( 5,   6,  4, 0b110'0),
+    vrange( 7,  10,  6, 0b1110'00),
+    vrange(11, 255, 12, 0b1111'00000000 + 0x0b)
   };
 
   static constexpr std::array<vrange, 3> ofs_tab = {
-    vrange(0x0001, 0x00ff, 10, 0x0300 + 0x0001), // 11________
-    vrange(0x0100, 0x0fff, 14, 0x2000 + 0x0100), // 10____________
-    vrange(0x1000, 0xffff, 17, 0x0000 + 0x1000)  // 0________________
+    vrange(0x0001, 0x00ff, 10, 0b11'00000000 + 0x0001),
+    vrange(0x0100, 0x0fff, 14, 0b10'000000000000 + 0x0100),
+    vrange(0x1000, 0xffff, 17, 0b0'0000000000000000 + 0x1000)
   };
 
   std::vector<uint8_t> input(in.rbegin(), in.rend());
@@ -107,9 +107,9 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
 
       case uncomp: {
         const size_t li = cmd.type.li;
-        if (li == 0) ret.write<bnh>({3, cmd.len});                          // ___
-        else if (li == 1) ret.write<bnh, bnh>({4, 0x0e}, {4, cmd.len - 7}); // 1110____
-        else ret.write<bnh, bnh>({4, 0x0f}, {10, cmd.len});                 // 1111__________
+        if (li == 0) ret.write<bnh>({3, cmd.len});
+        else if (li == 1) ret.write<bnh, bnh>({4, 0b1110}, {4, cmd.len - 7});
+        else ret.write<bnh, bnh>({4, 0b1111}, {10, cmd.len});
         ret.write<b8hn>({cmd.len, &input[adr]});
       } break;
 
@@ -119,8 +119,8 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
 
       case lz3: {
         ret.write<bnh>({2, 1});
-        if (d < 0x100) ret.write<bnh, bnh>({1, 1}, {8, d}); // 1________
-        else ret.write<bnh, bnh>({1, 0}, {14, d});          // 0______________
+        if (d < 0x100) ret.write<bnh, bnh>({1, 0b1}, {8, d});
+        else ret.write<bnh, bnh>({1, 0b0}, {14, d});
       } break;
 
       case lz: {

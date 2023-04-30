@@ -147,6 +147,7 @@ set(comp_ext_list
   addams_family_comp comp
   assault_suits_valken_comp comp
   bahamut_lagoon_comp comp
+  battle_cross_comp comp
   battletech_comp comp
   bokujou_monogatari_comp comp
   bounty_sword_comp comp

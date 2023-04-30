@@ -19,21 +19,21 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   };
 
   static constexpr std::array<vrange, 5> ofs_tab = {
-    vrange(0x0001, 0x0200, 10, 0x0001), // _1
-    vrange(0x0201, 0x0400, 11, 0x0001), // _01
-    vrange(0x0401, 0x0800, 13, 0x0001), // _00_1
-    vrange(0x0801, 0x1000, 15, 0x0001), // _00_0_1
-    vrange(0x1001, 0x2000, 16, 0x0000), // _00_0_0_
+    vrange(0x0001, 0x0200, 10, 0b01),       // _1
+    vrange(0x0201, 0x0400, 11, 0b001),      // _01
+    vrange(0x0401, 0x0800, 13, 0b00001),    // _00_1
+    vrange(0x0801, 0x1000, 15, 0b0000001),  // _00_0_1
+    vrange(0x1001, 0x2000, 16, 0b00000000), // _00_0_0_
   };
 
   static constexpr std::array<vrange, 7> len_tab = {
-    vrange(0x0003, 0x0003,  1, 0x0001), // 1
-    vrange(0x0004, 0x0004,  2, 0x0001), // 01
-    vrange(0x0005, 0x0005,  3, 0x0001), // 001
-    vrange(0x0006, 0x0006,  4, 0x0001), // 0001
-    vrange(0x0007, 0x0008,  6, 0x0002), // 00001_
-    vrange(0x0009, 0x0010,  9, 0x0000), // 000000___
-    vrange(0x0011, 0x0110, 14, 0x0001)  // 000001<1B>
+    vrange(0x0003, 0x0003,  1, 0b1),          // 1
+    vrange(0x0004, 0x0004,  2, 0b01),         // 01
+    vrange(0x0005, 0x0005,  3, 0b001),        // 001
+    vrange(0x0006, 0x0006,  4, 0b0001),       // 0001
+    vrange(0x0007, 0x0008,  6, 0b00001'0),    // 00001_
+    vrange(0x0009, 0x0010,  9, 0b000000'000), // 000000___
+    vrange(0x0011, 0x0110, 14, 0b000001)      // 000001<1B>
   };
 
   lz_helper lz_helper(input);

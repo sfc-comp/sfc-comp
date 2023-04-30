@@ -18,6 +18,7 @@ std::vector<uint8_t> action_pachio_comp(std::span<const uint8_t>);
 std::vector<uint8_t> addams_family_comp(std::span<const uint8_t>);
 std::vector<uint8_t> assault_suits_valken_comp(std::span<const uint8_t>);
 std::vector<uint8_t> bahamut_lagoon_comp(std::span<const uint8_t>);
+std::vector<uint8_t> battle_cross_comp(std::span<const uint8_t>);
 std::vector<uint8_t> battletech_comp(std::span<const uint8_t>);
 std::vector<uint8_t> brandish_comp(std::span<const uint8_t>);
 std::vector<uint8_t> bokujou_monogatari_comp(std::span<const uint8_t>);

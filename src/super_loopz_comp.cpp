@@ -20,17 +20,17 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   };
 
   static constexpr std::array<vrange, 3> ofs_tab = {
-    vrange(0x0001, 0x001f,  7, 0x0041), // 10_____
-    vrange(0x0020, 0x021f, 10, 0x0000), // 0_________
-    vrange(0x0220, 0x421f, 16, 0xc000), // 11______________
+    vrange(0x0001, 0x001f,  7, 0b10'00000 + 1),
+    vrange(0x0020, 0x021f, 10, 0b0'000000000),
+    vrange(0x0220, 0x421f, 16, 0b11'00000000000000),
   };
   static constexpr std::array<size_t, ofs_tab.size()> ofs_prefix = {2, 1, 2};
 
   static constexpr std::array<vrange, 4> len_tab = {
-    vrange(0x0002, 0x0003,  2, 0x0000), // 0_
-    vrange(0x0004, 0x0007,  4, 0x0008), // 10__
-    vrange(0x0008, 0x0016,  7, 0x0060), // 110____
-    vrange(0x0017, 0x0116, 11, 0x0700), // 111________
+    vrange(0x0002, 0x0003,  2, 0b0'0),
+    vrange(0x0004, 0x0007,  4, 0b10'00),
+    vrange(0x0008, 0x0016,  7, 0b110'0000),
+    vrange(0x0017, 0x0116, 11, 0b111'00000000),
   };
   static constexpr std::array<size_t, len_tab.size()> len_prefix = {1, 2, 3, 3};
 

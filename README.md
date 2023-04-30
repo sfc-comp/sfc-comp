@@ -69,6 +69,7 @@ $ ./bench <input-dir>
 | addams_family_comp                       |    4 | 5B8D | 33A0 | 7BB2 | 2293 | 34ED | 64AD | 2199 |  1E8A9 | 0.0635 | FDCD9EB3 |
 | assault_suits_valken_comp                |    5 | 5F6E | 375D | 727E | 25DE | 385B | 569E | 19F5 |  1D81A | 0.0712 | 4D05E986 |
 | bahamut_lagoon_comp                      |    9 | 5F6E | 3760 | 7FCE | 25DE | 385E | 6A1B | 19F8 |  1F8F4 | 0.0504 | 3CEAFFE1 |
+| battle_cross_comp                        |    9 | 558B | 2F6A | 77AC | 1FA4 | 3055 | 5FEE | 1855 |  1C4E6 | 0.1211 | 56CA15C3 |
 | battletech_comp                          |    9 | 5949 | 31DD | 75D5 | 208B | 347E | 62AC | 1668 |  1CF21 | 0.1681 | 9014D4AF |
 | bokujou_monogatari_comp                  |    7 | 61AC | 36E3 | 8190 | 24ED | 3A01 | 6CA1 | 1C39 |  201EE | 0.0561 | 4D976D4D |
 | bounty_sword_comp                        |   17 | 5D71 | 3B53 | 7200 | 3877 | 3C03 | 5D49 | 2CBE |  2095C | 0.0054 | EEEA45E8 |

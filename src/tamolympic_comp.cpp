@@ -20,23 +20,23 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   };
 
   const std::array<vrange, 7> len_tab = {
-    vrange(0x0003, 0x0003,  1, 0x0001), // 1
-    vrange(0x0004, 0x0004,  2, 0x0001), // 01
-    vrange(0x0005, 0x0005,  3, 0x0001), // 001
-    vrange(0x0006, 0x0006,  4, 0x0001), // 0001
-    vrange(0x0007, 0x0008,  6, 0x0002), // 00001_
-    vrange(0x0009, 0x0010,  9, 0x0000), // 000000___
-    vrange(0x0011, 0x0110, 14, 0x0001)  // 000001[]
+    vrange(0x0003, 0x0003,  1, 0b1),
+    vrange(0x0004, 0x0004,  2, 0b01),
+    vrange(0x0005, 0x0005,  3, 0b001),
+    vrange(0x0006, 0x0006,  4, 0b0001),
+    vrange(0x0007, 0x0008,  6, 0b00001'0),
+    vrange(0x0009, 0x0010,  9, 0b000000'000),
+    vrange(0x0011, 0x0110, 14, 0b000001)         // 000001[]
   };
 
   const std::array<vrange, 7> ofs_tab = {
-    vrange(0x0001, 0x00ff,  9, 0x0000), // []0
-    vrange(0x0100, 0x02ff, 11, 0x0004), // []1_0
-    vrange(0x0300, 0x06ff, 13, 0x0014), // []1_1_0
-    vrange(0x0700, 0x0eff, 15, 0x0054), // []1_1_1_0
-    vrange(0x0f00, 0x1eff, 17, 0x0154), // []1_1_1_1_0
-    vrange(0x1f00, 0x3eff, 19, 0x0554), // []1_1_1_1_1_0
-    vrange(0x3f00, 0xbeff, 21, 0x1554)  // []1_1_1_1_1_1__
+    vrange(0x0001, 0x00ff,  9, 0b0),             // []0
+    vrange(0x0100, 0x02ff, 11, 0b100),           // []1_0
+    vrange(0x0300, 0x06ff, 13, 0b10100),         // []1_1_0
+    vrange(0x0700, 0x0eff, 15, 0b1010100),       // []1_1_1_0
+    vrange(0x0f00, 0x1eff, 17, 0b101010100),     // []1_1_1_1_0
+    vrange(0x1f00, 0x3eff, 19, 0b10101010100),   // []1_1_1_1_1_0
+    vrange(0x3f00, 0xbeff, 21, 0b1010101010100)  // []1_1_1_1_1_1__
   };
 
   lz_helper lz_helper(input);

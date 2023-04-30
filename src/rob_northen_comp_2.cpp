@@ -24,10 +24,10 @@ std::vector<uint8_t> rob_northen_comp_2_core(
 
   static constexpr std::array<vrange, 4> len_tab = {
                                         // 10 (len == 2)
-    vrange(0x0003, 0x0003,  3, 0x0006), // 110
-    vrange(0x0004, 0x0005,  3, 0x0000), // 0_0
-    vrange(0x0006, 0x0008,  4, 0x0002), // 0_1_
-    vrange(0x0009, 0x00ff, 11, 0x0007)  // 111[]
+    vrange(0x0003, 0x0003,  3, 0b110),  // 110
+    vrange(0x0004, 0x0005,  3, 0b000),  // 0_0
+    vrange(0x0006, 0x0008,  4, 0b0010), // 0_1_
+    vrange(0x0009, 0x00ff, 11, 0b111)   // 111[]
   };
 
   lz_helper lz_helper(input);
@@ -104,11 +104,11 @@ std::vector<uint8_t> rob_northen_comp_2_core(
 }
 
 static constexpr std::array<vrange, 5> rnc2_offsets = {
-  vrange(0x0001, 0x0100,  9, 0x0000), // 0[]
-  vrange(0x0101, 0x0200, 11, 0x0006), // 110[]
-  vrange(0x0201, 0x0400, 12, 0x0008), // 100_[]
-  vrange(0x0401, 0x0800, 13, 0x0015), // 1_1_1[]
-  vrange(0x0801, 0x1000, 14, 0x0028), // 1_1_0_[]
+  vrange(0x0001, 0x0100,  9, 0b0),      // 0[]
+  vrange(0x0101, 0x0200, 11, 0b110),    // 110[]
+  vrange(0x0201, 0x0400, 12, 0b1000),   // 100_[]
+  vrange(0x0401, 0x0800, 13, 0b10101),  // 1_1_1[]
+  vrange(0x0801, 0x1000, 14, 0b101000), // 1_1_0_[]
 };
 
 } // namespace

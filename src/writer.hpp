@@ -227,7 +227,7 @@ class writer_b4 : public writer {
     return size() * 2 - nibble;
   }
 
- private:
+ protected:
   void write_(const data_type::none&) {
     if (nibble == 0) {
       nibble_pos = out.size();
@@ -294,7 +294,7 @@ class bitstream_writer : public writer {
     return size() * 8 - bit;
   }
 
- private:
+ protected:
   using writer::write_;
 
   void write_(const data_type::b1& d) {

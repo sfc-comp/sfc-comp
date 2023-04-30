@@ -27,6 +27,7 @@ void benchmark(const std::string& path) {
     P(addams_family_comp),
     P(assault_suits_valken_comp),
     P(bahamut_lagoon_comp),
+    P(battle_cross_comp),
     P(battletech_comp),
     P(bokujou_monogatari_comp),
     P(bounty_sword_comp),
