@@ -198,7 +198,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         std::vector<size_t> lz_ofs;
       } counter;
 
-      const std::vector<command_type> commands = [&] {
+      const auto commands = [&] {
         std::vector<command_type> ret;
         size_t adr = index;
         size_t ty = 1;

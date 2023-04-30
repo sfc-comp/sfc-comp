@@ -19,28 +19,26 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
     size_t oi, li;
   };
 
-  static constexpr std::array<vrange, 4> len_tab = {
+  static constexpr auto len_tab = std::to_array<vrange>({
                        // 00 (len == 2)
                        // 01 (len == 3)
     vrange( 4,   4,  2, 0b10),
     vrange( 5,   6,  4, 0b110'0),
     vrange( 7,  10,  6, 0b1110'00),
     vrange(11, 255, 12, 0b1111'00000000 + 0x0b)
-  };
+  });
 
-  static constexpr std::array<vrange, 3> ofs_tab = {
+  static constexpr auto ofs_tab = std::to_array<vrange>({
     vrange(0x0001, 0x00ff, 10, 0b11'00000000 + 0x0001),
     vrange(0x0100, 0x0fff, 14, 0b10'000000000000 + 0x0100),
     vrange(0x1000, 0xffff, 17, 0b0'0000000000000000 + 0x1000)
-  };
+  });
 
   std::vector<uint8_t> input(in.rbegin(), in.rend());
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<CompType> dp0(input.size()), dp1(input.size());
-
-  dp1[0].cost = dp1.infinite_cost;
+  sssp_solver<CompType> dp0(input.size()), dp1(input.size(), -1);
 
   for (size_t i = 0; i <= input.size(); ++i) {
     const auto cost0 = dp0[i].cost;

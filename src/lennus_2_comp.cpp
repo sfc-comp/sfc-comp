@@ -11,10 +11,10 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
   static constexpr size_t pad = 0x800;
 
   // cf. $CB:8045
-  static constexpr std::array<size_t, 16> lz_lens= {
+  static constexpr auto lz_lens= std::to_array<size_t>({
     3, 4, 5, 6, 7, 8, 9, 10,
     11, 12, 14, 16, 24, 32, 64, 128
-  };
+  });
 
   std::array<size_t, lz_lens.back() + 1> len_code = {};
   for (size_t i = 0; i < lz_lens.size(); ++i) len_code[lz_lens[i]] = i;
@@ -26,9 +26,8 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
 
   for (size_t comp_type = 0x5059; comp_type <= 0x5159; comp_type += 0x100) {
     lz_helper lz_helper(input);
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<CompType> dp(input.size(), pad);
     for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
-    for (size_t i = 0; i < pad; ++i) dp[i + 1].cost = 0;
 
     for (size_t i = pad; i < input.size(); ++i) {
       dp.update(i, 1, 1, Constant<9>(), uncomp);

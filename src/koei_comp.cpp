@@ -25,7 +25,7 @@ void koei_comp_core(std::span<const uint8_t> input,
     size_t oi, li;
   };
 
-  const std::array<vrange, 9> ofs_tab = {
+  static constexpr auto ofs_tab = std::to_array<vrange>({
     vrange(0x0001, 0x0004,  6, 0b0000'00),
     vrange(0x0005, 0x0008,  7, 0b00010'00),
     vrange(0x0009, 0x0020,  8, 0b00011'000),
@@ -35,9 +35,9 @@ void koei_comp_core(std::span<const uint8_t> input,
     vrange(0x0201, 0x0400, 12, 0b101'000000000),
     vrange(0x0401, 0x0800, 13, 0b110'0000000000),
     vrange(0x0801, 0x1000, 14, 0b111'00000000000)
-  };
+  });
 
-  const std::array<vrange, 8> len_tab = {
+  static constexpr auto len_tab = std::to_array<vrange>({
     vrange(0x0002, 0x0002,  1, 0b1),
     vrange(0x0003, 0x0004,  3, 0b01'0),
     vrange(0x0005, 0x0008,  5, 0b001'00),
@@ -46,7 +46,7 @@ void koei_comp_core(std::span<const uint8_t> input,
     vrange(0x0021, 0x0040, 11, 0b000001'00000),
     vrange(0x0041, 0x0080, 13, 0b0000001'000000),
     vrange(0x0081, 0x00ff, 14, 0b0000000'0000000)
-  };
+  });
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());

@@ -13,9 +13,9 @@ std::vector<uint8_t> wizardry5_comp_1(std::span<const uint8_t> input) {
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());
 
-  static constexpr std::array<size_t, 15> lz_len_table = {
+  static constexpr auto lz_len_table = std::to_array<size_t>({
     2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 32, 64, 128, 256
-  };
+  });
   std::vector<uint8_t> code(257);
   for (size_t i = 0; i < lz_len_table.size(); ++i) code[lz_len_table[i]] = i + 1;
 

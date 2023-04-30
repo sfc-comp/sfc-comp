@@ -83,8 +83,6 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
   size_t best_cost = std::numeric_limits<size_t>::max();
   size_t best_conf = 0;
 
-  static constexpr std::array<size_t, 3> lens = {1, 2, 4};
-
   const auto update = [&](const perm_type& perm) -> bool {
     size_t bitplane_flags[4] = {};
     for (size_t i = 0; i < perm.size(); ++i) {
@@ -93,7 +91,8 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
       }
     }
     const bool iden = (perm == iden_perm);
-    static constexpr std::array<size_t, 3> numers = {36, 34, 33};
+    static constexpr auto lens = std::to_array<size_t>({1, 2, 4});
+    static constexpr auto numers = std::to_array<size_t>({36, 34, 33});
     bool updated = false;
     for (size_t zi = 0; zi < 3; ++zi) {
       size_t z = 0;
@@ -115,9 +114,9 @@ std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uin
       return freq[i] > freq[j];
     });
     // [TODO] might not be useful
-    static constexpr std::array<size_t, 16> pos = {
+    static constexpr auto pos = perm_type({
       0, 1, 2, 4, 8, 3, 5, 6, 9, 10, 12, 7, 11, 13, 14, 15
-    };
+    });
     perm_type ret;
     for (size_t i = 0; i < ret.size(); ++i) ret[pos[i]] = perm[i];
     return ret;

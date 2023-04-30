@@ -18,15 +18,15 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
     size_t oi, li;
   };
 
-  static constexpr std::array<vrange, 5> ofs_tab = {
+  static constexpr auto ofs_tab = std::to_array<vrange>({
     vrange(0x0001, 0x0200, 10, 0b01),       // _1
     vrange(0x0201, 0x0400, 11, 0b001),      // _01
     vrange(0x0401, 0x0800, 13, 0b00001),    // _00_1
     vrange(0x0801, 0x1000, 15, 0b0000001),  // _00_0_1
     vrange(0x1001, 0x2000, 16, 0b00000000), // _00_0_0_
-  };
+  });
 
-  static constexpr std::array<vrange, 7> len_tab = {
+  static constexpr auto len_tab = std::to_array<vrange>({
     vrange(0x0003, 0x0003,  1, 0b1),          // 1
     vrange(0x0004, 0x0004,  2, 0b01),         // 01
     vrange(0x0005, 0x0005,  3, 0b001),        // 001
@@ -34,7 +34,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
     vrange(0x0007, 0x0008,  6, 0b00001'0),    // 00001_
     vrange(0x0009, 0x0010,  9, 0b000000'000), // 000000___
     vrange(0x0011, 0x0110, 14, 0b000001)      // 000001<1B>
-  };
+  });
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());
@@ -126,9 +126,9 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   assert(adr == input.size());
   assert(dp.total_cost() + 11 + 0x11 * 8 == ret.bit_length());
 
-  std::array<uint8_t, 9> header = {
+  static constexpr auto header = std::to_array<uint8_t>({
     0xb4, 0x4c, 0xcd, 0x21, 0x9d, 0x89, 0x64, 0x6c, 0x7a
-  };
+  });
   std::copy(header.begin(), header.end(), ret.out.begin());
   ret[9] = ((ret.size() - 0x11) >> 16) & 0x0f;
   write16(ret.out, 10, ret.size() - 0x11);

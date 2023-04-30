@@ -12,24 +12,23 @@ std::vector<uint8_t> super_bomberman_5_comp(std::span<const uint8_t> in) {
 
   enum CompType { uncomp, inc, lz };
 
-  static constexpr std::array<size_t, 6> dists = {1, 2, 4, 16, 32, 64};
+  static constexpr auto dists = std::to_array<size_t>({1, 2, 4, 16, 32, 64});
   static constexpr size_t pad = 0x100;
 
   std::vector<uint8_t> input(in.size() + pad);
   std::copy(in.begin(), in.end(), input.begin() + pad);
 
-  sssp_solver<CompType> dp(input.size());
-  for (size_t i = 0; i < pad; ++i) dp[i + 1].cost = 0;
+  sssp_solver<CompType> dp(input.size(), pad);
 
   size_t rleni = encode::run_length(input, pad - 1, 0, 1);
-  std::array<size_t, 6> res_lz = {};
+  std::array<size_t, dists.size()> res_lz = {};
   for (size_t i = pad; i < input.size(); ++i) {
     dp.update(i, 1, 0x20, Linear<1, 1>(), uncomp);
 
     if (rleni >= 2) dp.update(i, 1, 0x20, rleni - 1, Constant<1>(), inc);
     rleni = encode::run_length(input, i, rleni, 1);
 
-    for (size_t k = 0; k < 6; ++k) {
+    for (size_t k = 0; k < dists.size(); ++k) {
       res_lz[k] = encode::lz_dist(input, i, dists[k], res_lz[k]);
       dp.update_lz(i, 1, 0x20, {ptrdiff_t(k + 2), res_lz[k]}, Constant<1>(), lz);
     }

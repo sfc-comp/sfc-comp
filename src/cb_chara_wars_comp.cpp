@@ -20,7 +20,9 @@ std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t> input) {
   }
 
   // [TODO] Find a clever way.
-  const std::vector<size_t> lz_min_len_table = {2, 3, 4, 5, 6, 7, 8, 16, 32, 64, 127};
+  static constexpr auto lz_min_len_table = std::to_array<size_t>({
+    2, 3, 4, 5, 6, 7, 8, 16, 32, 64, 127
+  });
 
   std::vector<uint8_t> best;
   for (size_t long_len = 0; long_len < 2; long_len++) {

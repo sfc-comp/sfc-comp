@@ -21,10 +21,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
     size_t oi, li;
   };
 
-  lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
-
-  static constexpr std::array<vrange, 10> uncomp_len_tab = {
+  static constexpr auto uncomp_len_tab = std::to_array<vrange>({
     vrange(0x0001, 0x0003,  3, 0b000),
     vrange(0x0004, 0x0004,  4, 0b0110),
     vrange(0x0005, 0x0005,  6, 0b011101),
@@ -35,9 +32,9 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
     vrange(0x0024, 0x0043, 16, 0b01111111101'00000),
     vrange(0x0044, 0x0083, 18, 0b011111111101'000000),
     vrange(0x0084, 0x0100, 20, 0b0111111111101'0000000),
-  };
+  });
 
-  static constexpr std::array<vrange, 10> lz_len_tab = {
+  static constexpr auto lz_len_tab = std::to_array<vrange>({
     vrange(0x0002, 0x0008,  3, 0b000),
     vrange(0x0009, 0x0009,  4, 0b1110),
     vrange(0x000a, 0x000a,  6, 0b111101),
@@ -48,14 +45,16 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
     vrange(0x0029, 0x0048, 16, 0b11111111101'00000),
     vrange(0x0049, 0x0088, 18, 0b111111111101'000000),
     vrange(0x0089, 0x00ff, 20, 0b1111111111101'0000000),
-  };
+  });
 
-  static constexpr std::array<vrange, 1> ofs_tab = {
+  static constexpr auto ofs_tab = std::to_array<vrange>({
     vrange(0x0001, 0x0fff, 0, 0) // dynamically changed
-  };
+  });
+
+  lz_helper lz_helper(input);
+  sssp_solver<CompType> dp(input.size(), 2);
 
   for (size_t i = 0; i < 2; ++i) lz_helper.add_element(i);
-  for (size_t i = 0; i < 2; ++i) dp[i + 1].cost = 0;
 
   for (size_t i = 2; i < input.size(); ++i) {
     const auto cost = dp[i].cost;

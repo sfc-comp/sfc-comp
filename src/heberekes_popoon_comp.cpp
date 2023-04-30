@@ -37,7 +37,7 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
   longest_lz_len = std::min(longest_lz_len, max_len);
   longest_lz_dist = std::min(longest_lz_dist, max_dist);
 
-  const std::vector<size_t> coeffs = {256, 64, 32, 16, 8, 4, 2, 0};
+  static constexpr auto coeffs = std::to_array<size_t>({256, 64, 32, 16, 8, 4, 2, 0});
 
   std::vector<dist_len> pre_sizes;
   for (size_t i = 0; i < coeffs.size(); ++i) {
@@ -96,7 +96,7 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
           dist_count[dists[cmd.val()]] += 1;
         }
       }
-      const auto update = [](std::vector<size_t>& vals, size_t nsize, const std::vector<size_t>& counts) {
+      const auto update = [](std::vector<size_t>& vals, size_t nsize, std::span<const size_t> counts) {
         std::partial_sort(vals.begin(), vals.begin() + nsize, vals.end(),
                           [&](size_t a, size_t b) { return counts[a] > counts[b]; });
         vals.resize(nsize);

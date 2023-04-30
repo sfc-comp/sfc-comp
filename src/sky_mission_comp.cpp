@@ -22,19 +22,19 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
     size_t oi, li;
   };
 
-  static constexpr std::array<vrange, 4> ofs_tab = {
+  static constexpr auto ofs_tab = std::to_array<vrange>({
     vrange(0x0001, 0x0020,  7, 0b00'00000),
     vrange(0x0021, 0x00a0,  9, 0b01'0000000),
     vrange(0x00a1, 0x02a0, 11, 0b10'000000000),
     vrange(0x02a1, 0x06a0, 12, 0b11'0000000000)
-  };
+  });
 
-  static constexpr std::array<vrange, 4> len_tab = {
+  static constexpr auto len_tab = std::to_array<vrange>({
     vrange(0x0002, 0x0002,   1, 0b0),                    // 0
     vrange(0x0003, 0x0005,   3, 0b1'00 + 1),             // 1__
     vrange(0x0006, 0x0014,   7, 0b100'0000 + 1),         // 100____
     vrange(0x0015, 0x0113,  15, 0b1000000'00000000 + 1)  // 1000000________
-  };
+  });
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());

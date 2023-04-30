@@ -168,7 +168,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
         std::vector<size_t> lz_ofs;
       } counter(config.lz_ofs_bits);
 
-      const std::vector<command_type> commands = [&] {
+      const auto commands = [&]{
         std::vector<command_type> ret;
         size_t adr = index;
         while (adr > begin) {

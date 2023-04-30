@@ -36,8 +36,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<CompType> dp0(input.size()), dp1(input.size());
-  dp1.reset(0);
+  sssp_solver<CompType> dp0(input.size()), dp1(input.size(), -1);
 
   for (size_t i = 0; i < input.size(); ++i) {
     const auto cost0 = dp0[i].cost;
@@ -67,7 +66,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   writer_b8_h flags;
 
   using command_type = decltype(dp0)::vertex_type;
-  const std::vector<command_type> commands = [&] {
+  const auto commands = [&] {
     std::vector<command_type> ret;
     size_t adr = input.size();
     size_t curr = (dp0.total_cost() < dp1.total_cost()) ? 0 : 1;

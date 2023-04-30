@@ -23,20 +23,21 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
 
   struct pre_rle : public std::vector<uint8_t> {
     pre_rle() : thres(0) {}
-    pre_rle(const std::vector<uint8_t>& in, size_t thres) : std::vector<uint8_t>(in), thres(thres) {}
+    pre_rle(std::span<const uint8_t> in, size_t thres)
+      : std::vector<uint8_t>(in.begin(), in.end()), thres(thres) {}
     bool oversized() const { return thres > 2 || size() > tab_max_size; }
     bool valid() const { return !oversized() && ((thres == 2 && size() >= 2) || (thres == size())); }
     size_t thres;
   };
 
-  const auto pre_20 = pre_rle({
+  const auto pre_20 = pre_rle(std::to_array<uint8_t>({
     0x00, 0xff,
     0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x01, 0x18
-  }, 2);
-  const auto pre_40 = pre_rle({
+  }), 2);
+  const auto pre_40 = pre_rle(std::to_array<uint8_t>({
     0x9e, 0xc9,
     0x92, 0xcb, 0xb9, 0xb0, 0xbc, 0xaf, 0xbb, 0xa8, 0xa6, 0xa4, 0xb5, 0xad, 0xb7, 0xca, 0xa9
-  }, 2);
+  }), 2);
 
   lz_helper lz_helper(input);
   std::vector<encode::lz_data> lzs_memo(input.size()), lz_memo(input.size());
@@ -148,7 +149,7 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
     }
   };
 
-  const std::vector<size_t> coeffs = {128, 64, 32, 16, 8, 0};
+  static constexpr auto coeffs = std::to_array<size_t>({128, 64, 32, 16, 8, 0});
   std::vector<uint8_t> best;
 
   thres_size last_limit = {pre.thres, pre.size()};

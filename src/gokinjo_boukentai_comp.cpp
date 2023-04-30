@@ -100,7 +100,7 @@ std::vector<uint8_t> gokinjo_boukentai_comp_3(std::span<const uint8_t> input, co
   return ret.out;
 }
 
-constexpr std::array<uint8_t, 6> file_header = {0x59, 0x41, 0x4D, 0x43, 0x52, 0x4D}; // YAMCRM
+constexpr auto file_header = std::to_array<uint8_t>({0x59, 0x41, 0x4D, 0x43, 0x52, 0x4D}); // YAMCRM
 
 } // namespace
 

@@ -18,9 +18,9 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     Tag tag;
     size_t li;
   };
-  static constexpr std::array<size_t, 8> rle_max_lens = {
+  static constexpr auto rle_max_lens = std::to_array<size_t>({
     2, 4, 8, 16, 32, 64, 128, 255
-  };
+  });
 
   sssp_solver<CompType> dp(input.size());
 

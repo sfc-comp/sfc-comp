@@ -19,7 +19,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     size_t oi, li;
   };
 
-  const std::array<vrange, 7> len_tab = {
+  const auto len_tab = std::to_array<vrange>({
     vrange(0x0003, 0x0003,  1, 0b1),
     vrange(0x0004, 0x0004,  2, 0b01),
     vrange(0x0005, 0x0005,  3, 0b001),
@@ -27,9 +27,9 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     vrange(0x0007, 0x0008,  6, 0b00001'0),
     vrange(0x0009, 0x0010,  9, 0b000000'000),
     vrange(0x0011, 0x0110, 14, 0b000001)         // 000001[]
-  };
+  });
 
-  const std::array<vrange, 7> ofs_tab = {
+  const auto ofs_tab = std::to_array<vrange>({
     vrange(0x0001, 0x00ff,  9, 0b0),             // []0
     vrange(0x0100, 0x02ff, 11, 0b100),           // []1_0
     vrange(0x0300, 0x06ff, 13, 0b10100),         // []1_1_0
@@ -37,7 +37,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     vrange(0x0f00, 0x1eff, 17, 0b101010100),     // []1_1_1_1_0
     vrange(0x1f00, 0x3eff, 19, 0b10101010100),   // []1_1_1_1_1_0
     vrange(0x3f00, 0xbeff, 21, 0b1010101010100)  // []1_1_1_1_1_1__
-  };
+  });
 
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());

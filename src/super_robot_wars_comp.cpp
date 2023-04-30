@@ -14,12 +14,11 @@ std::vector<uint8_t> super_robot_wars_comp_core(
   };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<CompType> dp(input.size(), skip_size);
 
   if (skip_size > input.size()) {
     throw std::logic_error("skip_size exceeds the input size.");
   }
-  for (size_t i = 0; i < skip_size; ++i) dp[i + 1].cost = 0;
   for (size_t i = 0; i < skip_size; ++i) lz_helper.add_element(i);
 
   for (size_t i = skip_size; i < input.size(); ++i) {

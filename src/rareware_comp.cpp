@@ -40,9 +40,10 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
     prev8, prev16
   };
 
-  const size_t num_candidates[] = {
-    1024, 512, 256, 128, 96, 64, 48, 32, 25, 20, 17};
-  const size_t phase_total = sizeof(num_candidates) / sizeof(*num_candidates);
+  static constexpr auto num_candidates = std::to_array<size_t>({
+    1024, 512, 256, 128, 96, 64, 48, 32, 25, 20, 17
+  });
+  const size_t phase_total = num_candidates.size();
 
   std::vector<encode::lz_data> lzl_memo(input.size());
   std::vector<encode::lz_data> lzm_memo(input.size());

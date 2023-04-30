@@ -396,9 +396,9 @@ class sssp_solver {
   using vertex_type = Vertex;
 
   sssp_solver() {}
-  sssp_solver(const size_t n) : vertex(n + 1) {
-    reset(1, n + 1);
-    (*this)[0].cost = cost_type(0);
+  sssp_solver(const size_t n, size_t begin = 0) : vertex(n + 1) {
+    reset(0, n + 1);
+    if (begin <= n) (*this)[begin].cost = cost_type(0);
   }
 
   void reset(size_t i) {

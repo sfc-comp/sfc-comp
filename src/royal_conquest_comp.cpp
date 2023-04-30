@@ -97,8 +97,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
 
   size_t penalty = ilog2(2 * input.size() + 1) + 9;
   while (true) {
-    sssp_solver<CompType> dp(input.size());
-    for (size_t i = 0; i < pad; ++i) dp[i + 1].cost = 0;
+    sssp_solver<CompType> dp(input.size(), pad);
 
     for (size_t i = pad; i < input.size(); ++i) {
       dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, {uncomp, 0});

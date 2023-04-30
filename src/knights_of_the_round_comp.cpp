@@ -24,7 +24,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
   }
 
   static constexpr size_t phase_total = 5;
-  static constexpr std::array<size_t, phase_total> cand_size = {32, 16, 12, 8, 4};
+  static constexpr auto cand_size = std::to_array<size_t, phase_total>({32, 16, 12, 8, 4});
   static constexpr size_t dummy_bits = 6;
   static_assert(phase_total == 5 && cand_size.back() == 4);
 
@@ -34,8 +34,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
 
   for (size_t phase = 0; phase < phase_total; ++phase) {
     uncomp_helper u_helper(input.size(), 8);
-    sssp_solver<CompType> dp(input.size());
-    for (size_t i = 0; i < pad; ++i) dp[i + 1].cost = 0;
+    sssp_solver<CompType> dp(input.size(), pad);
 
     std::vector<ptrdiff_t> ind(256, -1);
     for (size_t k = 0; k < cands.size(); ++k) ind[cands[k]] = k;

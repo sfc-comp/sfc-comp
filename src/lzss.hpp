@@ -23,11 +23,9 @@ std::vector<uint8_t> lzss(
   init(input);
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<CompType> dp(input.size(), pad);
 
   for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
-  for (size_t i = 0; i < pad; ++i) dp[i + 1].cost = 0;
-
   for (size_t i = pad; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
     auto res_lz = lz_helper.find_best(i, lz_max_ofs);

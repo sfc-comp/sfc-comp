@@ -17,10 +17,9 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool us
   std::copy(in.begin(), in.end(), input.begin() + pad);
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<CompType> dp(input.size(), pad);
 
   for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
-  for (size_t i = 0; i < pad; ++i) dp[i + 1].cost = 0;
 
   size_t rlen = 0;
   for (size_t i = pad; i < input.size(); ++i) {
