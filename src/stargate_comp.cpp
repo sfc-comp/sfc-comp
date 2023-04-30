@@ -5,7 +5,9 @@
 
 namespace sfc_comp {
 
-std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
+namespace {
+
+std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bool terminator_b, const bool uncomp_b) {
   check_size(input.size(), 1, 0xffff);
   enum Tag {
     none, uncomp, lz
@@ -85,14 +87,14 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
   for (const auto cmd : commands) {
     switch (cmd.type.tag) {
     case none: {
-      flags.write<b1>(false);
+      flags.write<b1>(!uncomp_b);
     } break;
     case uncomp: {
-      if (adr > 0) flags.write<b1>(true);
+      if (adr > 0) flags.write<b1>(uncomp_b);
       for (size_t s = std::bit_floor(cmd.len) >> 1; s > 0; s >>= 1) {
-        flags.write<b1, b1>(true, (cmd.len & s) != 0);
+        flags.write<b1, b1>(!terminator_b, (cmd.len & s) != 0);
       }
-      flags.write<b1>(false);
+      flags.write<b1>(terminator_b);
       ret.write<d8n>({cmd.len, &input[adr]});
     } break;
     case lz: {
@@ -100,9 +102,9 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
       flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
       const size_t l = (cmd.len - lz_max_lens[0]) + 1;
       for (size_t s = std::bit_floor(l) >> 1; s > 0; s >>= 1) {
-        flags.write<b1, b1>(true, (l & s) != 0);
+        flags.write<b1, b1>(!terminator_b, (l & s) != 0);
       }
-      flags.write<b1>(false);
+      flags.write<b1>(terminator_b);
     } break;
     default: assert(0);
     }
@@ -115,6 +117,16 @@ std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
   std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
 
   return ret.out;
+}
+
+} // namespace
+
+std::vector<uint8_t> shadowrun_comp(std::span<const uint8_t> input) {
+  return stargate_comp_core(input, true, false);
+}
+
+std::vector<uint8_t> stargate_comp(std::span<const uint8_t> input) {
+  return stargate_comp_core(input, false, true);
 }
 
 } // namespace sfc_comp

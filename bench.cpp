@@ -111,6 +111,7 @@ void benchmark(const std::string& path) {
     P(sky_mission_comp),
     P(slap_stick_comp),
     P(slayers_comp),
+    P(smash_tv_comp),
     P(smurfs_comp),
     P(soccer_kid_comp),
     P(sotsugyou_bangai_hen_comp),

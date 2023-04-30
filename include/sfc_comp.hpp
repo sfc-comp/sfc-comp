@@ -102,6 +102,7 @@ std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t>);
 std::vector<uint8_t> sky_mission_comp(std::span<const uint8_t>);
 std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t>);
 std::vector<uint8_t> slayers_comp(std::span<const uint8_t>);
+std::vector<uint8_t> smash_tv_comp(std::span<const uint8_t>);
 std::vector<uint8_t> smurfs_comp(std::span<const uint8_t>);
 std::vector<uint8_t> soccer_kid_comp(std::span<const uint8_t>);
 std::vector<uint8_t> sotsugyou_bangai_hen_comp(std::span<const uint8_t>);

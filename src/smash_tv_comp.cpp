@@ -7,7 +7,7 @@ namespace sfc_comp {
 
 namespace {
 
-std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
+std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
   enum Tag {
     uncomp, lz
@@ -93,12 +93,12 @@ std::vector<uint8_t> shadowrun_comp_core(std::span<const uint8_t> input) {
 
 } // namespace
 
-std::vector<uint8_t> shadowrun_comp(std::span<const uint8_t> input) {
-  return shadowrun_comp_core(input);
+std::vector<uint8_t> smash_tv_comp(std::span<const uint8_t> input) {
+  return smash_tv_comp_core(input);
 }
 
 std::vector<uint8_t> battletech_comp(std::span<const uint8_t> input) {
-  auto ret = shadowrun_comp_core(input);
+  auto ret = smash_tv_comp_core(input);
   ret.resize(ret.size() + 2);
   for (size_t i = ret.size() - 1; i >= 4; --i) ret[i] = ret[i - 2];
   write16(ret, 2, ret.size() - 4);

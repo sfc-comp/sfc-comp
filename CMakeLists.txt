@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.2.1
+  VERSION 0.2.2
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -103,10 +103,10 @@ set(sfc_comp_src
   src/sd_gundam_gx_comp.cpp
   src/sd_gundam_x_comp.cpp
   src/seiken_densetsu_2_comp.cpp
-  src/shadowrun_comp.cpp
   src/shin_megami_tensei2_comp.cpp
   src/sky_mission_comp.cpp
   src/slap_stick_comp.cpp
+  src/smash_tv_comp.cpp
   src/soccer_kid_comp.cpp
   src/soul_and_sword_comp.cpp
   src/stargate_comp.cpp
@@ -231,6 +231,7 @@ set(comp_ext_list
   sky_mission_comp comp
   slap_stick_comp comp
   slayers_comp comp
+  smash_tv_comp comp
   smurfs_comp comp
   sotsugyou_bangai_hen_comp comp
   soccer_kid_comp comp
