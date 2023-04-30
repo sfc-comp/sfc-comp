@@ -143,12 +143,13 @@ $ ./bench <input-dir>
 | sd_gundam_gx_comp                        |    A | 536E | 2D62 | 7066 | 1EAA | 2FFE | 5C22 | 15F2 |  1B1FC | 0.1648 | 71518908 |
 | sd_gundam_x_comp                         |    6 | 5412 | 2E3E | 70DA | 2142 | 31C1 | 5C84 | 1C55 |  1BF0C | 0.1576 | 3E503482 |
 | seiken_densetsu_2_comp                   |    7 | 5FCD | 39DC | 77F0 | 2980 | 380F | 65FF | 1EA6 |  1F7D4 | 0.3739 | 3F9A5966 |
-| shadowrun_comp                           |    7 | 5947 | 31DB | 75D3 | 2089 | 347C | 62AA | 1666 |  1CF11 | 0.1608 | 6EE99D2E |
+| shadowrun_comp                           |    7 | 5841 | 3137 | 750F | 2031 | 33E3 | 61A5 | 1632 |  1CA79 | 0.1591 | D4043BA3 |
 | shima_kousaku_comp                       |    A | 500E | 2B2D | 6EF9 | 1CD6 | 2E4C | 5A53 | 12A1 |  1A254 | 0.2138 | BA0850E7 |
 | shin_megami_tensei2_comp                 |    4 | 5D47 | 371E | 76EC | 28D3 | 3942 | 64F0 | 1DB1 |  1F00B | 0.0874 | 82F04553 |
 | sky_mission_comp                         |    5 | 5767 | 30AE | 7953 | 2166 | 31CC | 61D8 | 1DD0 |  1D447 | 0.0944 | A87A5246 |
 | slap_stick_comp                          |    5 | 622E | 39B5 | 81B7 | 2CA8 | 389F | 6C17 | 2BDE |  21ADB | 0.0694 | F4566128 |
 | slayers_comp                             |    C | 52BE | 2D4A | 7048 | 1DD2 | 2FC4 | 5C40 | 146E |  1AEA0 | 0.1548 | EA68BBA3 |
+| smash_tv_comp                            |    7 | 5947 | 31DB | 75D3 | 2089 | 347C | 62AA | 1666 |  1CF11 | 0.1527 | 6EE99D2E |
 | smurfs_comp                              |    7 | 5BA6 | 33AC | 7762 | 2290 | 343D | 645F | 2172 |  1E359 | 0.1100 | 6DFBEF98 |
 | soccer_kid_comp                          |    F | 5C96 | 34F3 | 7797 | 22FB | 3590 | 654A | 1AB0 |  1E1B4 | 0.1636 | 1B8BEC7B |
 | sotsugyou_bangai_hen_comp                |    3 | 622C | 39B3 | 81B5 | 2CA6 | 389D | 6C15 | 2BDC |  21ACB | 0.0705 | 4F745F24 |
