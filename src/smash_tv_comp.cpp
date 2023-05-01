@@ -21,13 +21,17 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
     size_t li;
   };
 
-  static constexpr size_t uncomp_max_len_bits = 15;
-  static constexpr size_t lz_max_len_bits = 15;
+  static constexpr size_t uncomp_len_max_bits = 15;
+  static constexpr size_t lz_len_max_bits = 15;
+  static constexpr size_t lz_min_len = 3;
 
-  std::array<size_t, uncomp_max_len_bits + 1> uncomp_max_lens = {};
-  for (size_t i = 0; i < uncomp_max_lens.size(); ++i) uncomp_max_lens[i] = (2 << i) - 1;
-  std::array<size_t, lz_max_len_bits + 1> lz_max_lens;
-  for (size_t i = 0; i < lz_max_lens.size(); ++i) lz_max_lens[i] = (2 << i) + 1;
+  static constexpr auto uncomp_lens = create_array<vrange, uncomp_len_max_bits + 1>([](size_t i) {
+    return vrange(1 << i, (2 << i) - 1, 2 * i + 1, 0);
+  });
+  static constexpr auto lz_lens = create_array<vrange, lz_len_max_bits + 1>([](size_t i) {
+    return vrange((1 << i) + lz_min_len - 1, (2 << i) + lz_min_len - 2, 2 * i + 1, 0);
+  });
+  const std::array<vrange, 1> lz_offsets = {vrange(1, input.size(), 0, 0)};
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
@@ -36,20 +40,15 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   for (size_t i = 0; i < input.size(); ++i) {
     const auto cost = dp[i].cost;
     u_helper.update(i, cost);
-    for (size_t k = 0; k < uncomp_max_lens.size(); ++k) {
-      const size_t min_len = (k == 0) ? uncomp_max_lens[0] : uncomp_max_lens[k - 1] + 1;
-      const size_t max_len = uncomp_max_lens[k];
-      const auto res_u = u_helper.find(i + 1, min_len, max_len);
-      dp.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + (1 + 2 * k));
+    for (size_t k = 0; k < uncomp_lens.size(); ++k) {
+      const auto res_u = u_helper.find(i + 1, uncomp_lens[k].min, uncomp_lens[k].max);
+      dp.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + uncomp_lens[k].bitlen);
     }
-    const auto res_lz = lz_helper.find_best(i, input.size());
-    for (size_t k = 0; k < lz_max_lens.size(); ++k) {
-      const size_t min_len = (k == 0) ? lz_max_lens[0] : lz_max_lens[k - 1] + 1;
-      if (res_lz.len < min_len) break;
-      const size_t max_len = lz_max_lens[k];
-      const size_t base_cost = cost + 1 + (1 + 2 * k) + ilog2(2 * i + 1);
-      dp.update_lz(i, min_len, max_len, res_lz, Constant<0>(), {lz, k}, base_cost);
-    }
+    dp.update_lz_matrix(i, lz_offsets, lz_lens,
+      [&](size_t oi) { return lz_helper.find_best(i, lz_offsets[oi].max); },
+      [&](size_t, size_t li) -> CompType { return {lz, li}; },
+      1 + ilog2(2 * i + 1)
+    );
     lz_helper.add_element(i);
   }
 
@@ -57,26 +56,25 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   writer ret(4);
   writer_b8_h flags;
 
+  const auto write_len = [&](size_t l) {
+    size_t s = std::bit_floor(l) >> 1;
+    for (; s > 0; s >>= 1) flags.write<b1, b1>(false, (l & s) != 0);
+    flags.write<b1>(true);
+  };
+
   size_t adr = 0;
   for (const auto cmd : dp.commands()) {
     switch (cmd.type.tag) {
     case uncomp: {
       flags.write<b1>(false);
-      for (size_t s = std::bit_floor(cmd.len) >> 1; s > 0; s >>= 1) {
-        flags.write<b1, b1>(false, (cmd.len & s) != 0);
-      }
-      flags.write<b1>(true);
+      write_len(cmd.len);
       ret.write<d8n>({cmd.len, &input[adr]});
     } break;
     case lz: {
       assert(adr > 0);
       flags.write<b1>(true);
       flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
-      const size_t l = (cmd.len - lz_max_lens[0]) + 1;
-      for (size_t s = std::bit_floor(l) >> 1; s > 0; s >>= 1) {
-        flags.write<b1, b1>(false, (l & s) != 0);
-      }
-      flags.write<b1>(true);
+      write_len(cmd.len - (lz_min_len - 1));
     } break;
     default: assert(0);
     }

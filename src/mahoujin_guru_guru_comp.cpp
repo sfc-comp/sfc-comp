@@ -18,8 +18,9 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     Tag tag;
     size_t li;
   };
-  static constexpr auto rle_max_lens = std::to_array<size_t>({
-    2, 4, 8, 16, 32, 64, 128, 255
+
+  static constexpr auto rle_lens = create_array<vrange, 8>([](size_t k) {
+    return vrange((1 << k) + 1, std::min(255, 2 << k), 2 * k + 1, 0);
   });
 
   sssp_solver<CompType> dp(input.size());
@@ -30,10 +31,9 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     if (input[i] == 0) {
       dp.update(i, 1, 1, Constant<2>(), {uncomp0, 0});
       const auto cost = dp[i].cost;
-      for (size_t k = 0; k < rle_max_lens.size(); ++k) {
-        const size_t min_len = (k == 0) ? rle_max_lens[0] : (rle_max_lens[k - 1] + 1);
-        const size_t max_len = rle_max_lens[k];
-        dp.update(i, min_len, max_len, rlen, Constant<3>(), {rle0, k}, cost + (2 * k + 1));
+      for (size_t k = 0; k < rle_lens.size(); ++k) {
+        dp.update(i, rle_lens[k].min, rle_lens[k].max, rlen,
+                  Constant<3>(), {rle0, k}, cost + rle_lens[k].bitlen);
       }
     } else {
       dp.update(i, 1, 1, Constant<9>(), {uncomp, 0});
@@ -60,7 +60,7 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
       ret.write<b1, b1, b1>(true, true, false);
       ret.write<bnh>({k, (size_t(1) << k) - 1});
       ret.write<b1>(false);
-      const size_t l = cmd.len - rle_max_lens[0] + 1;
+      const size_t l = cmd.len - (rle_lens[0].min - 1);
       ret.write<bnh>({k, l ^ (1 << k)});
     } break;
     case prev2: {

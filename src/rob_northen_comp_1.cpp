@@ -47,32 +47,40 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     size_t oi, li;
   };
 
-  static constexpr size_t lz_max_ofs_bits = 15;
-  static constexpr size_t lz_max_len_bits = 15; // <= 15
-  static constexpr size_t uncomp_max_len_bits = 15; // <= 15
+  static constexpr size_t lz_min_len = 2;
+  static constexpr size_t lz_ofs_max_bits = 15;
+  static constexpr size_t lz_len_max_bits = 15; // <= 15
+  static constexpr size_t uncomp_len_max_bits = 15; // <= 15
 
   static constexpr size_t command_limit = 0x4000;
   static_assert(1 <= command_limit && command_limit <= 0xffff, "invalid command_limit");
 
-  std::array<size_t, lz_max_ofs_bits + 1> lz_ofs_table = {};
-  for (size_t i = 0; i < lz_ofs_table.size(); ++i) lz_ofs_table[i] = 1 << i;
-  std::array<size_t, lz_max_len_bits + 1> lz_len_table = {};
-  for (size_t i = 0; i < lz_len_table.size(); ++i) lz_len_table[i] = (1 << i) + 1;
-  std::array<size_t, uncomp_max_len_bits + 1> uncomp_len_table = {};
-  for (size_t i = 0; i < uncomp_len_table.size(); ++i) uncomp_len_table[i] = (1 << i) - 1;
+  static constexpr auto lz_offsets = create_array<vrange, lz_ofs_max_bits + 1>([](size_t k) {
+    if (k == 0) return vrange(1, 1, 0, 0);
+    return vrange((1 << (k - 1)) + 1, 1 << k, k - 1, 0);
+  });
+  static constexpr auto lz_lens = create_array<vrange, lz_len_max_bits + 1>([](size_t k) {
+    if (k == 0) return vrange(lz_min_len, lz_min_len, 0, 0);
+    return vrange((1 << (k - 1)) + lz_min_len, (1 << k) + (lz_min_len - 1), k - 1, 0);
+  });
+  static constexpr auto lz_max_len = lz_lens.back().max;
+  static constexpr auto ulens = create_array<vrange, uncomp_len_max_bits + 1>([](size_t k) {
+    if (k == 0) return vrange(0, 0, 0, 0);
+    return vrange(1 << (k - 1), (1 << k) - 1, k - 1, 0);
+  });
 
   lz_helper lz_helper(input);
-  std::vector<std::array<encode::lz_data, lz_max_ofs_bits + 1>> lz_memo(input.size());
+  std::vector<std::array<encode::lz_data, lz_ofs_max_bits + 1>> lz_memo(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
-    auto res_lz = lz_helper.find_best_closest(i, lz_ofs_table.back(), lz_len_table.back());
-    if (res_lz.len < lz_len_table[0]) res_lz = {0, 0};
-    size_t o = lz_max_ofs_bits;
+    size_t o = lz_ofs_max_bits;
+    auto res_lz = lz_helper.find_best_closest(i, lz_offsets[o].max, lz_max_len);
+    if (res_lz.len < lz_min_len) res_lz = {0, 0};
     lz_memo[i][o] = res_lz;
     for (; o-- > 0; ) {
       const size_t d = i - res_lz.ofs;
-      if (res_lz.len >= lz_len_table[0] && d > lz_ofs_table[o]) {
-        res_lz = lz_helper.find_best_closest(i, lz_ofs_table[o], lz_len_table.back());
+      if (res_lz.len >= lz_min_len && d > lz_offsets[o].max) {
+        res_lz = lz_helper.find_best_closest(i, lz_offsets[o].max, lz_max_len);
       }
       lz_memo[i][o] = res_lz;
     }
@@ -85,9 +93,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
 
   size_t chunk = 0;
 
-  using command_type = sssp_solver<CompType, rnc1_cost>::vertex_type;
-  sssp_solver<CompType, rnc1_cost> dp0(input.size());
-  sssp_solver<CompType, rnc1_cost> dp1(input.size());
+  sssp_solver<CompType, rnc1_cost> dp0(input.size()), dp1(input.size());
   uncomp_helper<rnc1_cost::value_type> u_helper(input.size(), 8);
 
   size_t begin = 0;
@@ -95,13 +101,13 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
 
   while (true) {
     // [Todo] Find a reasonable initialization.
-    std::vector<size_t> huff_uncomp_bits(uncomp_len_table.size());
-    std::iota(huff_uncomp_bits.begin(), huff_uncomp_bits.end(), 1);
+    std::vector<size_t> huff_u_bits(ulens.size());
+    std::iota(huff_u_bits.begin(), huff_u_bits.end(), 1);
 
-    std::vector<size_t> huff_lz_len_bits(lz_len_table.size());
+    std::vector<size_t> huff_lz_len_bits(lz_lens.size());
     std::iota(huff_lz_len_bits.begin(), huff_lz_len_bits.end(), 1);
 
-    std::vector<size_t> huff_lz_ofs_bits(lz_ofs_table.size(), 4);
+    std::vector<size_t> huff_lz_ofs_bits(lz_offsets.size(), 4);
 
     struct huffman {
       encode::huffman_result uncomp_len;
@@ -117,11 +123,12 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     };
 
     auto update_huffman_costs = [&] (const huffman& huff) {
-      update_costs(huff.uncomp_len, huff_uncomp_bits);
+      update_costs(huff.uncomp_len, huff_u_bits);
       update_costs(huff.lz_ofs, huff_lz_ofs_bits);
       update_costs(huff.lz_len, huff_lz_len_bits);
     };
 
+    using command_type = decltype(dp0)::vertex_type;
     size_t best_cost = std::numeric_limits<size_t>::max();
     size_t best_end = begin;
     std::vector<command_type> best_commands;
@@ -131,20 +138,16 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
       dp0[begin].cost = rnc1_cost(0);
       dp1.reset(begin);
 
-      size_t e = std::min(input.size(), last_index + std::max(lz_len_table.back(), uncomp_len_table.back()));
+      size_t e = std::min(input.size(), last_index + std::max(lz_lens.back().max, ulens.back().max));
       dp0.reset(begin + 1, e + 1);
       dp1.reset(begin + 1, e + 1);
-
-      constexpr auto bit_cost = [](size_t b) -> size_t {
-        return (b == 0) ? 0 : (b - 1);
-      };
 
       size_t index = begin;
       for (; index <= input.size(); ++index) {
         const auto cost0 = dp0[index].cost;
         if (cost0 < dp0.infinite_cost) {
           // skip uncomp
-          const auto ncost = rnc1_cost(cost0.value + huff_uncomp_bits[0], cost0.count + 1);
+          const auto ncost = rnc1_cost(cost0.value + huff_u_bits[0], cost0.count + 1);
           dp1.update(index, 0, 0, Constant<0>(), {uncomp, 0, 0}, ncost);
         }
         if (index == input.size()) break;
@@ -153,12 +156,11 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           u_helper.update(index, cost0.value);
         }
 
-        for (size_t k = 1; k < uncomp_len_table.size(); ++k) {
-          const size_t from = uncomp_len_table[k - 1] + 1;
-          const size_t to = uncomp_len_table[k];
-          const auto u = u_helper.find(index + 1, from, to);
+        for (size_t k = 1; k < ulens.size(); ++k) {
+          const auto u = u_helper.find(index + 1, ulens[k].min, ulens[k].max);
           if (u.len == u_helper.nlen) continue;
-          const auto cost = rnc1_cost(u.cost + huff_uncomp_bits[k] + bit_cost(k), dp0[index + 1 - u.len].cost.count + 1);
+          const auto cost = rnc1_cost(u.cost + huff_u_bits[k] + ulens[k].bitlen,
+                                      dp0[index + 1 - u.len].cost.count + 1);
           dp1.update_u(index + 1, u.len, {uncomp, 0, k}, cost);
         }
 
@@ -166,18 +168,16 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         if (cost1 == dp1.infinite_cost) break;
         if (cost1.count >= command_limit) break;
 
-        for (ptrdiff_t o = lz_max_ofs_bits; o >= 0; --o) {
-          const auto& res_lz = lz_memo[index][o];
-          if (res_lz.len < lz_len_table[0]) break;
-          const size_t lz_min_dist = (o == 0) ? lz_ofs_table[0] : (lz_ofs_table[o - 1] + 1);
-          if ((index - res_lz.ofs) < lz_min_dist) continue;
-          for (size_t k = 0; k < lz_len_table.size(); ++k) {
-            const size_t from = (k == 0) ? lz_len_table[0] : (lz_len_table[k - 1] + 1);
-            const size_t to = lz_len_table[k];
-            const size_t bit_size = (huff_lz_ofs_bits[o] + bit_cost(o)) +
-                                    (huff_lz_len_bits[k] + bit_cost(k));
+        for (ptrdiff_t oi = lz_ofs_max_bits; oi >= 0; --oi) {
+          const auto& res_lz = lz_memo[index][oi];
+          if (res_lz.len < lz_min_len) break;
+          if ((index - res_lz.ofs) < lz_offsets[oi].min) continue;
+          for (size_t li = 0; li < lz_lens.size(); ++li) {
+            const size_t bit_size = (huff_lz_ofs_bits[oi] + lz_offsets[oi].bitlen) +
+                                    (huff_lz_len_bits[li] + lz_lens[li].bitlen);
             const auto cost = rnc1_cost(cost1.value + bit_size, cost1.count);
-            dp0.update_lz(index, from, to, res_lz, Constant<0>(), {lz, size_t(o), k}, cost);
+            dp0.update_lz(index, lz_lens[li].min, lz_lens[li].max, res_lz,
+                          Constant<0>(), {lz, size_t(oi), li}, cost);
           }
         }
       }
@@ -190,12 +190,9 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
       }
 
       struct Counter {
-        Counter() : uncomp(uncomp_max_len_bits + 1, 0),
-                    lz_len(lz_max_len_bits + 1, 0),
-                    lz_ofs(lz_max_ofs_bits + 1, 0) {}
-        std::vector<size_t> uncomp;
-        std::vector<size_t> lz_len;
-        std::vector<size_t> lz_ofs;
+        std::array<size_t, uncomp_len_max_bits + 1> uncomp = {};
+        std::array<size_t, lz_len_max_bits + 1> lz_len = {};
+        std::array<size_t, lz_ofs_max_bits + 1> lz_ofs = {};
       } counter;
 
       const auto commands = [&] {
@@ -248,9 +245,15 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         for (const auto& cmd : commands) {
           if (cmd.type.tag == uncomp) cost += cmd.len * 8;
         }
-        for (size_t w : huff.uncomp_len.words) cost += counter.uncomp[w] * (huff.uncomp_len.codewords[w].bitlen + bit_cost(w));
-        for (size_t w : huff.lz_ofs.words) cost += counter.lz_ofs[w] * (huff.lz_ofs.codewords[w].bitlen + bit_cost(w));
-        for (size_t w : huff.lz_len.words) cost += counter.lz_len[w] * (huff.lz_len.codewords[w].bitlen + bit_cost(w));
+        for (size_t w : huff.uncomp_len.words) {
+          cost += counter.uncomp[w] * (huff.uncomp_len.codewords[w].bitlen + ulens[w].bitlen);
+        }
+        for (size_t w : huff.lz_ofs.words) {
+          cost += counter.lz_ofs[w] * (huff.lz_ofs.codewords[w].bitlen + lz_offsets[w].bitlen);
+        }
+        for (size_t w : huff.lz_len.words) {
+          cost += counter.lz_len[w] * (huff.lz_len.codewords[w].bitlen + lz_lens[w].bitlen);
+        }
         return cost;
       };
 
@@ -289,25 +292,24 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
             const size_t k = cmd.type.li;
             ret.write<bnh>(best_huff.uncomp_len.codewords[k]);
             if (cmd.len > 0) {
-              const size_t min_len = ((k >= 1) ? uncomp_len_table[k - 1] + 1 : uncomp_len_table[0]);
-              assert(min_len <= cmd.len && cmd.len <= uncomp_len_table[k]);
-              if (k >= 2) ret.write<bnl>({k - 1, cmd.len - min_len});
+              assert(ulens[k].min <= cmd.len && cmd.len <= ulens[k].max);
+              ret.write<bnl>({ulens[k].bitlen, cmd.len - ulens[k].min});
               ret.write<d8n>({cmd.len, &input[adr]});
             }
           } break;
           case lz: {
-            const size_t k = cmd.type.li, o = cmd.type.oi;
+            const size_t oi = cmd.type.oi;
+            const auto& o = lz_offsets[oi];
             const size_t d = (adr - cmd.lz_ofs);
+            assert(o.min <= d && d <= o.max);
+            ret.write<bnh>(best_huff.lz_ofs.codewords[oi]);
+            ret.write<bnl>({o.bitlen, d - o.min});
 
-            const size_t min_ofs = ((o >= 1) ? lz_ofs_table[o - 1] + 1 : lz_ofs_table[0]);
-            assert(min_ofs <= d && d <= lz_ofs_table[o]);
-            ret.write<bnh>(best_huff.lz_ofs.codewords[o]);
-            if (o >= 2) ret.write<bnl>({o - 1, d - min_ofs});
-
-            const size_t min_len = ((k >= 1) ? lz_len_table[k - 1] + 1 : lz_len_table[0]);
-            assert(min_len <= cmd.len && cmd.len <= lz_len_table[k]);
-            ret.write<bnh>(best_huff.lz_len.codewords[k]);
-            if (k >= 2) ret.write<bnl>({k - 1, cmd.len - min_len});
+            const size_t li = cmd.type.li;
+            const auto l = lz_lens[li];
+            assert(l.min <= cmd.len && cmd.len <= l.max);
+            ret.write<bnh>(best_huff.lz_len.codewords[li]);
+            ret.write<bnl>({l.bitlen, cmd.len - l.min});
           } break;
           default: assert(0);
           }

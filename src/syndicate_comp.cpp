@@ -20,26 +20,25 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
       return from == rhs.from;
     }
   };
-  static constexpr size_t min_ofs_bits = 1, max_ofs_bits = 16;
-  static constexpr size_t min_len_bits = 2, max_len_bits = 16;
-  size_t len_masks[17] = {};
-  for (size_t i = min_len_bits; i <= max_len_bits; ++i) {
-    len_masks[i] = 0x0003 << (i - min_len_bits);
-  }
-  size_t min_lens[max_ofs_bits + max_len_bits + 1] = {};
-  for (size_t i = 0; i < 8; ++i) min_lens[i] = 1;
-  for (size_t i = 8; i < 17; ++i) min_lens[i] = 2;
-  for (size_t i = 17; i <= max_len_bits + max_ofs_bits; ++i) min_lens[i] = 3;
-
-  size_t max_offsets[max_ofs_bits + 1] = {};
-  for (size_t i = min_ofs_bits; i <= max_ofs_bits; ++i) max_offsets[i] = (1 << i) - 1;
+  static constexpr size_t ofs_min_bits = 1, ofs_max_bits = 16;
+  static constexpr size_t len_min_bits = 2, len_max_bits = 16;
+  static constexpr auto len_masks = create_array<size_t, len_max_bits + 1>([&](size_t i) {
+    return (i < len_min_bits) ? 0 : 3 << (i - len_min_bits);
+  });
+  static constexpr auto min_lens = create_array<size_t, len_max_bits + ofs_max_bits + 1>([&](size_t i) {
+    return (i < 9) ? 1
+         : (i < 17) ? 2 : 3;
+  });
+  static constexpr auto max_offsets = create_array<size_t, ofs_max_bits + 1>([&](size_t i) {
+    return (i < ofs_min_bits) ? 0 : (1 << i) - 1;
+  });
 
   lz_helper lz_helper(input);
-  std::vector<std::array<encode::lz_data, max_ofs_bits + 1>> lz_memo(input.size());
+  std::vector<std::array<encode::lz_data, ofs_max_bits + 1>> lz_memo(input.size());
 
   size_t longest_lz_len = 0, longest_lz_dist = 0;
   for (size_t i = 0; i < input.size(); ++i) {
-    size_t o = max_ofs_bits;
+    size_t o = ofs_max_bits;
     auto res_lz = lz_helper.find_best_closest(i, max_offsets[o], input.size());
     longest_lz_len = std::max(longest_lz_len, res_lz.len);
     if (res_lz.len > 0) longest_lz_dist = std::max(longest_lz_dist, i - res_lz.ofs);
@@ -56,37 +55,37 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
 
   std::vector<uint8_t> best;
 
-  for (size_t ofs_bits = min_ofs_bits; ofs_bits <= max_ofs_bits; ++ofs_bits) {
-    size_t len_bits_limit = min_len_bits;
-    for (size_t len_bits = min_len_bits; len_bits < max_len_bits; ++len_bits) {
+  for (size_t ofs_bits = ofs_min_bits; ofs_bits <= ofs_max_bits; ++ofs_bits) {
+    size_t len_bits_limit = len_min_bits;
+    for (size_t len_bits = len_min_bits; len_bits < len_max_bits; ++len_bits) {
       const size_t max_len = min_lens[len_bits + ofs_bits] + ((size_t(1) << len_bits) - 1);
       if (longest_lz_len > max_len) len_bits_limit = len_bits + 1;
     }
     std::vector<sssp_solver<CompType>> dp(len_bits_limit + 1);
-    for (size_t len_bits = min_len_bits; len_bits <= len_bits_limit; ++len_bits) {
+    for (size_t len_bits = len_min_bits; len_bits <= len_bits_limit; ++len_bits) {
       dp[len_bits] = sssp_solver<CompType>(input.size());
     }
     for (size_t i = 0; i < input.size(); ++i) {
       auto res_lz = lz_memo[i][ofs_bits];
-      for (size_t len_bits = min_len_bits; len_bits <= len_bits_limit; ++len_bits) {
+      for (size_t len_bits = len_min_bits; len_bits <= len_bits_limit; ++len_bits) {
         dp[len_bits].update(i, 1, 1, Constant<9>(), {uncomp, len_bits});
         const size_t curr_cost = dp[len_bits][i].cost;
         const size_t min_len = min_lens[len_bits + ofs_bits];
         const size_t next_cost = curr_cost + (1 + ofs_bits + len_bits);
-        const size_t hi = len_masks[len_bits], lo = (hi & -hi);
+        const size_t hi = len_masks[len_bits], lo = (hi & -hi), mx = hi | (lo - 1);
         assert(min_len > 0);
-        dp[std::max(min_len_bits, len_bits - 1)].update_lz(
+        dp[std::max(len_min_bits, len_bits - 1)].update_lz(
           i, min_len, min_len + (lo - 1), res_lz, Constant<0>(), {lz1, len_bits}, next_cost);
         dp[len_bits].update_lz(
           i, min_len + lo, min_len + hi - 1, res_lz, Constant<0>(), {lz2, len_bits}, next_cost);
         dp[std::min(len_bits_limit, len_bits + 1)].update_lz(
-          i, min_len + hi, std::min<size_t>(0x10000, min_len + (size_t(1) << len_bits) - 1), res_lz,
+          i, min_len + hi, std::min<size_t>(0x10000, min_len + mx), res_lz,
           Constant<0>(), {lz3, len_bits}, next_cost);
       }
     }
 
-    size_t last_len_bits = 0, min_cost = dp[min_len_bits].infinite_cost;
-    for (size_t len_bits = min_len_bits; len_bits <= len_bits_limit; ++len_bits) {
+    size_t last_len_bits = 0, min_cost = dp[len_min_bits].infinite_cost;
+    for (size_t len_bits = len_min_bits; len_bits <= len_bits_limit; ++len_bits) {
       if (dp[len_bits].total_cost() < min_cost) {
         min_cost = dp[len_bits].total_cost();
         last_len_bits = len_bits;
@@ -131,7 +130,7 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
         ret.write<b1, bnl, bnl>(false, {ofs_bits, d}, {curr_len_bits, l});
         if (l & mask) {
           if ((l & mask) == mask && curr_len_bits < len_bits_limit) ++curr_len_bits;
-        } else if (curr_len_bits > min_len_bits) {
+        } else if (curr_len_bits > len_min_bits) {
           --curr_len_bits;
         }
       } break;

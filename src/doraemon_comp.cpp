@@ -44,11 +44,11 @@ struct lha_config {
 };
 
 template <typename Func>
-std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lha_config& config, Func use_zero_bits) {
-  enum Tag {
-    uncomp, lz
-  };
+std::vector<uint8_t> doraemon_comp_core(
+    std::span<const uint8_t> input,
+    const lha_config& config, Func use_zero_bits) {
 
+  enum Tag { uncomp, lz };
   struct CompType {
     bool operator == (const CompType& rhs) const {
       if (tag != rhs.tag) return false;
@@ -60,46 +60,47 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
   };
 
   static constexpr size_t lz_min_len = 3;
-  static constexpr size_t lz_max_len = 0x100;
+  static constexpr size_t lz_max_len = lz_min_len + 0xfd;
 
   static constexpr size_t lz_huff_offset = 0x0100 - lz_min_len;
-  static constexpr size_t lz_ofs_buff_bits = 0x0f;
-  assert(config.lz_ofs_bits <= lz_ofs_buff_bits);
-
+  static constexpr size_t lz_ofs_max_bits = 0x0f;
+  assert(config.lz_ofs_bits <= lz_ofs_max_bits);
   assert(1 <= config.command_limit && config.command_limit <= 0xffff);
 
-  std::vector<size_t> lz_ofs_table(config.lz_ofs_bits + 1);
-  for (size_t i = 0; i < lz_ofs_table.size(); ++i) lz_ofs_table[i] = 1 << i;
+  const auto lz_ofs = [](size_t k) {
+    std::vector<vrange> ret(k + 1);
+    ret[0] = vrange(1, 1, 0, 0);
+    for (size_t k = 1; k < ret.size(); ++k) {
+      ret[k] = vrange((1 << (k - 1)) + 1, 1 << k, (k > 0) ? k - 1 : 0, 0);
+    }
+    return ret;
+  }(config.lz_ofs_bits);
 
   lz_helper lz_helper(input);
-  std::vector<std::array<encode::lz_data, lz_ofs_buff_bits + 1>> lz_memo(input.size());
+  std::vector<std::array<encode::lz_data, lz_ofs_max_bits + 1>> lz_memo(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
-    auto res_lz = lz_helper.find_best_closest(i, lz_ofs_table.back(), lz_max_len);
-    if (res_lz.len < lz_min_len) res_lz = {0, 0};
     size_t o = config.lz_ofs_bits;
+    auto res_lz = lz_helper.find_best_closest(i, lz_ofs[o].max, lz_max_len);
+    if (res_lz.len < lz_min_len) res_lz = {0, 0};
     lz_memo[i][o] = res_lz;
     for (; o-- > 0; ) {
       const size_t d = i - res_lz.ofs;
-      if (res_lz.len >= lz_min_len && d > lz_ofs_table[o]) {
-        res_lz = lz_helper.find_best_closest(i, lz_ofs_table[o], lz_max_len);
+      if (res_lz.len >= lz_min_len && d > lz_ofs[o].max) {
+        res_lz = lz_helper.find_best_closest(i, lz_ofs[o].max, lz_max_len);
       }
       lz_memo[i][o] = res_lz;
     }
     lz_helper.add_element(i);
   }
 
-  std::vector<size_t> lz_lens(lz_max_len - lz_min_len + 1);
-  std::iota(lz_lens.begin(), lz_lens.end(), lz_min_len);
-
-  constexpr auto bit_cost = [](size_t b) -> size_t {
-    return (b == 0) ? 0 : (b - 1);
-  };
+  static constexpr auto lz_lens = create_array<size_t, lz_max_len - lz_min_len + 1>([&](size_t i) {
+    return i + lz_min_len;
+  });
 
   using namespace data_type;
   writer_b8_h ret(config.header_size);
 
-  using command_type = sssp_solver<CompType, lha_cost>::vertex_type;
   sssp_solver<CompType, lha_cost> dp(input.size());
 
   size_t begin = 0;
@@ -108,10 +109,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
   auto huff_bitlens = [&]{
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
-    const auto codewords = encode::huffman(utility::freq_u8(input), true).codewords;
-    for (size_t i = 0; i < codewords.size(); ++i) {
-      if (codewords[i].bitlen >= 0) ret[i] = codewords[i].bitlen;
-    }
+    const auto h = encode::huffman(utility::freq_u8(input), true);
+    for (const auto w : h.words) ret[w] = h.codewords[w].bitlen;
     return ret;
   }();
   std::vector<size_t> huff_lz_ofs_bits(config.lz_ofs_bits + 1, 4);
@@ -137,6 +136,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
 
     size_t best_cost = std::numeric_limits<size_t>::max();
     size_t best_end = 0;
+    using command_type = decltype(dp)::vertex_type;
     std::vector<command_type> best_commands;
     encodes best_enc;
 
@@ -151,9 +151,8 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
         for (ptrdiff_t o = config.lz_ofs_bits; o >= 0; --o) {
           const auto& res_lz = lz_memo[index][o];
           if (res_lz.len < lz_min_len) break;
-          const size_t lz_min_dist = (o == 0) ? lz_ofs_table[0] : (lz_ofs_table[o - 1] + 1);
-          if ((index - res_lz.ofs) < lz_min_dist) continue;
-          const size_t ofs_bits = huff_lz_ofs_bits[o] + bit_cost(o);
+          if ((index - res_lz.ofs) < lz_ofs[o].min) continue;
+          const size_t ofs_bits = huff_lz_ofs_bits[o] + lz_ofs[o].bitlen;
           dp.update_lz_table(index, lz_lens, res_lz, [&](size_t j) {
             return huff_bitlens[lz_lens[j] + lz_huff_offset] + ofs_bits;
           }, {lz, size_t(o)});
@@ -162,11 +161,9 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
       last_index = index;
 
       struct Counter {
-        Counter(size_t lz_ofs_bits) : code(0x100 + (lz_max_len - lz_min_len) + 1, 0),
-                                      lz_ofs(lz_ofs_bits + 1, 0) {}
-        std::vector<size_t> code;
-        std::vector<size_t> lz_ofs;
-      } counter(config.lz_ofs_bits);
+        std::array<size_t, 0x100 + lz_lens.size()> code = {};
+        std::array<size_t, lz_ofs_max_bits + 1> lz_ofs = {};
+      } counter;
 
       const auto commands = [&]{
         std::vector<command_type> ret;
@@ -238,8 +235,12 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
 
       const auto calc_cost = [&](const encodes& enc, std::span<const command_type>, const Counter& counter) -> size_t {
         size_t ret = 0;
-        for (const auto& w : enc.code.words) ret += enc.code.codewords[w].bitlen * counter.code[w];
-        for (const auto& w : enc.lz_ofs.words) ret += (enc.lz_ofs.codewords[w].bitlen + bit_cost(w)) * counter.lz_ofs[w];
+        for (const auto& w : enc.code.words) {
+          ret += counter.code[w] * enc.code.codewords[w].bitlen;
+        }
+        for (const auto& w : enc.lz_ofs.words) {
+          ret += counter.lz_ofs[w] * (enc.lz_ofs.codewords[w].bitlen + lz_ofs[w].bitlen);
+        };
         return ret;
       };
 
@@ -330,7 +331,7 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
             while (l >= min_len) {
               const size_t t = std::min<size_t>(l, max_len);
               ret.write<bnh>(enc.bits.codewords[z_code]);
-              if (b > 0) ret.write<bnh>({b, t - min_len});
+              ret.write<bnh>({b, t - min_len});
               l -= t;
             }
             return l;
@@ -368,14 +369,12 @@ std::vector<uint8_t> doraemon_comp_core(std::span<const uint8_t> input, const lh
           } break;
           case lz: {
             ret.write<bnh>(best_enc.code.codewords[cmd.len + lz_huff_offset]);
-
-            const size_t o = cmd.type.ofs_no;
+            const size_t oi = cmd.type.ofs_no;
+            const auto& o = lz_ofs[oi];
             const size_t d = adr - cmd.lz_ofs;
-            const size_t min_ofs = (o == 0) ? 1 : lz_ofs_table[o - 1] + 1;
-            assert(min_ofs <= d && d <= lz_ofs_table[o]);
-
-            ret.write<bnh>(best_enc.lz_ofs.codewords[o]);
-            if (o >= 2) ret.write<bnh>({o - 1, d - min_ofs});
+            assert(o.min <= d && d <= o.max);
+            ret.write<bnh>(best_enc.lz_ofs.codewords[oi]);
+            ret.write<bnh>({o.bitlen, d - o.min});
           } break;
           default: assert(0);
           }

@@ -36,7 +36,7 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
     dp.update_k<4>(i, 12, 72, Linear<8, 9>(), {uncompl, 0, 0});
-    const auto res_lz2 = lz_helper.find_best(i, ofs_tab[0].max);
+    const auto res_lz2 = lz_helper.find_best(i, 0x100);
     dp.update_lz(i, 2, 2, res_lz2, Constant<11>(), {lz2, 0, 0});
     dp.update_lz_matrix(i, ofs_tab, len_tab,
       [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },

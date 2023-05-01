@@ -78,6 +78,7 @@ $ ./bench <input-dir>
 | cb_chara_wars_comp                       |    6 | 5DE9 | 339B | 7E17 | 21AA | 3746 | 6842 | 186C |  1E93F | 0.0995 | 8947D6F0 |
 | chrono_trigger_comp                      |    9 | 5F6E | 36E8 | 7FCE | 24F2 | 385E | 6A1B | 19F8 |  1F790 | 0.0982 | 0DD1A27C |
 | danzarb_comp                             |    5 | 5D01 | 35DA | 7B2E | 2458 | 36A4 | 6775 | 167E |  1E6FD | 0.0478 | D5B00688 |
+| derby_stallion_2_comp                    |    6 | 5845 | 322F | 78DA | 21D7 | 326D | 6162 | 1BFA |  1D4F4 | 0.0802 | 8B88AB93 |
 | diet_comp                                |   16 | 56E5 | 3126 | 77DF | 200B | 314C | 6037 | 1959 |  1CAE7 | 0.1058 | 29EF3CCD |
 | dokapon_comp                             |    6 | 5DAF | 3674 | 7C54 | 24DA | 36D1 | 65A1 | 1A21 |  1EBEA | 0.4508 | 6C1C92FB |
 | doom_comp_1                              |    9 | 5C90 | 34EE | 75FF | 22F6 | 358A | 6447 | 1A8D |  1DEDA | 0.3654 | E6A4C014 |

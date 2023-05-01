@@ -47,6 +47,13 @@ std::array<T, K> k_most(std::span<const size_t> counts) {
 
 } // namespace utility
 
+template <typename T, size_t Extent, typename Func>
+constexpr std::array<T, Extent> create_array(Func func) {
+  std::array<T, Extent> ret = {};
+  for (size_t i = 0; i < Extent; ++i) ret[i] = func(i);
+  return ret;
+}
+
 inline constexpr int popcount32(uint32_t x) {
   return std::popcount(x);
 }

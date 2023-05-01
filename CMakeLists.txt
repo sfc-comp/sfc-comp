@@ -51,6 +51,7 @@ set(sfc_comp_src
   src/cb_chara_wars_comp.cpp
   src/chrono_trigger_comp.cpp
   src/danzarb_comp.cpp
+  src/derby_stallion_2_comp.cpp
   src/diet_comp.cpp
   src/dokapon_comp.cpp
   src/doom_comp.cpp
@@ -158,6 +159,7 @@ set(comp_ext_list
   danzarb_comp comp
   dekitate_high_school_comp_1 comp
   dekitate_high_school_comp_2 comp
+  derby_stallion_2_comp comp
   diet_comp comp
   dokapon_comp comp
   doom_comp_1 comp

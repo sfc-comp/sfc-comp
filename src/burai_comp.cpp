@@ -14,21 +14,20 @@ std::vector<uint8_t> burai_comp(std::span<const uint8_t> input) {
     lzl2, lzl3, lzl4, lzl
   };
 
+  static constexpr auto codewords = create_array<encode::codeword, 256>([](size_t i) -> encode::codeword {
+    if (i < 0x10) return {7, 0x40 | i};
+    if (i == 0x10) return {5, 0x14};
+    if (i == 0x30) return {5, 0x15};
+    if (i == 0x80) return {5, 0x16};
+    if (i == 0xff) return {5, 0x17};
+    return {10, 0x300 | i};
+  });
+
   lz_helper lz_helper(input);
   sssp_solver<CompType> dp(input.size());
 
-  struct codeword {
-    size_t bits;
-    size_t val;
-  };
-  std::array<codeword, 256> codewords = {};
-  for (size_t i = 0; i < 256; ++i) codewords[i] = {10, 0x300 | i};
-  for (size_t i = 0; i < 16; ++i) codewords[i] = {7, 0x40 | i};
-  codewords[0x10] = {5, 0x14}; codewords[0x30] = {5, 0x15};
-  codewords[0x80] = {5, 0x16}; codewords[0xff] = {5, 0x17};
-
   for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, [&](size_t) { return codewords[input[i]].bits; }, uncomp);
+    dp.update(i, 1, 1, [&](size_t) { return codewords[input[i]].bitlen; }, uncomp);
     auto res_lz4 = lz_helper.find_best(i, 0x10);
     auto res_lz8 = lz_helper.find_best(i, 0x100);
 
@@ -50,8 +49,7 @@ std::vector<uint8_t> burai_comp(std::span<const uint8_t> input) {
     const auto d = adr - cmd.lz_ofs;
     switch (cmd.type) {
     case uncomp: {
-      const auto c = codewords[input[adr]];
-      ret.write<bnh>({c.bits, c.val});
+      ret.write<bnh>(codewords[input[adr]]);
     } break;
     case lzs1:
     case lzs2:

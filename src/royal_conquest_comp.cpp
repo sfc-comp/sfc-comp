@@ -26,27 +26,19 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     size_t ofs_no;
   };
 
-  struct tup {
-    size_t min;
-    size_t val;
-    size_t bits;
-  };
+  static constexpr auto lz_ofs_tab = std::to_array<vrange>({
+    vrange(0x0001, 0x0040,  9, 0x00 << 1), // [00, 1f] _
+    vrange(0x0041, 0x0100, 10, 0x20 << 2), // [20, 4f] __
+    vrange(0x0101, 0x0300, 11, 0x50 << 3), // [50, 8f] ___
+    vrange(0x0301, 0x0600, 12, 0x90 << 4), // [90, bf] ____
+    vrange(0x0601, 0x0c00, 13, 0xc0 << 5), // [c0, ef] _____
+    vrange(0x0c01, 0x0fff, 14, 0xf0 << 6), // [f0, ff] ______ // not 0x1000 (cf. $02:E1AB)
+  });
 
-  static constexpr size_t lz_ofs_total = 6;
-  static constexpr std::array<tup, lz_ofs_total + 1> lz_ofs_table = {
-    tup({0x0001, 0x00 << 1, 9}),  // [00, 1f] _
-    tup({0x0041, 0x20 << 2, 10}), // [20, 4f] __
-    tup({0x0101, 0x50 << 3, 11}), // [50, 8f] ___
-    tup({0x0301, 0x90 << 4, 12}), // [90, bf] ____
-    tup({0x0601, 0xc0 << 5, 13}), // [c0, ef] _____
-    tup({0x0c01, 0xf0 << 6, 14}), // [f0, ff] ______
-    tup({0x1000, 0, 0}) // not 0x1001 (cf. $02:E1AB)
-  };
-
+  static constexpr size_t word_max_count = 0x13a;
   static constexpr size_t lz_min_len = 3;
   static constexpr size_t lz_max_len = lz_min_len + 0xff;
   static constexpr size_t lz_huff_offset = 0x0100 - lz_min_len;
-  static constexpr size_t word_max_count = 0x13a;
 
   static constexpr size_t pad = lz_max_len;
 
@@ -54,16 +46,16 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
   std::copy(in.begin(), in.end(), input.begin() + pad);
 
   lz_helper lz_helper(input);
-  std::vector<std::array<encode::lz_data, lz_ofs_total>> lz_memo(input.size());
+  std::vector<std::array<encode::lz_data, lz_ofs_tab.size()>> lz_memo(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
-    size_t o = lz_ofs_total - 1;
-    auto res_lz = lz_helper.find_best_closest(i, lz_ofs_table[o + 1].min - 1, lz_max_len);
+    size_t o = lz_ofs_tab.size() - 1;
+    auto res_lz = lz_helper.find_best_closest(i, lz_ofs_tab[o].max, lz_max_len);
     if (res_lz.len < lz_min_len) res_lz = {0, 0};
     lz_memo[i][o] = res_lz;
     for (; o-- > 0; ) {
       const size_t d = i - res_lz.ofs;
-      const size_t max_ofs = lz_ofs_table[o + 1].min - 1;
+      const size_t max_ofs = lz_ofs_tab[o].max;
       if (res_lz.len >= lz_min_len && d > max_ofs) {
         res_lz = lz_helper.find_best_closest(i, max_ofs, lz_max_len);
       }
@@ -72,16 +64,15 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     lz_helper.add_element(i);
   }
 
-  std::vector<size_t> lz_lens(0x100);
-  std::iota(lz_lens.begin(), lz_lens.end(), lz_min_len);
+  static constexpr auto lz_lens = create_array<size_t, (lz_max_len - lz_min_len) + 1>([&](size_t i) {
+    return i + lz_min_len;
+  });
 
   auto huff_bitlens = [&]{
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
-    const auto codewords = encode::huffman(utility::freq_u8(in), true).codewords;
-    for (size_t i = 0; i < codewords.size(); ++i) {
-      if (codewords[i].bitlen >= 0) ret[i] = codewords[i].bitlen;
-    }
+    const auto h = encode::huffman(utility::freq_u8(in), true);
+    for (const auto w : h.words) ret[w] = h.codewords[w].bitlen;
     return ret;
   }();
 
@@ -101,20 +92,19 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
 
     for (size_t i = pad; i < input.size(); ++i) {
       dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, {uncomp, 0});
-      for (ptrdiff_t o = lz_ofs_total - 1; o >= 0; --o) {
+      for (ptrdiff_t o = lz_ofs_tab.size() - 1; o >= 0; --o) {
         const auto& res_lz = lz_memo[i][o];
         if (res_lz.len < lz_min_len) break;
-        if ((i - res_lz.ofs) < lz_ofs_table[o].min) continue;
-        const size_t ofs_bits = lz_ofs_table[o].bits;
+        if ((i - res_lz.ofs) < lz_ofs_tab[o].min) continue;
         dp.update_lz_table(i, lz_lens, res_lz, [&](size_t j) {
-          return huff_bitlens[lz_lens[j] + lz_huff_offset] + ofs_bits;
+          return huff_bitlens[lz_lens[j] + lz_huff_offset] + lz_ofs_tab[o].bitlen;
         }, {lz, size_t(o)});
       }
     }
 
     const auto commands = dp.commands(pad);
 
-    std::array<size_t, 0x200> code_counts = {};
+    std::array<size_t, 0x100 + lz_lens.size()> code_counts = {};
     {
       size_t adr = pad;
       for (const auto& cmd : commands) {
@@ -174,8 +164,8 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
         } break;
         case lz: {
           ret.write<bnh>(huff.codewords[cmd.len + lz_huff_offset]);
-          const auto tp = lz_ofs_table[cmd.type.ofs_no];
-          ret.write<bnh>({tp.bits, tp.val + (adr - cmd.lz_ofs - tp.min)});
+          const auto tp = lz_ofs_tab[cmd.type.ofs_no];
+          ret.write<bnh>({tp.bitlen, tp.val + (adr - cmd.lz_ofs - tp.min)});
         } break;
         default: assert(0);
         }

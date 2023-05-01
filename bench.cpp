@@ -38,6 +38,7 @@ void benchmark(const std::string& path) {
     P(danzarb_comp),
     // P(dekitate_high_school_comp_1),
     // P(dekitate_high_school_comp_2),
+    P(derby_stallion_2_comp),
     P(diet_comp),
     P(dokapon_comp),
     P(doom_comp_1),

@@ -18,18 +18,18 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
     size_t oi, li;
   };
 
-  std::vector<vrange> ofs_tab;
-  for (size_t k = 1; k < 0x10; ++k) {
-    ofs_tab.emplace_back(1 << (k - 1), (1 << k) - 1, 4 + (k - 1), k << (k - 1));
-  }
-  std::vector<vrange> ulen_tab; ulen_tab.emplace_back(1, 1, 3, 0);
-  for (size_t k = 1; k < 8; ++k) {
-    ulen_tab.emplace_back((1 << (k - 1)) + 1, (1 << k), 3 + (k - 1), k << (k - 1));
-  }
-  std::vector<vrange> len_tab;
-  for (const auto t : ulen_tab) {
-    len_tab.emplace_back(t.min + 2, t.max + 2, t.bitlen, t.val);
-  }
+  static constexpr auto ofs_tab = create_array<vrange, 15>([](size_t k) {
+    return vrange(1 << k, (2 << k) - 1, 4 + k, (k + 1) << k);
+  });
+  static constexpr auto ulen_tab = create_array<vrange, 8>([](size_t k) {
+    return (k == 0) ? vrange(1, 1, 3, 0)
+                    : vrange((1 << (k - 1)) + 1, (1 << k), 3 + (k - 1), k << (k - 1));
+  });
+  static constexpr size_t min_len = 3;
+  static constexpr auto len_tab = create_array<vrange, ulen_tab.size()>([](size_t k) {
+    return (k == 0) ? vrange(min_len, min_len, 3, 0)
+                    : vrange((1 << (k - 1)) + min_len, (1 << k) + (min_len - 1), 3 + (k - 1), k << (k - 1));
+  });
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
@@ -37,7 +37,7 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
 
   for (size_t i = 0; i < input.size(); ++i) {
     u_helper.update(i, dp[i].cost);
-    for (size_t k = 0; k < 8; ++k) {
+    for (size_t k = 0; k < ulen_tab.size(); ++k) {
       const auto u = u_helper.find(i + 1, ulen_tab[k].min, ulen_tab[k].max);
       dp.update_u(i + 1, u.len, {uncomp, 0, k}, u.cost + 4 + ulen_tab[k].bitlen);
     }

@@ -188,23 +188,21 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
   }
 
   static constexpr size_t lz_min_len = 3;
-  static constexpr size_t max_code = 0x1ff;
+  static constexpr size_t lz_max_len = lz_min_len + 0xff;
   static constexpr size_t lz_sf_offset = 0x0100 - lz_min_len;
-
-  std::vector<size_t> lz_lens(max_code - 0x100 + 1);
-  std::iota(lz_lens.begin(), lz_lens.end(), 3);
+  static constexpr auto lz_lens = create_array<size_t, lz_max_len - lz_min_len + 1>([&](size_t i) {
+    return lz_min_len + i;
+  });
 
   auto sf_bitlens = [&]{
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
-    const auto codewords = encode::huffman(utility::freq_u8(input), true).codewords;
-    for (size_t i = 0; i < codewords.size(); ++i) {
-      if (codewords[i].bitlen >= 0) ret[i] = codewords[i].bitlen;
-    }
+    const auto h = encode::huffman(utility::freq_u8(input), true);
+    for (const auto w : h.words) ret[w] = h.codewords[w].bitlen;
     return ret;
   }();
 
-  auto update_shannon_fano_costs = [&] (const shannon_fano& sf) {
+  auto update_shannon_fano_costs = [&](const shannon_fano& sf) {
     const auto& codewords = sf.codewords;
     size_t longest_bit_size = 0;
     for (const auto w : sf.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
@@ -226,7 +224,7 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
 
     const auto commands = dp.commands();
 
-    std::array<size_t, max_code + 1> code_counts = {};
+    std::array<size_t, 0x100 + lz_lens.size()> code_counts = {};
     size_t num_commands = 0;
     {
       size_t adr = 0;
@@ -257,7 +255,7 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
       ret.write<bnh>({16, shannon_fano.words.size()});
       ret.write<bnh>({16, num_commands});
 
-      size_t previous_word = (max_code + 1); // (i.e. invalid word)
+      size_t previous_word = 0x100 + lz_lens.size(); // (i.e. invalid word)
       for (const auto word : shannon_fano.words) {
         if (word <= previous_word || word >= previous_word + 0x14) {
           ret.write<bnh>({11, word});

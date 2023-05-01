@@ -29,6 +29,7 @@ std::vector<uint8_t> chrono_trigger_comp(std::span<const uint8_t>);
 std::vector<uint8_t> danzarb_comp(std::span<const uint8_t>);
 std::vector<uint8_t> dekitate_high_school_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> dekitate_high_school_comp_2(std::span<const uint8_t>);
+std::vector<uint8_t> derby_stallion_2_comp(std::span<const uint8_t>);
 std::vector<uint8_t> diet_comp(std::span<const uint8_t>);
 std::vector<uint8_t> dokapon_comp(std::span<const uint8_t>);
 std::vector<uint8_t> doom_comp_1(std::span<const uint8_t>);

@@ -84,24 +84,23 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
     lz_helper.add_element(i);
   }
 
+  static constexpr size_t word_max_count = 0x180;
   static constexpr size_t lz_min_len = 3;
-  static constexpr size_t max_code = 0x1ff;
+  static constexpr size_t lz_max_len = lz_min_len + 0xff;
   static constexpr size_t lz_huff_offset = 0x0100 - lz_min_len;
-
-  std::vector<size_t> lz_lens(max_code - 0x100 + 1);
-  std::iota(lz_lens.begin(), lz_lens.end(), lz_min_len);
+  static constexpr auto lz_lens = create_array<size_t, (lz_max_len - lz_min_len) + 1>([&](size_t i) {
+    return lz_min_len + i;
+  });
 
   auto huff_bitlens = [&]{
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
-    const auto codewords = encode::huffman(utility::freq_u8(input), true).codewords;
-    for (size_t i = 0; i < codewords.size(); ++i) {
-      if (codewords[i].bitlen >= 0) ret[i] = codewords[i].bitlen;
-    }
+    const auto h = encode::huffman(utility::freq_u8(input), true);
+    for (const auto w : h.words) ret[w] = h.codewords[w].bitlen;
     return ret;
   }();
 
-  auto update_huffman_costs = [&] (const huffman& huff, size_t penalty = 0) {
+  auto update_huffman_costs = [&](const huffman& huff, size_t penalty = 0) {
     const auto& codewords = huff.codewords;
     size_t longest_bit_size = 0;
     for (const auto w : huff.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
@@ -125,7 +124,7 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
 
     const auto commands = dp.commands();
 
-    std::array<size_t, max_code + 1> code_counts = {};
+    std::array<size_t, 0x100 + lz_lens.size()> code_counts = {};
     {
       size_t adr = 0;
       for (const auto& cmd : commands) {
@@ -147,8 +146,8 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
 
     const auto huff = huffman_encode(code_counts);
 
-    if (huff.words.size() > 0x0180) {
-      size_t excess = huff.words.size() - 0x180;
+    if (huff.words.size() > word_max_count) {
+      size_t excess = huff.words.size() - word_max_count;
       for (size_t i = 0; i < huff.words.size(); ++i) {
         size_t w = huff.words[i];
         if (w < 0x100) continue;
