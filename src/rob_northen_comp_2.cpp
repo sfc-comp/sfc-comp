@@ -11,16 +11,9 @@ std::vector<uint8_t> rob_northen_comp_2_core(
     std::span<const uint8_t> input,
     const size_t header_size, std::span<const vrange> ofs_tab) {
   check_size(input.size(), 0, 0x800000);
-  enum Tag { uncomp, uncompl, lz, lz2 };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag != lz) return true;
-      return li == rhs.li;
-    }
-    Tag tag;
-    size_t oi, li;
-  };
+
+  enum method { uncomp, uncompl, lz, lz2 };
+  using tag = tag_ol<method>;
 
   static constexpr auto len_tab = std::to_array<vrange>({
                                         // 10 (len == 2)
@@ -31,7 +24,7 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   });
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
@@ -40,7 +33,7 @@ std::vector<uint8_t> rob_northen_comp_2_core(
     dp.update_lz(i, 2, 2, res_lz2, Constant<11>(), {lz2, 0, 0});
     dp.update_lz_matrix(i, ofs_tab, len_tab,
       [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
-      [&](size_t oi, size_t li) -> CompType { return {lz, oi, li}; },
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       1
     );
     lz_helper.add_element(i);

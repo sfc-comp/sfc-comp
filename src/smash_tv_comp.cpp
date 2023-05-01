@@ -9,17 +9,9 @@ namespace {
 
 std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
-  enum Tag {
-    uncomp, lz
-  };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      return li == rhs.li;
-    }
-    Tag tag;
-    size_t li;
-  };
+
+  enum method { uncomp, lz };
+  using tag = tag_l<method>;
 
   static constexpr size_t uncomp_len_max_bits = 15;
   static constexpr size_t lz_len_max_bits = 15;
@@ -35,7 +27,7 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     const auto cost = dp[i].cost;
@@ -46,7 +38,7 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
     }
     dp.update_lz_matrix(i, lz_offsets, lz_lens,
       [&](size_t oi) { return lz_helper.find_best(i, lz_offsets[oi].max); },
-      [&](size_t, size_t li) -> CompType { return {lz, li}; },
+      [&](size_t, size_t li) -> tag { return {lz, li}; },
       1 + ilog2(2 * i + 1)
     );
     lz_helper.add_element(i);

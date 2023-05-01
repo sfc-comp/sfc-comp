@@ -8,22 +8,14 @@ namespace sfc_comp {
 std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
 
-  enum Tag { uncomp, uncomp0, prev2, rle0 };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag != rle0) return true;
-      return li == rhs.li;
-    }
-    Tag tag;
-    size_t li;
-  };
+  enum method { uncomp, uncomp0, prev2, rle0 };
+  using tag = tag_l<method>;
 
   static constexpr auto rle_lens = create_array<vrange, 8>([](size_t k) {
     return vrange((1 << k) + 1, std::min(255, 2 << k), 2 * k + 1, 0);
   });
 
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0;
   for (size_t i = 0; i < input.size(); ++i) {

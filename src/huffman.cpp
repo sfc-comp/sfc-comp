@@ -13,7 +13,7 @@ namespace {
 
 using Leaf = std::pair<ptrdiff_t, size_t>;
 
-huffman_result create_codewords(const size_t n, std::vector<Leaf>& leaves, bool zero_to_one) {
+huffman_t create_codewords(const size_t n, std::vector<Leaf>& leaves, bool zero_to_one) {
   std::sort(leaves.begin(), leaves.end());
 
   size_t codeword = 0;
@@ -31,7 +31,7 @@ huffman_result create_codewords(const size_t n, std::vector<Leaf>& leaves, bool 
     codeword++;
   }
 
-  huffman_result ret;
+  huffman_t ret;
   ret.words = std::move(words);
   ret.codewords = std::move(codewords);
 
@@ -40,7 +40,7 @@ huffman_result create_codewords(const size_t n, std::vector<Leaf>& leaves, bool 
 
 } // namespace
 
-huffman_result length_limited_huffman(std::span<const size_t> counts, const size_t limit, bool zero_to_one) {
+huffman_t length_limited_huffman(std::span<const size_t> counts, const size_t limit, bool zero_to_one) {
   using Count = std::pair<ptrdiff_t, size_t>;
   std::vector<size_t> words;
 
@@ -50,7 +50,7 @@ huffman_result length_limited_huffman(std::span<const size_t> counts, const size
     weights.push_back({counts[i], words.size()});
     words.push_back(i);
   }
-  if (words.size() == 0) return huffman_result();
+  if (words.size() == 0) return huffman_t();
 
   if (((words.size() - 1) >> limit) != 0) {
     throw std::runtime_error(
@@ -96,7 +96,7 @@ huffman_result length_limited_huffman(std::span<const size_t> counts, const size
   return create_codewords(counts.size(), leaves, zero_to_one);
 }
 
-huffman_result huffman(std::span<const size_t> counts, bool zero_to_one) {
+huffman_t huffman(std::span<const size_t> counts, bool zero_to_one) {
   using Count = std::pair<ptrdiff_t, size_t>;
   std::priority_queue<Count, std::vector<Count>, std::greater<Count> > pqueue;
 
@@ -106,7 +106,7 @@ huffman_result huffman(std::span<const size_t> counts, bool zero_to_one) {
     pqueue.push(Count(counts[i], words.size()));
     words.push_back(i);
   }
-  if (words.size() == 0) return huffman_result();
+  if (words.size() == 0) return huffman_t();
 
   const size_t num_codes = words.size();
   std::vector<node> nodes;

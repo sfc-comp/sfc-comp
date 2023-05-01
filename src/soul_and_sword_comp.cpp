@@ -8,18 +8,8 @@ namespace sfc_comp {
 std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 2, 0x10000);
 
-  enum Tag {
-    uncomp, lz
-  };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag == uncomp) return li == rhs.li;
-      return li == rhs.li;
-    }
-    Tag tag;
-    size_t oi, li;
-  };
+  enum method { uncomp, lz };
+  using tag = tag_ol<method>;
 
   static constexpr auto uncomp_len_tab = std::to_array<vrange>({
     vrange(0x0001, 0x0003,  3, 0b000),
@@ -52,7 +42,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   });
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size(), 2);
+  sssp_solver<tag> dp(input.size(), 2);
 
   for (size_t i = 0; i < 2; ++i) lz_helper.add_element(i);
 
@@ -70,7 +60,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
     const size_t ofs_bitsize = std::min<size_t>(12, 1 + ilog2(i));
     dp.update_lz_matrix(i, ofs_tab, lz_len_tab,
       [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
-      [&](size_t, size_t li) -> CompType { return {lz, ofs_bitsize, li}; },
+      [&](size_t, size_t li) -> tag { return {lz, ofs_bitsize, li}; },
       1 + ofs_bitsize
     );
     lz_helper.add_element(i);

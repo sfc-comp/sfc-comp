@@ -373,6 +373,40 @@ struct vrange {
   size_t val;
 };
 
+template <typename Tag>
+struct tag_ol {
+  tag_ol() {}
+  tag_ol(Tag tag, uint64_t oi, uint64_t li) : tag(tag), oi(oi), li(li) {}
+  constexpr bool operator == (const tag_ol& rhs) const {
+    return tag == rhs.tag && li == rhs.li;
+  }
+  Tag tag : 16;
+  uint32_t oi : 8;
+  uint32_t li : 8;
+};
+
+template <typename Tag>
+struct tag_l {
+  tag_l() {}
+  tag_l(Tag tag, uint64_t li) : tag(tag), li(li) {}
+  constexpr bool operator == (const tag_l& rhs) const {
+    return tag == rhs.tag && li == rhs.li;
+  }
+  Tag tag : 16;
+  uint32_t li : 8;
+};
+
+template <typename Tag>
+struct tag_o {
+  tag_o() {}
+  tag_o(Tag tag, uint64_t oi) : tag(tag), oi(oi) {}
+  constexpr bool operator == (const tag_o& rhs) const {
+    return tag == rhs.tag && oi == rhs.oi;
+  }
+  Tag tag : 16;
+  uint32_t oi : 8;
+};
+
 template <typename TagType, typename CostType = size_t>
 class sssp_solver {
  public:
@@ -419,18 +453,27 @@ class sssp_solver {
     using encode::lz_data;
     ptrdiff_t oi = offsets.size() - 1;
     ptrdiff_t li = lens.size() - 1;
+
+    ptrdiff_t best_oi = -1;
+    size_t best_cost = std::numeric_limits<size_t>::max();
+    encode::lz_data best_lz = {0, 0};
     for (lz_data res_lz = find_lz(oi); ; ) {
       const size_t d = adr - res_lz.ofs;
       if (res_lz.len < lz_min_len) break;
       while (oi >= 0 && d < offsets[oi].min) --oi;
       if (oi < 0) break;
+      if (offsets[oi].bitlen < best_cost) {
+        best_cost = offsets[oi].bitlen;
+        best_oi = oi;
+        best_lz = res_lz;
+      }
       lz_data nres_lz = (oi == 0) ? lz_data(0, 0) : find_lz(oi - 1);
       for (; li >= 0 && res_lz.len < lens[li].min; --li);
       const size_t min_len = nres_lz.len + 1;
       for (; li >= 0 && min_len <= lens[li].max; --li) {
         const auto& l = lens[li];
-        const auto cost = base_cost + (offsets[oi].bitlen + l.bitlen + c);
-        update_lz(adr, std::max(min_len, l.min), l.max, res_lz, Constant<0>(), tag(oi, li), cost);
+        const auto cost = base_cost + (best_cost + l.bitlen + c);
+        update_lz(adr, std::max(min_len, l.min), l.max, best_lz, Constant<0>(), tag(best_oi, li), cost);
         if (min_len > l.min) break;
       }
       if (--oi < 0) break;

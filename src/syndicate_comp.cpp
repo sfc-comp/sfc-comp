@@ -8,18 +8,9 @@ namespace sfc_comp {
 std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);
 
-  enum Tag {
-    uncomp, lz1, lz2, lz3
-  };
-  struct CompType {
-    Tag tag;
-    size_t from;
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag == uncomp) return true;
-      return from == rhs.from;
-    }
-  };
+  enum method { uncomp, lz1, lz2, lz3 };
+  using tag = tag_l<method>;
+
   static constexpr size_t ofs_min_bits = 1, ofs_max_bits = 16;
   static constexpr size_t len_min_bits = 2, len_max_bits = 16;
   static constexpr auto len_masks = create_array<size_t, len_max_bits + 1>([&](size_t i) {
@@ -61,9 +52,9 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
       const size_t max_len = min_lens[len_bits + ofs_bits] + ((size_t(1) << len_bits) - 1);
       if (longest_lz_len > max_len) len_bits_limit = len_bits + 1;
     }
-    std::vector<sssp_solver<CompType>> dp(len_bits_limit + 1);
+    std::vector<sssp_solver<tag>> dp(len_bits_limit + 1);
     for (size_t len_bits = len_min_bits; len_bits <= len_bits_limit; ++len_bits) {
-      dp[len_bits] = sssp_solver<CompType>(input.size());
+      dp[len_bits] = sssp_solver<tag>(input.size());
     }
     for (size_t i = 0; i < input.size(); ++i) {
       auto res_lz = lz_memo[i][ofs_bits];
@@ -93,14 +84,14 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
     }
     size_t curr_len_bits = last_len_bits;
     const auto commands = [&input, &dp](size_t& curr) {
-      using command_type = sssp_solver<CompType>::vertex_type;
+      using command_type = sssp_solver<tag>::vertex_type;
       std::vector<command_type> ret;
       ptrdiff_t adr = input.size();
       while (adr > 0) {
         auto cmd = dp[curr][adr];
         assert(cmd.len > 0);
         adr -= cmd.len;
-        curr = cmd.type.from;
+        curr = cmd.type.li;
         ret.emplace_back(cmd);
       }
       assert(adr == 0);

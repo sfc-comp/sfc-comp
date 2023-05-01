@@ -36,16 +36,8 @@ struct cost_traits<rnc1_cost> {
 std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x100000);
 
-  enum Tag { uncomp, lz };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag == uncomp) return li == rhs.li;
-      return li == rhs.li;
-    }
-    Tag tag;
-    size_t oi, li;
-  };
+  enum method { uncomp, lz };
+  using tag = tag_ol<method>;
 
   static constexpr size_t lz_min_len = 2;
   static constexpr size_t lz_ofs_max_bits = 15;
@@ -93,7 +85,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
 
   size_t chunk = 0;
 
-  sssp_solver<CompType, rnc1_cost> dp0(input.size()), dp1(input.size());
+  sssp_solver<tag, rnc1_cost> dp0(input.size()), dp1(input.size());
   uncomp_helper<rnc1_cost::value_type> u_helper(input.size(), 8);
 
   size_t begin = 0;
@@ -101,38 +93,40 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
 
   while (true) {
     // [Todo] Find a reasonable initialization.
-    std::vector<size_t> huff_u_bits(ulens.size());
-    std::iota(huff_u_bits.begin(), huff_u_bits.end(), 1);
+    std::vector<vrange> curr_uncomp(ulens.begin(), ulens.end());
+    for (size_t i = 0; i < ulens.size(); ++i) curr_uncomp[i].bitlen += i + 1;
 
-    std::vector<size_t> huff_lz_len_bits(lz_lens.size());
-    std::iota(huff_lz_len_bits.begin(), huff_lz_len_bits.end(), 1);
+    std::vector<vrange> curr_lz_len(lz_lens.begin(), lz_lens.end());
+    for (size_t i = 0; i < lz_lens.size(); ++i) curr_lz_len[i].bitlen += i + 1;
 
-    std::vector<size_t> huff_lz_ofs_bits(lz_offsets.size(), 4);
+    std::vector<vrange> curr_lz_ofs(lz_offsets.begin(), lz_offsets.end());
+    for (size_t i = 0; i < lz_offsets.size(); ++i) curr_lz_ofs[i].bitlen += 4;
 
-    struct huffman {
-      encode::huffman_result uncomp_len;
-      encode::huffman_result lz_len;
-      encode::huffman_result lz_ofs;
+    struct rnc1_huff {
+      encode::huffman_t uncomp_len;
+      encode::huffman_t lz_ofs;
+      encode::huffman_t lz_len;
     };
 
-    auto update_costs = [&] (const encode::huffman_result& huff, std::vector<size_t>& costs, size_t penalty = 9) {
-      size_t longest_bitlen = 0;
-      for (const auto w : huff.words) longest_bitlen = std::max<size_t>(longest_bitlen, huff.codewords[w].bitlen);
-      costs.assign(costs.size(), longest_bitlen + penalty);
-      for (const auto w : huff.words) costs[w] = huff.codewords[w].bitlen;
-    };
-
-    auto update_huffman_costs = [&] (const huffman& huff) {
-      update_costs(huff.uncomp_len, huff_u_bits);
-      update_costs(huff.lz_ofs, huff_lz_ofs_bits);
-      update_costs(huff.lz_len, huff_lz_len_bits);
+    const auto update_costs = [&](const rnc1_huff& huff) {
+      const auto update = [&](
+          const encode::huffman_t& huff, std::span<const vrange> base,
+          std::vector<vrange>& costs, size_t penalty = 9) {
+        size_t longest_bitlen = 0;
+        for (const auto w : huff.words) longest_bitlen = std::max<size_t>(longest_bitlen, huff.codewords[w].bitlen);
+        for (auto& v : costs) v.bitlen = longest_bitlen + penalty;
+        for (const auto w : huff.words) costs[w].bitlen = huff.codewords[w].bitlen + base[w].bitlen;
+      };
+      update(huff.uncomp_len, ulens, curr_uncomp);
+      update(huff.lz_ofs, lz_offsets, curr_lz_ofs);
+      update(huff.lz_len, lz_lens, curr_lz_len);
     };
 
     using command_type = decltype(dp0)::vertex_type;
     size_t best_cost = std::numeric_limits<size_t>::max();
     size_t best_end = begin;
     std::vector<command_type> best_commands;
-    huffman best_huff;
+    rnc1_huff best_huff;
 
     while (true) {
       dp0[begin].cost = rnc1_cost(0);
@@ -147,7 +141,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         const auto cost0 = dp0[index].cost;
         if (cost0 < dp0.infinite_cost) {
           // skip uncomp
-          const auto ncost = rnc1_cost(cost0.value + huff_u_bits[0], cost0.count + 1);
+          const auto ncost = rnc1_cost(cost0.value + curr_uncomp[0].bitlen, cost0.count + 1);
           dp1.update(index, 0, 0, Constant<0>(), {uncomp, 0, 0}, ncost);
         }
         if (index == input.size()) break;
@@ -159,33 +153,28 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         for (size_t k = 1; k < ulens.size(); ++k) {
           const auto u = u_helper.find(index + 1, ulens[k].min, ulens[k].max);
           if (u.len == u_helper.nlen) continue;
-          const auto cost = rnc1_cost(u.cost + huff_u_bits[k] + ulens[k].bitlen,
+          const auto cost = rnc1_cost(u.cost + curr_uncomp[k].bitlen,
                                       dp0[index + 1 - u.len].cost.count + 1);
           dp1.update_u(index + 1, u.len, {uncomp, 0, k}, cost);
         }
 
         const auto cost1 = dp1[index].cost;
         if (cost1 == dp1.infinite_cost) break;
+
+        // [TODO] Find a better index.
         if (cost1.count >= command_limit) break;
 
-        for (ptrdiff_t oi = lz_ofs_max_bits; oi >= 0; --oi) {
-          const auto& res_lz = lz_memo[index][oi];
-          if (res_lz.len < lz_min_len) break;
-          if ((index - res_lz.ofs) < lz_offsets[oi].min) continue;
-          for (size_t li = 0; li < lz_lens.size(); ++li) {
-            const size_t bit_size = (huff_lz_ofs_bits[oi] + lz_offsets[oi].bitlen) +
-                                    (huff_lz_len_bits[li] + lz_lens[li].bitlen);
-            const auto cost = rnc1_cost(cost1.value + bit_size, cost1.count);
-            dp0.update_lz(index, lz_lens[li].min, lz_lens[li].max, res_lz,
-                          Constant<0>(), {lz, size_t(oi), li}, cost);
-          }
-        }
+        dp0.update_lz_matrix(index, curr_lz_ofs, curr_lz_len,
+          [&](size_t oi) { return lz_memo[index][oi]; },
+          [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
+          0, cost1
+        );
       }
       u_helper.reset(begin, index);
 
       last_index = index;
       if (dp1[index].cost == dp1.infinite_cost) {
-        if (index == 0) throw std::logic_error("This should not happen.");
+        if (index == 0) throw std::logic_error("Forgot to initialize costs.");
         --index;
       }
 
@@ -217,7 +206,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         return ret;
       }();
 
-      auto huffman_encode = [&](std::span<const size_t> counts) {
+      const auto enc_huffman = [&](std::span<const size_t> counts) {
         auto ret = encode::huffman(counts, true);
         if (ret.words.size() == 1) {
           // 0-bit codes are not allowed.
@@ -226,17 +215,18 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         return ret;
       };
 
-      huffman huff;
-      huff.uncomp_len = huffman_encode(counter.uncomp);
-      huff.lz_ofs = huffman_encode(counter.lz_ofs);
-      huff.lz_len = huffman_encode(counter.lz_len);
+      const rnc1_huff huff(
+        enc_huffman(counter.uncomp),
+        enc_huffman(counter.lz_ofs),
+        enc_huffman(counter.lz_len)
+      );
 
-      auto max_elem = [&](std::span<const size_t> words) -> ptrdiff_t {
-        if (words.size() == 0) return -1; // This value must be -1.
+      const auto max_elem = [&](std::span<const size_t> words) -> ptrdiff_t {
+        if (words.size() == 0) return -1; // This value should be -1.
         return *std::max_element(words.begin(), words.end());
       };
 
-      auto calc_cost = [&](const huffman& huff, std::span<const command_type> commands, const Counter& counter) -> size_t {
+      const auto calc_cost = [&](const rnc1_huff& huff, std::span<const command_type> commands, const Counter& counter) -> size_t {
         size_t cost = 0;
         cost += 5 + 4 * (1 + max_elem(huff.uncomp_len.words));
         cost += 5 + 4 * (1 + max_elem(huff.lz_ofs.words));
@@ -257,16 +247,16 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
         return cost;
       };
 
-      const size_t estimated_cost = calc_cost(huff, commands, counter);
+      const size_t chunk_cost = calc_cost(huff, commands, counter);
 
-      if (estimated_cost < best_cost) {
-        best_cost = estimated_cost;
+      if (chunk_cost < best_cost) {
+        best_cost = chunk_cost;
         best_commands = std::move(commands);
         best_huff = std::move(huff);
         best_end = index; // (do not use last_index)
-        update_huffman_costs(best_huff);
+        update_costs(best_huff);
       } else {
-        auto write_cost = [&](const encode::huffman_result& huff) {
+        const auto write_cost = [&](const encode::huffman_t& huff) {
           const size_t total_count = max_elem(huff.words) + 1;
           ret.write<bnl>({5, total_count});
           for (size_t i = 0; i < total_count; ++i) {
@@ -274,11 +264,13 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
             if (bits <= 0) bits = 0;
             if (bits >= 16) {
               // this would not happen.
-              throw std::runtime_error("Failed to compress the given data.");
+              throw std::runtime_error("Failed to compress the given data. (bits >= 16)");
             }
             ret.write<bnl>({4, size_t(bits)});
           }
         };
+
+        const auto prev_cost = ret.bit_length();
         write_cost(best_huff.uncomp_len);
         write_cost(best_huff.lz_ofs);
         write_cost(best_huff.lz_len);
@@ -315,6 +307,8 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           }
           adr += cmd.len;
         }
+        const auto curr_cost = ret.bit_length();
+        assert(best_cost == curr_cost - prev_cost);
         assert(adr == best_end);
         begin = best_end;
         break;

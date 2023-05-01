@@ -7,16 +7,9 @@ namespace sfc_comp {
 
 std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x10000);
-  enum Tag { uncomp, lz };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag == uncomp) return true;
-      return li == rhs.li;
-    }
-    Tag tag;
-    size_t oi, li;
-  };
+
+  enum method { uncomp, lz };
+  using tag = tag_ol<method>;
 
   static constexpr auto ofs_tab = create_array<vrange, 15>([](size_t k) {
     return vrange(1 << k, (2 << k) - 1, 4 + k, (k + 1) << k);
@@ -33,7 +26,7 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     u_helper.update(i, dp[i].cost);
@@ -43,7 +36,7 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
     }
     dp.update_lz_matrix(i, ofs_tab, len_tab,
       [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
-      [&](size_t oi, size_t li) -> CompType { return {lz, oi, li}; },
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       0
     );
     lz_helper.add_element(i);

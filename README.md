@@ -134,7 +134,7 @@ $ ./bench <input-dir>
 | rareware_comp                            |   29 | 56EC | 31B3 | 7787 | 2205 | 3391 | 6285 | 1657 |  1CEC1 | 0.5235 | F3FE034F |
 | rayearth_comp                            |    6 | 6242 | 393F | 7A0F | 2933 | 395E | 69E4 | 229C |  204A7 | 0.0890 | DF56CDD8 |
 | riddick_bowe_boxing_comp                 |    7 | 5769 | 30B0 | 7955 | 2168 | 31CE | 61DA | 1DD2 |  1D457 | 0.0925 | 6C9B46B7 |
-| rob_northen_comp_1                       |   1A | 533B | 2E08 | 72C9 | 1DFB | 2EA7 | 5DF0 | 13E8 |  1B2A0 | 0.7413 | A46D379A |
+| rob_northen_comp_1                       |   1A | 533B | 2E08 | 72C9 | 1DFB | 2EA7 | 5DF0 | 13E8 |  1B2A0 | 0.6877 | 8FFA6CC6 |
 | rob_northen_comp_2                       |   17 | 58F5 | 317B | 75EF | 1FAE | 3260 | 623E | 1975 |  1CE37 | 0.1129 | F93802D2 |
 | royal_conquest_comp                      |  1B6 | 538D | 2D9B | 70DF | 1F05 | 30D4 | 5C8F | 169D |  1B6C2 | 0.1883 | 1BAB55C1 |
 | rs3_comp_1                               |    5 | 5F6D | 375C | 7FCA | 25DD | 385A | 6A17 | 19F4 |  1F8DA | 0.0461 | 50255019 |

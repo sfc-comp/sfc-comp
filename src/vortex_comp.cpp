@@ -8,16 +8,8 @@ namespace sfc_comp {
 std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
   check_size(in.size(), 0, 0x800000);
 
-  enum Tag { none, uncomp, lz2, lz3, lz };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag == uncomp) return li == rhs.li;
-      return li == rhs.li;
-    }
-    Tag tag;
-    size_t oi, li;
-  };
+  enum method { none, uncomp, lz2, lz3, lz };
+  using tag = tag_ol<method>;
 
   static constexpr auto len_tab = std::to_array<vrange>({
                        // 00 (len == 2)
@@ -38,7 +30,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<CompType> dp0(input.size()), dp1(input.size(), -1);
+  sssp_solver<tag> dp0(input.size()), dp1(input.size(), -1);
 
   for (size_t i = 0; i <= input.size(); ++i) {
     const auto cost0 = dp0[i].cost;
@@ -64,7 +56,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
       dp0.update_lz(i, 3, 3, res_l3,  Constant<17>(), {lz3, 1, 0}, cost1);
       dp0.update_lz_matrix(i, ofs_tab, len_tab,
         [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
-        [&](size_t oi, size_t li) -> CompType { return {lz, oi, li}; },
+        [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
         0, cost1
       );
     }
@@ -77,7 +69,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
   }
 
   auto commands = [&]{
-    using command_type = sssp_solver<CompType>::vertex_type;
+    using command_type = sssp_solver<tag>::vertex_type;
     std::vector<command_type> commands;
     size_t curr = 1;
     ptrdiff_t adr = input.size();

@@ -21,14 +21,14 @@ struct node {
   size_t right;
 };
 
-struct huffman_result {
+struct huffman_t {
   std::vector<size_t> words;
   std::vector<codeword> codewords;
 };
 
-huffman_result huffman(std::span<const size_t> counts, bool zero_to_one);
+huffman_t huffman(std::span<const size_t> counts, bool zero_to_one);
 
-huffman_result length_limited_huffman(std::span<const size_t> counts, size_t limit, bool zero_to_one);
+huffman_t length_limited_huffman(std::span<const size_t> counts, size_t limit, bool zero_to_one);
 
 } // namespace encode
 

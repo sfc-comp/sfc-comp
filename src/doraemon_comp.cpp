@@ -48,16 +48,8 @@ std::vector<uint8_t> doraemon_comp_core(
     std::span<const uint8_t> input,
     const lha_config& config, Func use_zero_bits) {
 
-  enum Tag { uncomp, lz };
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag == uncomp) return true;
-      return ofs_no == rhs.ofs_no;
-    }
-    Tag tag;
-    size_t ofs_no;
-  };
+  enum method { uncomp, lz };
+  using tag = tag_o<method>;
 
   static constexpr size_t lz_min_len = 3;
   static constexpr size_t lz_max_len = lz_min_len + 0xfd;
@@ -101,7 +93,7 @@ std::vector<uint8_t> doraemon_comp_core(
   using namespace data_type;
   writer_b8_h ret(config.header_size);
 
-  sssp_solver<CompType, lha_cost> dp(input.size());
+  sssp_solver<tag, lha_cost> dp(input.size());
 
   size_t begin = 0;
   size_t last_index = begin;
@@ -117,12 +109,12 @@ std::vector<uint8_t> doraemon_comp_core(
 
   while (begin < input.size()) {
     struct encodes {
-      encode::huffman_result code;
-      encode::huffman_result lz_ofs;
-      encode::huffman_result bits;
+      encode::huffman_t code;
+      encode::huffman_t lz_ofs;
+      encode::huffman_t bits;
     };
 
-    const auto update_costs = [&] (const encode::huffman_result& huff, std::vector<size_t>& costs, size_t penalty = 9) {
+    const auto update_costs = [&] (const encode::huffman_t& huff, std::vector<size_t>& costs, size_t penalty = 9) {
       size_t longest_bitlen = 0;
       for (const auto w : huff.words) longest_bitlen = std::max<size_t>(longest_bitlen, huff.codewords[w].bitlen);
       costs.assign(costs.size(), longest_bitlen + penalty);
@@ -177,7 +169,7 @@ std::vector<uint8_t> doraemon_comp_core(
           } break;
           case lz: {
             counter.code[cmd.len + lz_huff_offset] += 1;
-            counter.lz_ofs[cmd.type.ofs_no] += 1;
+            counter.lz_ofs[cmd.type.oi] += 1;
           } break;
           default: assert(0);
           }
@@ -204,16 +196,16 @@ std::vector<uint8_t> doraemon_comp_core(
         return *std::max_element(words.begin(), words.end());
       };
 
-      const auto bits_table = [&](const encode::huffman_result& huff) {
+      const auto bits_table = [&](const encode::huffman_t& huff) {
         const size_t table_size = max_elem(huff.words) + 1;
         std::vector<uint8_t> bits(table_size, 0);
         for (const auto w : huff.words) bits[w] = huff.codewords[w].bitlen;
         return bits;
       };
 
-      const auto encode_table = [&](const encode::huffman_result& huff) {
+      const auto encode_table = [&](const encode::huffman_t& huff) {
         const auto bits = bits_table(huff);
-        if (bits.empty()) return encode::huffman_result();
+        if (bits.empty()) return encode::huffman_t();
 
         const size_t max_bit_size = huff.codewords[huff.words.back()].bitlen;
         std::vector<size_t> counts(3 + max_bit_size, 0);
@@ -259,7 +251,7 @@ std::vector<uint8_t> doraemon_comp_core(
         update_huffman_costs(best_enc);
       } else {
         const auto write_huff_bits =
-            [&](const encode::huffman_result& huff, const size_t s, const size_t t, const size_t lim) {
+            [&](const encode::huffman_t& huff, const size_t s, const size_t t, const size_t lim) {
           auto bits = bits_table(huff);
           if (bits.size() > lim) std::runtime_error("This algorithm cannot compress the given data.");
 
@@ -369,7 +361,7 @@ std::vector<uint8_t> doraemon_comp_core(
           } break;
           case lz: {
             ret.write<bnh>(best_enc.code.codewords[cmd.len + lz_huff_offset]);
-            const size_t oi = cmd.type.ofs_no;
+            const size_t oi = cmd.type.oi;
             const auto& o = lz_ofs[oi];
             const size_t d = adr - cmd.lz_ofs;
             assert(o.min <= d && d <= o.max);

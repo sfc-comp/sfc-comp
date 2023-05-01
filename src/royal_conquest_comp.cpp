@@ -12,19 +12,8 @@ namespace sfc_comp {
 std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
   check_size(in.size(), 1, 0xffff);
 
-  enum Tag {
-    uncomp, lz
-  };
-
-  struct CompType {
-    bool operator == (const CompType& rhs) const {
-      if (tag != rhs.tag) return false;
-      if (tag == uncomp) return true;
-      return true;
-    }
-    Tag tag;
-    size_t ofs_no;
-  };
+  enum method { uncomp, lz };
+  using tag = tag_o<method>;
 
   static constexpr auto lz_ofs_tab = std::to_array<vrange>({
     vrange(0x0001, 0x0040,  9, 0x00 << 1), // [00, 1f] _
@@ -76,7 +65,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     return ret;
   }();
 
-  auto update_huffman_costs = [&] (const encode::huffman_result& huff, size_t penalty = 0) {
+  const auto update_costs = [&](const encode::huffman_t& huff, size_t penalty = 0) {
     const auto& codewords = huff.codewords;
     size_t longest_bit_size = 0;
     for (const auto w : huff.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
@@ -88,17 +77,17 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
 
   size_t penalty = ilog2(2 * input.size() + 1) + 9;
   while (true) {
-    sssp_solver<CompType> dp(input.size(), pad);
+    sssp_solver<tag> dp(input.size(), pad);
 
     for (size_t i = pad; i < input.size(); ++i) {
       dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, {uncomp, 0});
-      for (ptrdiff_t o = lz_ofs_tab.size() - 1; o >= 0; --o) {
+      for (size_t o = lz_ofs_tab.size(); o-- > 0; ) {
         const auto& res_lz = lz_memo[i][o];
         if (res_lz.len < lz_min_len) break;
         if ((i - res_lz.ofs) < lz_ofs_tab[o].min) continue;
         dp.update_lz_table(i, lz_lens, res_lz, [&](size_t j) {
           return huff_bitlens[lz_lens[j] + lz_huff_offset] + lz_ofs_tab[o].bitlen;
-        }, {lz, size_t(o)});
+        }, {lz, o});
       }
     }
 
@@ -130,7 +119,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
         if (excess == 0) break;
       }
       const auto huff_fixed = encode::huffman(code_counts, true);
-      update_huffman_costs(huff_fixed, penalty);
+      update_costs(huff_fixed, penalty);
       penalty = penalty * 1.25 + 1;
       if (penalty >= 1e9) {
         // this should not happen.
@@ -164,8 +153,8 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
         } break;
         case lz: {
           ret.write<bnh>(huff.codewords[cmd.len + lz_huff_offset]);
-          const auto tp = lz_ofs_tab[cmd.type.ofs_no];
-          ret.write<bnh>({tp.bitlen, tp.val + (adr - cmd.lz_ofs - tp.min)});
+          const auto o = lz_ofs_tab[cmd.type.oi];
+          ret.write<bnh>({o.bitlen, o.val + (adr - cmd.lz_ofs - o.min)});
         } break;
         default: assert(0);
         }
@@ -179,7 +168,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
       } else {
         break;
       }
-      update_huffman_costs(huff);
+      update_costs(huff);
     }
   }
 
