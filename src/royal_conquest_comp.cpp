@@ -81,14 +81,11 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
 
     for (size_t i = pad; i < input.size(); ++i) {
       dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, {uncomp, 0});
-      for (size_t o = lz_ofs_tab.size(); o-- > 0; ) {
-        const auto& res_lz = lz_memo[i][o];
-        if (res_lz.len < lz_min_len) break;
-        if ((i - res_lz.ofs) < lz_ofs_tab[o].min) continue;
-        dp.update_lz_table(i, lz_lens, res_lz, [&](size_t j) {
-          return huff_bitlens[lz_lens[j] + lz_huff_offset] + lz_ofs_tab[o].bitlen;
-        }, {lz, o});
-      }
+      dp.update_lz_matrix(i, lz_ofs_tab, lz_lens,
+        [&](size_t oi) { return lz_memo[i][oi]; },
+        [&](size_t li) { return huff_bitlens[lz_lens[li] + lz_huff_offset]; },
+        [&](size_t oi, size_t) -> tag { return {lz, oi}; }
+      );
     }
 
     const auto commands = dp.commands(pad);

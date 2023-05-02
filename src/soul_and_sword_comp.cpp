@@ -6,7 +6,9 @@
 namespace sfc_comp {
 
 std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
-  check_size(input.size(), 2, 0x10000);
+  static constexpr size_t skipped_size = 2;
+
+  check_size(input.size(), skipped_size, 0x10000);
 
   enum method { uncomp, lz };
   using tag = tag_ol<method>;
@@ -42,11 +44,11 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   });
 
   lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size(), 2);
+  sssp_solver<tag> dp(input.size(), skipped_size);
 
-  for (size_t i = 0; i < 2; ++i) lz_helper.add_element(i);
+  for (size_t i = 0; i < skipped_size; ++i) lz_helper.add_element(i);
 
-  for (size_t i = 2; i < input.size(); ++i) {
+  for (size_t i = skipped_size; i < input.size(); ++i) {
     const auto cost = dp[i].cost;
 
     for (size_t k = 0; k < uncomp_len_tab.size(); ++k) {
@@ -68,10 +70,10 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
 
   using namespace data_type;
   writer_b8_h ret(4);
-  writer raws; raws.write<d8, d8>(input[0], input[1]);
+  writer raws; raws.write<d8n>({skipped_size, &input[0]});
 
-  size_t adr = 2;
-  for (const auto& cmd : dp.commands(2)) {
+  size_t adr = skipped_size;
+  for (const auto& cmd : dp.commands(skipped_size)) {
     switch (cmd.type.tag) {
     case uncomp: {
       const auto& l = uncomp_len_tab[cmd.type.li];
@@ -92,7 +94,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 4);
-  assert(dp.total_cost() + 8 * (4 + 2) == raws.size() * 8 + ret.bit_length());
+  assert(dp.total_cost() + 8 * (4 + skipped_size) == raws.size() * 8 + ret.bit_length());
   std::copy(raws.out.begin(), raws.out.end(), std::back_inserter(ret.out));
 
   return ret.out;

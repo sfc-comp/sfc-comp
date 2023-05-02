@@ -83,7 +83,7 @@ $ ./bench <input-dir>
 | dokapon_comp                             |    6 | 5DAF | 3674 | 7C54 | 24DA | 36D1 | 65A1 | 1A21 |  1EBEA | 0.4508 | 6C1C92FB |
 | doom_comp_1                              |    9 | 5C90 | 34EE | 75FF | 22F6 | 358A | 6447 | 1A8D |  1DEDA | 0.3654 | E6A4C014 |
 | doom_comp_2                              |    7 | 5E4B | 37E0 | 75FD | 26BB | 3822 | 6445 | 1A8B |  1E9DC | 0.2043 | A0182B5B |
-| doraemon_comp                            |   22 | 503E | 2B66 | 6F18 | 1D49 | 2EBB | 5A7D | 13D8 |  1A537 | 0.2248 | 3EEC5029 |
+| doraemon_comp                            |   22 | 503E | 2B66 | 6F18 | 1D49 | 2EBB | 5A7D | 13D8 |  1A537 | 0.2185 | 771B2814 |
 | dq12_comp                                |    5 | 5F67 | 3759 | 7FC6 | 25DD | 3858 | 6A11 | 19F3 |  1F8C4 | 0.0473 | 9E3F4EF0 |
 | dq5_comp_2                               |    5 | 5F67 | 3759 | 7FC6 | 25DD | 3858 | 6A11 | 19F3 |  1F8C4 | 0.0474 | 4F9C5071 |
 | dq6_comp                                 |    3 | 6458 | 3841 | 8366 | 2693 | 3B41 | 6EF0 | 2129 |  211EF | 0.0584 | EF916FB5 |
@@ -124,7 +124,7 @@ $ ./bench <input-dir>
 | marvelous_comp                           |    4 | 5EBC | 3744 | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F307 | 0.1474 | 4AC48E73 |
 | mujintou_monogatari_comp                 |    5 | 5F33 | 340D | 7FC9 | 21C2 | 3840 | 6A16 | 186B |  1EF91 | 0.0475 | 9AFCB643 |
 | odekake_lester_comp                      |    5 | 5F6A | 3759 | 7FC9 | 25DD | 3858 | 6A16 | 19F3 |  1F8CF | 0.0472 | 724C89A4 |
-| olivias_mystery_comp                     |    8 | 501E | 2B46 | 6EF8 | 1D29 | 2E9B | 5A5D | 13B8 |  1A43D | 0.2168 | 5FA8A160 |
+| olivias_mystery_comp                     |    8 | 501E | 2B46 | 6EF8 | 1D29 | 2E9B | 5A5D | 13B8 |  1A43D | 0.2072 | 42CCF870 |
 | oscar_comp                               |    7 | 5954 | 313D | 76EE | 1F58 | 3486 | 64C9 | 14D9 |  1CF06 | 0.1566 | 4C3F30B1 |
 | papuwa_comp                              |    5 | 5CD1 | 33DD | 785A | 220B | 369C | 66B8 | 1967 |  1E1D3 | 0.1516 | FC58730D |
 | picross_np_comp                          |    5 | 5F6B | 375C | 7FC7 | 25DD | 385A | 6A12 | 19F4 |  1F8D0 | 0.0475 | 06D9CAB2 |
@@ -134,7 +134,7 @@ $ ./bench <input-dir>
 | rareware_comp                            |   29 | 56EC | 31B3 | 7787 | 2205 | 3391 | 6285 | 1657 |  1CEC1 | 0.5235 | F3FE034F |
 | rayearth_comp                            |    6 | 6242 | 393F | 7A0F | 2933 | 395E | 69E4 | 229C |  204A7 | 0.0890 | DF56CDD8 |
 | riddick_bowe_boxing_comp                 |    7 | 5769 | 30B0 | 7955 | 2168 | 31CE | 61DA | 1DD2 |  1D457 | 0.0925 | 6C9B46B7 |
-| rob_northen_comp_1                       |   1A | 533B | 2E08 | 72C9 | 1DFB | 2EA7 | 5DF0 | 13E8 |  1B2A0 | 0.6877 | 8FFA6CC6 |
+| rob_northen_comp_1                       |   1A | 5340 | 2E0F | 72CD | 1DFF | 2EA7 | 5DF0 | 13E8 |  1B2B4 | 0.6195 | 3C7DC76F |
 | rob_northen_comp_2                       |   17 | 58F5 | 317B | 75EF | 1FAE | 3260 | 623E | 1975 |  1CE37 | 0.1129 | F93802D2 |
 | royal_conquest_comp                      |  1B6 | 538D | 2D9B | 70DF | 1F05 | 30D4 | 5C8F | 169D |  1B6C2 | 0.1883 | 1BAB55C1 |
 | rs3_comp_1                               |    5 | 5F6D | 375C | 7FCA | 25DD | 385A | 6A17 | 19F4 |  1F8DA | 0.0461 | 50255019 |
@@ -145,7 +145,7 @@ $ ./bench <input-dir>
 | sd_gundam_x_comp                         |    6 | 5412 | 2E3E | 70DA | 2142 | 31C1 | 5C84 | 1C55 |  1BF0C | 0.1576 | 3E503482 |
 | seiken_densetsu_2_comp                   |    7 | 5FCD | 39DC | 77F0 | 2980 | 380F | 65FF | 1EA6 |  1F7D4 | 0.3739 | 3F9A5966 |
 | shadowrun_comp                           |    7 | 5841 | 3137 | 750F | 2031 | 33E3 | 61A5 | 1632 |  1CA79 | 0.1591 | D4043BA3 |
-| shima_kousaku_comp                       |    A | 500E | 2B2D | 6EF9 | 1CD6 | 2E4C | 5A53 | 12A1 |  1A254 | 0.2138 | BA0850E7 |
+| shima_kousaku_comp                       |    A | 500E | 2B2D | 6EF9 | 1CD6 | 2E4C | 5A53 | 12A4 |  1A257 | 0.1984 | C6B8D8D8 |
 | shin_megami_tensei2_comp                 |    4 | 5D47 | 371E | 76EC | 28D3 | 3942 | 64F0 | 1DB1 |  1F00B | 0.0874 | 82F04553 |
 | sky_mission_comp                         |    5 | 5767 | 30AE | 7953 | 2166 | 31CC | 61D8 | 1DD0 |  1D447 | 0.0944 | A87A5246 |
 | slap_stick_comp                          |    5 | 622E | 39B5 | 81B7 | 2CA8 | 389F | 6C17 | 2BDE |  21ADB | 0.0694 | F4566128 |
@@ -172,13 +172,13 @@ $ ./bench <input-dir>
 | tamolympic_comp                          |    6 | 5639 | 30C2 | 7514 | 200F | 3054 | 5FA2 | 1826 |  1C440 | 0.1663 | 7BFCF590 |
 | tenchi_souzou_comp                       |    9 | 5A2E | 3203 | 7C04 | 1F94 | 32C4 | 64BC | 1872 |  1D7C4 | 0.0813 | C3BD936E |
 | tenchi_wo_kurau_comp                     |    5 | 5F6D | 375C | 7FCA | 25DD | 385A | 6A17 | 19F4 |  1F8DA | 0.0492 | C5E98D96 |
-| time_cop_comp                            |    E | 5024 | 2B4C | 6EFE | 1D30 | 2EA2 | 5A64 | 13BE |  1A470 | 0.2193 | E5F2AF3B |
+| time_cop_comp                            |    E | 502C | 2B54 | 6F06 | 1D36 | 2EA2 | 5A64 | 13BE |  1A48E | 0.2087 | C839EA45 |
 | vortex_comp                              |    7 | 57DD | 324A | 7504 | 2254 | 3188 | 6112 | 185C |  1CC7C | 0.1493 | A27CC256 |
 | wild_guns_comp                           |    5 | 61AF | 36E4 | 7C57 | 24ED | 3A01 | 6C6F | 1C39 |  1FC85 | 0.0531 | DA1D75A4 |
 | wizardry5_comp_1                         |    3 | 5E72 | 35A1 | 7DC1 | 262F | 37C7 | 68D7 | 24D5 |  1FD79 | 0.0647 | 54494D6A |
 | wizardry5_comp_2                         |    3 | 645C | 3841 | 8367 | 2693 | 3B42 | 6EF1 | 212A |  211F7 | 0.0579 | EE6D3436 |
 | wizardry6_comp                           |    5 | 61AD | 36E3 | 818F | 24EB | 3A00 | 6CA0 | 1C38 |  201E7 | 0.0537 | 1DF9E6FE |
-| yatterman_comp                           |    A | 500A | 2B36 | 6EF8 | 1CD6 | 2E4E | 5A56 | 129A |  1A256 | 0.2156 | ADD17EC0 |
+| yatterman_comp                           |    A | 500A | 2B36 | 6EF8 | 1CD6 | 2E4E | 5A56 | 129A |  1A256 | 0.2001 | B5F20A50
 | zelda_comp_1                             |    4 | 5EBC | 374D | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F310 | 0.1325 | EC940778 |
 | zelda_comp_2                             |    4 | 5EBC | 374D | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F310 | 0.1311 | 5633014D |
 

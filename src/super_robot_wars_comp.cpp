@@ -8,20 +8,20 @@ namespace sfc_comp {
 namespace {
 
 std::vector<uint8_t> super_robot_wars_comp_core(
-    std::span<const uint8_t> input, const size_t lz_max_len, const size_t header_size, const size_t skip_size) {
+    std::span<const uint8_t> input, const size_t lz_max_len, const size_t header_size, const size_t skipped_size) {
   enum CompType {
     uncomp, lzs, lzl, lzll
   };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size(), skip_size);
+  sssp_solver<CompType> dp(input.size(), skipped_size);
 
-  if (skip_size > input.size()) {
-    throw std::logic_error("skip_size exceeds the input size.");
+  if (skipped_size > input.size()) {
+    throw std::logic_error("skipped_size exceeds the input size.");
   }
-  for (size_t i = 0; i < skip_size; ++i) lz_helper.add_element(i);
+  for (size_t i = 0; i < skipped_size; ++i) lz_helper.add_element(i);
 
-  for (size_t i = skip_size; i < input.size(); ++i) {
+  for (size_t i = skipped_size; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
     auto res_lzs = lz_helper.find_best(i, 0x100);
     dp.update_lz(i, 2, 5, res_lzs, Constant<12>(), lzs);
@@ -32,10 +32,9 @@ std::vector<uint8_t> super_robot_wars_comp_core(
   }
 
   using namespace data_type;
-  writer_b8_h ret(header_size);
-  size_t adr = 0;
-  for (size_t i = 0; i < skip_size; ++i) ret.write<d8>(input[adr++]);
+  writer_b8_h ret(header_size); ret.write<d8n>({skipped_size, &input[0]});
 
+  size_t adr = skipped_size;
   for (const auto cmd : dp.commands(adr)) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
@@ -49,7 +48,7 @@ std::vector<uint8_t> super_robot_wars_comp_core(
   }
   ret.write<b1, b1, d24b>(false, true, 0);
   assert(adr == input.size());
-  assert(dp.total_cost() + 2 + 3 * 8 + (header_size + skip_size) * 8 == ret.bit_length());
+  assert(dp.total_cost() + 2 + 3 * 8 + (header_size + skipped_size) * 8 == ret.bit_length());
   return ret.out;
 }
 

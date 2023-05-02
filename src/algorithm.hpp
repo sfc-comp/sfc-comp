@@ -375,7 +375,7 @@ struct vrange {
 
 template <typename Tag>
 struct tag_ol {
-  tag_ol() {}
+  tag_ol() = default;
   tag_ol(Tag tag, uint64_t oi, uint64_t li) : tag(tag), oi(oi), li(li) {}
   constexpr bool operator == (const tag_ol& rhs) const {
     return tag == rhs.tag && li == rhs.li;
@@ -387,7 +387,7 @@ struct tag_ol {
 
 template <typename Tag>
 struct tag_l {
-  tag_l() {}
+  tag_l() = default;
   tag_l(Tag tag, uint64_t li) : tag(tag), li(li) {}
   constexpr bool operator == (const tag_l& rhs) const {
     return tag == rhs.tag && li == rhs.li;
@@ -398,10 +398,10 @@ struct tag_l {
 
 template <typename Tag>
 struct tag_o {
-  tag_o() {}
+  tag_o() = default;
   tag_o(Tag tag, uint64_t oi) : tag(tag), oi(oi) {}
   constexpr bool operator == (const tag_o& rhs) const {
-    return tag == rhs.tag && oi == rhs.oi;
+    return tag == rhs.tag;
   }
   Tag tag : 16;
   uint32_t oi : 8;
@@ -429,7 +429,7 @@ class sssp_solver {
 
   using vertex_type = Vertex;
 
-  sssp_solver() {}
+  sssp_solver() = default;
   sssp_solver(const size_t n, size_t begin = 0) : vertex(n + 1) {
     reset(0, n + 1);
     if (begin <= n) (*this)[begin].cost = cost_type(0);
@@ -455,26 +455,63 @@ class sssp_solver {
     ptrdiff_t li = lens.size() - 1;
 
     ptrdiff_t best_oi = -1;
-    size_t best_cost = std::numeric_limits<size_t>::max();
+    size_t best_bitlen = std::numeric_limits<size_t>::max();
     encode::lz_data best_lz = {0, 0};
     for (lz_data res_lz = find_lz(oi); ; ) {
       const size_t d = adr - res_lz.ofs;
       if (res_lz.len < lz_min_len) break;
       while (oi >= 0 && d < offsets[oi].min) --oi;
       if (oi < 0) break;
-      if (offsets[oi].bitlen < best_cost) {
-        best_cost = offsets[oi].bitlen;
-        best_oi = oi;
-        best_lz = res_lz;
+      if (offsets[oi].bitlen <= best_bitlen) {
+        best_bitlen = offsets[oi].bitlen; best_oi = oi; best_lz = res_lz;
       }
       lz_data nres_lz = (oi == 0) ? lz_data(0, 0) : find_lz(oi - 1);
       for (; li >= 0 && res_lz.len < lens[li].min; --li);
       const size_t min_len = nres_lz.len + 1;
       for (; li >= 0 && min_len <= lens[li].max; --li) {
         const auto& l = lens[li];
-        const auto cost = base_cost + (best_cost + l.bitlen + c);
+        const auto cost = base_cost + (best_bitlen + l.bitlen + c);
         update_lz(adr, std::max(min_len, l.min), l.max, best_lz, Constant<0>(), tag(best_oi, li), cost);
         if (min_len > l.min) break;
+      }
+      if (--oi < 0) break;
+      res_lz = std::move(nres_lz);
+    }
+  }
+
+  template <typename LzFunc, typename TagFunc, typename LenCostFunc>
+  void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const size_t> lens,
+      LzFunc find_lz, LenCostFunc func, TagFunc tag, cost_type base_cost = unspecified) {
+    if (lens.empty() || offsets.empty()) return;
+    const size_t lz_min_len = lens[0];
+    if (base_cost == unspecified) base_cost = (*this)[adr].cost;
+
+    using encode::lz_data;
+    ptrdiff_t oi = offsets.size() - 1;
+    lz_data res_lz = find_lz(oi);
+    ptrdiff_t li = (std::upper_bound(lens.begin(), lens.end(), res_lz.len) - lens.begin()) - 1;
+
+    ptrdiff_t best_oi = -1;
+    size_t best_bitlen = std::numeric_limits<size_t>::max();
+    encode::lz_data best_lz = {0, 0};
+    for (; ;) {
+      const size_t d = adr - res_lz.ofs;
+      if (res_lz.len < lz_min_len) break;
+      while (oi >= 0 && d < offsets[oi].min) --oi;
+      if (oi < 0) break;
+      if (offsets[oi].bitlen <= best_bitlen) {
+        best_bitlen = offsets[oi].bitlen; best_oi = oi; best_lz = res_lz;
+      }
+      lz_data nres_lz = (oi == 0) ? lz_data(0, 0) : find_lz(oi - 1);
+      for (; li >= 0 && res_lz.len < lens[li]; --li);
+      const size_t min_len = nres_lz.len + 1;
+      for (; li >= 0 && min_len <= lens[li]; --li) {
+        const size_t l = lens[li];
+        const auto cost = base_cost + (best_bitlen + func(li));
+        if (adr + l >= size()) continue;
+        auto& target = (*this)[adr + l];
+        if (cost >= target.cost) continue;
+        target = {cost, l, size_t(best_lz.ofs), tag(best_oi, li)};
       }
       if (--oi < 0) break;
       res_lz = std::move(nres_lz);
