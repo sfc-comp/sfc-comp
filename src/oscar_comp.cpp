@@ -70,7 +70,7 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
   assert(dp.total_cost() + 32 == raw.size() * 8 + ret.bit_length());
   write16b(ret.out, 0, ret.size() - 4);
   write16b(ret.out, 2, counter);
-  std::copy(raw.out.begin(), raw.out.end(), std::back_inserter(ret.out));
+  ret.extend(raw);
   return ret.out;
 }
 

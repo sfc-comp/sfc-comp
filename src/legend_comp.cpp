@@ -8,11 +8,9 @@ namespace sfc_comp {
 std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
 
-  enum CompType {
-    uncomp, lz2, lzs, lzm, lzl
-  };
+  enum tag { uncomp, lz2, lzs, lzm, lzl };
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
@@ -58,11 +56,11 @@ std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
+  assert(adr == input.size());
+  assert(dp.total_cost() + 8 * 8 == ret.size() * 8 + flags.bit_length());
   write32b(ret.out, 0, input.size());
   write32b(ret.out, 4, ret.size() - 8);
-  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
-  assert(adr == input.size());
-  assert((dp.total_cost() + 7) / 8 + 8 == ret.size());
+  ret.extend(flags);
   return ret.out;
 }
 

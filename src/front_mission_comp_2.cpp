@@ -1,18 +1,17 @@
 #include "algorithm.hpp"
 #include "encode.hpp"
 #include "writer.hpp"
+#include "utility.hpp"
 
 namespace sfc_comp {
 
 std::vector<uint8_t> front_mission_comp_2(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
 
-  enum CompType {
-    uncomp, rle, lz
-  };
+  enum tag { uncomp, rle, lz };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   encode::lz_data res_lz_curr = {}, res_lz_next = {};
   for (size_t i = 0; i < input.size(); ++i) {

@@ -76,7 +76,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   if (!mixed) {
     if (ret.size() >= 0x10000) throw std::runtime_error("This algorithm cannot compress the given data.");
     write16(ret.out, 0, ret.size());
-    std::copy(raw.out.begin(), raw.out.end(), std::back_inserter(ret.out));
+    ret.extend(raw);
   }
   return ret.out;
 }

@@ -69,7 +69,7 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
   write16(ret.out, 4, raw.size());
   write16(ret.out, 6, ret.size() - 10);
   write16(ret.out, 8, input.size());
-  std::copy(raw.out.begin(), raw.out.end(), std::back_inserter(ret.out));
+  ret.extend(raw);
 
   return ret.out;
 }

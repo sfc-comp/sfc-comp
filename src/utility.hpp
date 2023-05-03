@@ -31,6 +31,7 @@ std::array<size_t, 256> freq_u8(std::span<const uint8_t> input);
 std::vector<uint16_t> k_most_freq_u16(std::span<const uint8_t> input, size_t k);
 
 template <typename T, size_t K>
+requires std::integral<T>
 std::array<T, K> k_most(std::span<const size_t> counts) {
   const size_t size = size_t(1) << (8 * sizeof(T));
   if (!(size == counts.size())) {
@@ -48,6 +49,7 @@ std::array<T, K> k_most(std::span<const size_t> counts) {
 } // namespace utility
 
 template <typename T, size_t Extent, typename Func>
+requires std::convertible_to<std::invoke_result_t<Func, size_t>, T>
 constexpr std::array<T, Extent> create_array(Func func) {
   std::array<T, Extent> ret = {};
   for (size_t i = 0; i < Extent; ++i) ret[i] = func(i);

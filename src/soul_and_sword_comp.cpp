@@ -95,7 +95,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 4);
   assert(dp.total_cost() + 8 * (4 + skipped_size) == raws.size() * 8 + ret.bit_length());
-  std::copy(raws.out.begin(), raws.out.end(), std::back_inserter(ret.out));
+  ret.extend(raws);
 
   return ret.out;
 }

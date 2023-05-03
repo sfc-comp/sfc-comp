@@ -129,9 +129,9 @@ std::vector<uint8_t> battle_cross_comp(std::span<const uint8_t> input) {
   writer_b8_h ret(4); writer raw; writer_b16_h flags;
   koei_comp_core(input, ret, raw, flags);
   write16(ret.out, 0, ret.size());
-  std::copy(raw.out.begin(), raw.out.end(), std::back_inserter(ret.out));
+  ret.extend(raw);
   write16(ret.out, 2, ret.size() - 2);
-  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
+  ret.extend(flags);
   return ret.out;
 }
 

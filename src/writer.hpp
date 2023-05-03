@@ -101,6 +101,14 @@ class writer {
     return out.size();
   }
 
+  void extend(std::span<const uint8_t> v) {
+    out.insert(out.end(), v.begin(), v.end());
+  }
+
+  void extend(const writer& rhs) {
+    extend(rhs.out);
+  }
+
  protected:
   void write_(const data_type::d8& d) {
     out.push_back(d.x);
@@ -354,8 +362,8 @@ template <bool LSBFirst> using writer_b16 = bitstream_writer<2, LSBFirst, false>
 using writer_b16_l = writer_b16<true>;
 using writer_b16_h = writer_b16<false>;
 
-template <bool LSBFirst> using writer_b16_hasty = bitstream_writer<2, LSBFirst, true>;
-using writer_b16_hasty_l = writer_b16_hasty<true>;
-using writer_b16_hasty_h = writer_b16_hasty<false>;
+template <bool LSBFirst> using writer_b16_pre = bitstream_writer<2, LSBFirst, true>;
+using writer_b16_pre_l = writer_b16_pre<true>;
+using writer_b16_pre_h = writer_b16_pre<false>;
 
 } // namespace sfc_comp

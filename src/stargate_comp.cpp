@@ -101,7 +101,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   write16(ret.out, 2, ret.size() - 2);
   assert(adr == input.size());
   assert((std::min(dp0.total_cost(), dp1.total_cost()) - 1) + 32 == flags.bit_length() + 8 * ret.size());
-  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
+  ret.extend(flags);
 
   return ret.out;
 }

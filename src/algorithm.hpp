@@ -21,43 +21,60 @@
 
 namespace sfc_comp {
 
+template <typename T, T Iden = std::numeric_limits<T>::min()>
+struct range_max {
+  using value_type = T;
+  static T iden() { return Iden; }
+  static T op(const value_type& l, const value_type& r) { return std::max<T>(l, r); }
+};
+
+template <typename T, T Iden = std::numeric_limits<T>::max()>
+struct range_min {
+  using value_type = T;
+  static T iden() { return Iden; }
+  static T op(const value_type& l, const value_type& r) { return std::min<T>(l, r); }
+};
+
 namespace encode {
 
 struct lz_data {
-  lz_data() : ofs(0), len(0) {}
-  lz_data(ptrdiff_t ofs, size_t len) : ofs(ofs), len(len) {}
   ptrdiff_t ofs;
   size_t len;
 };
 
 namespace lz {
 
-template <typename SegtreeLcp, typename Segtree>
+template <typename U, typename S>
+requires std::integral<U> && std::signed_integral<S>
 encode::lz_data find_best(
-    size_t pos, size_t index, size_t block_size, const SegtreeLcp& seg_lcp, const Segtree& seg) {
-  auto r = seg.find_range(index, [&](int v) {
-    return v + static_cast<int>(block_size) < static_cast<int>(pos);
+    size_t adr, size_t index, size_t block_size,
+    const segment_tree<range_min<U>>& seg_lcp,
+    const segment_tree<range_max<S>>& seg) {
+  auto r = seg.find_range(index, [&](S v) {
+    return v + static_cast<S>(block_size) < static_cast<S>(adr);
   });
-  size_t len = 0; int offset = -1;
+  U len = 0; S offset = -1;
   if (r.first > 0) {
-    size_t len_l = seg_lcp.fold(r.first - 1, index);
+    const U len_l = seg_lcp.fold(r.first - 1, index);
     if (len_l > len) len = len_l, offset = seg[r.first - 1];
   }
   if (r.second < seg.size()) {
-    size_t len_r = seg_lcp.fold(index, r.second);
+    const U len_r = seg_lcp.fold(index, r.second);
     if (len_r > len) len = len_r, offset = seg[r.second];
   }
   return {offset, len};
 }
 
-template <typename SegtreeLcp, typename Segtree>
+template <typename U, typename S>
+requires std::integral<U> && std::signed_integral<S>
 encode::lz_data find_best_closest(
     size_t pos, size_t index, size_t block_size, size_t max_len,
-    const SegtreeLcp& seg_lcp, const Segtree& seg) {
+    const segment_tree<range_min<U>>& seg_lcp,
+    const segment_tree<range_max<S>>& seg) {
   auto ret = find_best(pos, index, block_size, seg_lcp, seg);
   if (ret.len > 0) {
     if (ret.len > max_len) ret.len = max_len;
-    auto r2 = seg_lcp.find_range(index, [&](size_t v) { return v >= ret.len; });
+    const auto r2 = seg_lcp.find_range(index, [&](size_t v) { return v >= ret.len; });
     ret.ofs = seg.fold(r2.first, r2.second + 1);
   }
   return ret;
@@ -67,30 +84,17 @@ encode::lz_data find_best_closest(
 
 } // namespace encode
 
-template <typename T, T Unit = std::numeric_limits<T>::min()>
-struct range_max {
-  using value_type = T;
-  static T unit() { return Unit; }
-  static T op(const value_type& l, const value_type& r) { return std::max<T>(l, r); }
-};
-
-template <typename T, T Unit = std::numeric_limits<T>::max()>
-struct range_min {
-  using value_type = T;
-  static T unit() { return Unit; }
-  static T op(const value_type& l, const value_type& r) { return std::min<T>(l, r); }
-};
-
+template <typename U = uint32_t>
+requires std::unsigned_integral<U>
 class lz_helper {
 public:
-  lz_helper(std::span<const uint8_t> input)
-    : n(input.size()),
-      segtree(n) {
+  using index_type = U;
+  using signed_index_type = std::make_signed_t<index_type>;
 
-    const auto plcp = suffix_array<uint8_t>(input).compute_lcp_and_rank(input);
-    const auto& lcp = plcp.first;
-    rank = std::move(plcp.second);
-    segtree_lcp = segment_tree<range_min<int>>(lcp);
+  lz_helper(std::span<const uint8_t> input) : n(input.size()), segtree(n) {
+    const auto [lcp, rank]= suffix_array<uint8_t>(input).lcp_rank();
+    this->rank = std::move(rank);
+    segtree_lcp = decltype(segtree_lcp)(lcp);
   }
 
   encode::lz_data find_best(size_t pos, size_t block_size) const {
@@ -107,12 +111,18 @@ public:
 
 private:
   const size_t n;
-  std::vector<int> rank;
-  segment_tree<range_max<int>> segtree;
-  segment_tree<range_min<int>> segtree_lcp;
+  std::vector<index_type> rank;
+  segment_tree<range_max<signed_index_type>> segtree;
+  segment_tree<range_min<index_type>> segtree_lcp;
 };
 
+template <typename U = uint32_t>
+requires std::unsigned_integral<U>
 class lz_helper_c {
+public:
+  using index_type = U;
+  using signed_index_type = std::make_signed_t<index_type>;
+
 private:
   std::vector<int16_t> complement_appended(std::span<const uint8_t> input) const {
     std::vector<int16_t> input_xor(2 * n + 1);
@@ -123,16 +133,12 @@ private:
   }
 
 public:
-  lz_helper_c(std::span<const uint8_t> input)
-      : n(input.size()) {
-
-    const auto input_c = complement_appended(input);
-    const auto plcp = suffix_array<int16_t>(input_c).compute_lcp_and_rank(input_c);
-    const auto& lcp = plcp.first;
-    rank = std::move(plcp.second);
-    segtree = segment_tree<range_max<int>>(input_c.size());
-    segtree_c = segment_tree<range_max<int>>(input_c.size());
-    segtree_lcp = segment_tree<range_min<int>>(lcp);
+  lz_helper_c(std::span<const uint8_t> input) : n(input.size()) {
+    const auto [lcp, rank] = suffix_array<int16_t>(complement_appended(input)).lcp_rank();
+    this->rank = std::move(rank);
+    segtree = decltype(segtree)(rank.size());
+    segtree_c = decltype(segtree_c)(rank.size());
+    segtree_lcp = decltype(segtree_lcp)(lcp);
   }
 
 public:
@@ -153,54 +159,36 @@ public:
   }
 
   void add_element(size_t i) {
-    segtree.update(rank[i], i);
-    segtree_c.update(rank[i + n + 1], i);
+    segtree.update(rank[i], signed_index_type(i));
+    segtree_c.update(rank[i + n + 1], signed_index_type(i));
   }
 
 private:
   const size_t n;
-  std::vector<int> rank;
-  segment_tree<range_max<int>> segtree;
-  segment_tree<range_max<int>> segtree_c;
-  segment_tree<range_min<int>> segtree_lcp;
+  std::vector<index_type> rank;
+  segment_tree<range_max<signed_index_type>> segtree, segtree_c;
+  segment_tree<range_min<index_type>> segtree_lcp;
 };
 
-constexpr uint8_t bit_reversed[256] = {
-  0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
-  0x10, 0x90, 0x50, 0xd0, 0x30, 0xb0, 0x70, 0xf0,
-  0x08, 0x88, 0x48, 0xc8, 0x28, 0xa8, 0x68, 0xe8,
-  0x18, 0x98, 0x58, 0xd8, 0x38, 0xb8, 0x78, 0xf8,
-  0x04, 0x84, 0x44, 0xc4, 0x24, 0xa4, 0x64, 0xe4,
-  0x14, 0x94, 0x54, 0xd4, 0x34, 0xb4, 0x74, 0xf4,
-  0x0c, 0x8c, 0x4c, 0xcc, 0x2c, 0xac, 0x6c, 0xec,
-  0x1c, 0x9c, 0x5c, 0xdc, 0x3c, 0xbc, 0x7c, 0xfc,
-  0x02, 0x82, 0x42, 0xc2, 0x22, 0xa2, 0x62, 0xe2,
-  0x12, 0x92, 0x52, 0xd2, 0x32, 0xb2, 0x72, 0xf2,
-  0x0a, 0x8a, 0x4a, 0xca, 0x2a, 0xaa, 0x6a, 0xea,
-  0x1a, 0x9a, 0x5a, 0xda, 0x3a, 0xba, 0x7a, 0xfa,
-  0x06, 0x86, 0x46, 0xc6, 0x26, 0xa6, 0x66, 0xe6,
-  0x16, 0x96, 0x56, 0xd6, 0x36, 0xb6, 0x76, 0xf6,
-  0x0e, 0x8e, 0x4e, 0xce, 0x2e, 0xae, 0x6e, 0xee,
-  0x1e, 0x9e, 0x5e, 0xde, 0x3e, 0xbe, 0x7e, 0xfe,
-  0x01, 0x81, 0x41, 0xc1, 0x21, 0xa1, 0x61, 0xe1,
-  0x11, 0x91, 0x51, 0xd1, 0x31, 0xb1, 0x71, 0xf1,
-  0x09, 0x89, 0x49, 0xc9, 0x29, 0xa9, 0x69, 0xe9,
-  0x19, 0x99, 0x59, 0xd9, 0x39, 0xb9, 0x79, 0xf9,
-  0x05, 0x85, 0x45, 0xc5, 0x25, 0xa5, 0x65, 0xe5,
-  0x15, 0x95, 0x55, 0xd5, 0x35, 0xb5, 0x75, 0xf5,
-  0x0d, 0x8d, 0x4d, 0xcd, 0x2d, 0xad, 0x6d, 0xed,
-  0x1d, 0x9d, 0x5d, 0xdd, 0x3d, 0xbd, 0x7d, 0xfd,
-  0x03, 0x83, 0x43, 0xc3, 0x23, 0xa3, 0x63, 0xe3,
-  0x13, 0x93, 0x53, 0xd3, 0x33, 0xb3, 0x73, 0xf3,
-  0x0b, 0x8b, 0x4b, 0xcb, 0x2b, 0xab, 0x6b, 0xeb,
-  0x1b, 0x9b, 0x5b, 0xdb, 0x3b, 0xbb, 0x7b, 0xfb,
-  0x07, 0x87, 0x47, 0xc7, 0x27, 0xa7, 0x67, 0xe7,
-  0x17, 0x97, 0x57, 0xd7, 0x37, 0xb7, 0x77, 0xf7,
-  0x0f, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef,
-  0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff
-};
+constexpr auto bit_reversed = [] {
+  std::array<uint8_t, 256> rev;
+  for (size_t i = 0; i < rev.size(); ++i) {
+    size_t b = i;
+    b = (b & 0xf0) >> 4 | (b & 0x0f) << 4;
+    b = (b & 0xcc) >> 2 | (b & 0x33) << 2;
+    b = (b & 0xaa) >> 1 | (b & 0x55) << 1;
+    rev[i] = b;
+  }
+  return rev;
+}();
 
+template <typename U = uint32_t>
+requires std::unsigned_integral<U>
 class lz_helper_kirby {
+public:
+  using index_type = U;
+  using signed_index_type = std::make_signed_t<index_type>;
+
 private:
   std::vector<int16_t> hflip_appended(std::span<const uint8_t> input) const {
     std::vector<int16_t> ret(2 * n + 1);
@@ -219,21 +207,17 @@ private:
   }
 
 public:
-  lz_helper_kirby(std::span<const uint8_t> input)
-      : n(input.size()) {
+  lz_helper_kirby(std::span<const uint8_t> input) : n(input.size()) {
+    const auto [lcp_h, rank_h] = suffix_array<int16_t>(hflip_appended(input)).lcp_rank();
+    this->rank_h = std::move(rank_h);
+    seg = decltype(seg)(rank_h.size());
+    seg_h = decltype(seg_h)(rank_h.size());
+    seg_lcp_h = decltype(seg_lcp_h)(lcp_h);
 
-    const auto input_h = hflip_appended(input);
-    const auto plcp_h = suffix_array<int16_t>(input_h).compute_lcp_and_rank(input_h);
-    seg_lcp_h = segment_tree<range_min<int>>(plcp_h.first);
-    rank_h = std::move(plcp_h.second);
-    seg = segment_tree<range_max<int>>(input_h.size());
-    seg_h = segment_tree<range_max<int>>(input_h.size());
-
-    const auto input_v = vflip_appended(input);
-    const auto plcp_v = suffix_array<int16_t>(input_v).compute_lcp_and_rank(input_v);
-    seg_lcp_v = segment_tree<range_min<int>>(plcp_v.first);
-    rank_v = std::move(plcp_v.second);
-    seg_v = segment_tree<range_max<int>>(input_v.size());
+    const auto [lcp_v, rank_v] = suffix_array<int16_t>(vflip_appended(input)).lcp_rank();
+    this->rank_v = std::move(rank_v);
+    seg_v = decltype(seg_v)(rank_v.size());
+    seg_lcp_v = decltype(seg_lcp_v)(lcp_v);
   }
 
 public:
@@ -257,13 +241,9 @@ public:
 
 private:
   const size_t n;
-  std::vector<int> rank_h;
-  std::vector<int> rank_v;
-  segment_tree<range_min<int>> seg_lcp_h;
-  segment_tree<range_min<int>> seg_lcp_v;
-  segment_tree<range_max<int>> seg;
-  segment_tree<range_max<int>> seg_h;
-  segment_tree<range_max<int>> seg_v;
+  std::vector<index_type> rank_h, rank_v;
+  segment_tree<range_min<index_type>> seg_lcp_h, seg_lcp_v;
+  segment_tree<range_max<signed_index_type>> seg, seg_h, seg_v;
 };
 
 template <size_t A, size_t B, size_t C>
@@ -334,7 +314,7 @@ class uncomp_helper {
     cost_type cost;
     size_t index;
   };
-  static constexpr indexed_cost unit = indexed_cost({infinite_cost, nlen});
+  static constexpr indexed_cost iden = indexed_cost(infinite_cost, nlen);
 
  public:
   uncomp_helper(size_t size, size_t slope)
@@ -345,7 +325,7 @@ class uncomp_helper {
   }
 
   void reset(size_t i) {
-    tree_.update(i, unit);
+    tree_.update(i, iden);
   }
 
   void reset(size_t begin, size_t end) {
@@ -363,7 +343,7 @@ class uncomp_helper {
  private:
   size_t n;
   size_t slope_;
-  segment_tree<range_min<indexed_cost, unit>> tree_;
+  segment_tree<range_min<indexed_cost, iden>> tree_;
 };
 
 struct vrange {
@@ -374,6 +354,7 @@ struct vrange {
 };
 
 template <typename Tag>
+requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint16_t>
 struct tag_ol {
   tag_ol() = default;
   tag_ol(Tag tag, uint64_t oi, uint64_t li) : tag(tag), oi(oi), li(li) {}
@@ -386,6 +367,7 @@ struct tag_ol {
 };
 
 template <typename Tag>
+requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint16_t>
 struct tag_l {
   tag_l() = default;
   tag_l(Tag tag, uint64_t li) : tag(tag), li(li) {}
@@ -397,6 +379,7 @@ struct tag_l {
 };
 
 template <typename Tag>
+requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint16_t>
 struct tag_o {
   tag_o() = default;
   tag_o(Tag tag, uint64_t oi) : tag(tag), oi(oi) {}
@@ -407,7 +390,13 @@ struct tag_o {
   uint32_t oi : 8;
 };
 
+template <typename U, typename V>
+concept add_able = requires (U u, V v) {
+  {u + v} -> std::convertible_to<U>;
+};
+
 template <typename TagType, typename CostType = size_t>
+requires std::equality_comparable<TagType>
 class sssp_solver {
  public:
   using cost_type = CostType;
@@ -429,6 +418,7 @@ class sssp_solver {
 
   using vertex_type = Vertex;
 
+ public:
   sssp_solver() = default;
   sssp_solver(const size_t n, size_t begin = 0) : vertex(n + 1) {
     reset(0, n + 1);
@@ -444,6 +434,8 @@ class sssp_solver {
   }
 
   template <typename LzFunc, typename TagFunc>
+  requires std::convertible_to<std::invoke_result_t<LzFunc, size_t>, encode::lz_data> &&
+           std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
   void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const vrange> lens,
       LzFunc find_lz, TagFunc tag, size_t c, cost_type base_cost = unspecified) {
     if (lens.empty() || offsets.empty()) return;
@@ -480,6 +472,9 @@ class sssp_solver {
   }
 
   template <typename LzFunc, typename TagFunc, typename LenCostFunc>
+  requires std::convertible_to<std::invoke_result_t<LzFunc, size_t>, encode::lz_data> &&
+           add_able<cost_type, std::invoke_result_t<LenCostFunc, size_t>> &&
+           std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
   void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const size_t> lens,
       LzFunc find_lz, LenCostFunc func, TagFunc tag, cost_type base_cost = unspecified) {
     if (lens.empty() || offsets.empty()) return;
@@ -519,6 +514,7 @@ class sssp_solver {
   }
 
   template <typename Func>
+  requires add_able<cost_type, std::invoke_result_t<Func, size_t>>
   void update_lz_table(size_t adr, std::span<const size_t> table, encode::lz_data lz, Func func, tag_type tag) {
     const cost_type base_cost = (*this)[adr].cost;
     for (size_t i = 0; i < table.size(); ++i) {
@@ -551,6 +547,7 @@ class sssp_solver {
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
+  requires add_able<cost_type, std::invoke_result_t<Func, size_t>>
   void update(size_t adr, size_t fr, size_t to, Func func,
       tag_type tag, cost_type base_cost = unspecified, size_t arg = 0) {
     constexpr auto skip = Skip();
@@ -586,6 +583,8 @@ class sssp_solver {
   }
 
   template <size_t K, typename Func>
+  requires (K > 0) &&
+           add_able<cost_type, std::invoke_result_t<Func, size_t>>
   void update_k(size_t adr, size_t fr, size_t to, Func func, tag_type tag, size_t arg = 0) {
     to = std::min(to, size() > adr ? (size() - 1) - adr : 0);
     if (to < fr) return;

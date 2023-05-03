@@ -65,7 +65,7 @@ std::vector<uint8_t> derby_stallion_2_comp(std::span<const uint8_t> input) {
   assert(adr == input.size());
   assert(dp.total_cost() + 2 * 8 + 10 == flags.bit_length() + ret.size() * 8);
   write16(ret.out, 0, ret.size() - 2);
-  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
+  ret.extend(flags);
   return ret.out;
 }
 

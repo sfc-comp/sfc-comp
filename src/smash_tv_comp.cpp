@@ -76,7 +76,7 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   write16(ret.out, 2, ret.size() - 2);
   assert(adr == input.size());
   assert(dp.total_cost() + 32 == flags.bit_length() + 8 * ret.size());
-  std::copy(flags.out.begin(), flags.out.end(), std::back_inserter(ret.out));
+  ret.extend(flags);
 
   return ret.out;
 }

@@ -8,7 +8,7 @@ namespace sfc_comp {
 std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
   check_size(in.size(), 0, 0xffff);
 
-  enum CompType { uncomp, uncompl, lzs, lz, pre0, pre1, pre2, pre3, pre };
+  enum tag { uncomp, uncompl, lzs, lz, pre0, pre1, pre2, pre3, pre };
 
   static constexpr size_t pad = 0x12;
   std::vector<uint8_t> input(in.size() + pad, 0x20);
@@ -34,7 +34,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
 
   for (size_t phase = 0; phase < phase_total; ++phase) {
     uncomp_helper u_helper(input.size(), 8);
-    sssp_solver<CompType> dp(input.size(), pad);
+    sssp_solver<tag> dp(input.size(), pad);
 
     std::vector<ptrdiff_t> ind(256, -1);
     for (size_t k = 0; k < cands.size(); ++k) ind[cands[k]] = k;
@@ -51,7 +51,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
 
       const auto v = input[i];
       if (auto k = ind[v]; k >= 0) {
-        static constexpr CompType tags[4] = {pre0, pre1, pre2, pre3};
+        static constexpr tag tags[4] = {pre0, pre1, pre2, pre3};
         static constexpr size_t bits[4] = {3, 5, 6, 7};
         if (size_t(k) < phase) dp.update(i, 1, 1, Constant<0>(), tags[k], dp[i].cost + bits[k]);
         else dp.update(i, 1, 1, Constant<dummy_bits>(), pre);
@@ -109,8 +109,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
       std::copy_n(cands.begin(), 4, raw.out.begin() + 2);
       assert(adr == input.size());
       assert(dp.total_cost() + 8 * 8 == raw.size() * 8 + ret.bit_length());
-
-      std::copy(raw.out.begin(), raw.out.end(), std::back_inserter(ret.out));
+      ret.extend(raw);
       return ret.out;
     }
   }

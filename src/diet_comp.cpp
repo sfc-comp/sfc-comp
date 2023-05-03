@@ -58,7 +58,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16_hasty_l ret(17);
+  writer_b16_pre_l ret(17);
   ret.write<none>(none());
 
   size_t adr = 0;

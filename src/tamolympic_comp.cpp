@@ -70,7 +70,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16_hasty_h ret(2);
+  writer_b16_pre_h ret(2);
   ret.write<none>(none());
 
   const auto write_len = [&](const size_t li, const size_t len) -> void {

@@ -7,15 +7,12 @@ namespace sfc_comp {
 
 std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> in) {
   check_size(in.size(), 1, 0xffff);
-  enum CompType {
-    uncomp, uncompl,
-    lz2, lz3, lz4, lz5
-  };
+  enum tag { uncomp, uncompl, lz2, lz3, lz4, lz5 };
 
   std::vector<uint8_t> input(in.rbegin(), in.rend());
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 8, Linear<8, 5>(), uncomp);
@@ -63,15 +60,12 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> in) {
 
 std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> in) {
   check_size(in.size(), 0, 0xffff);
-  enum CompType {
-    uncomp,
-    rle, lzs, lz
-  };
+  enum tag { uncomp, rle, lzs, lz };
 
   std::vector<uint8_t> input(in.rbegin(), in.rend());
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0;
   encode::lz_data curr_lz = {0, 0};
@@ -121,19 +115,25 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> in) {
 
 namespace {
 
+template <typename U = uint32_t>
+requires std::unsigned_integral<U>
 class lz_helper_doom {
 public:
-  lz_helper_doom(std::span<const uint8_t> in_odd, std::span<const uint8_t> in_even) : n(in_odd.size()) {
+  using index_type = U;
+  using signed_index_type = std::make_signed_t<index_type>;
+
+public:
+  lz_helper_doom(std::span<const uint8_t> in_odd, std::span<const uint8_t> in_even) {
     const size_t so = in_odd.size(), se = in_even.size();
     std::vector<int16_t> input(so + 1 + se);
     for (size_t i = 0; i < so; ++i) input[i] = in_odd[i];
     input[so] = -1;
     for (size_t i = 0; i < se; ++i) input[i + so + 1] = in_even[i];
 
-    const auto plcp = suffix_array<int16_t>(input).compute_lcp_and_rank(input);
-    seg_lcp = segment_tree<range_min<int>>(plcp.first);
-    rank = std::move(plcp.second);
-    seg = segment_tree<range_max<int>>(input.size());
+    const auto [lcp, rank] = suffix_array<int16_t>(input).lcp_rank();
+    this->rank = std::move(rank);
+    seg = decltype(seg)(rank.size());
+    seg_lcp = decltype(seg_lcp)(lcp);
 
     for (size_t i = 0; i < so; ++i) seg.update(rank[i], i);
   }
@@ -144,20 +144,16 @@ public:
   }
 
 private:
-  const size_t n;
-  std::vector<int> rank;
-  segment_tree<range_max<int>> seg;
-  segment_tree<range_min<int>> seg_lcp;
+  std::vector<index_type> rank;
+  segment_tree<range_max<signed_index_type>> seg;
+  segment_tree<range_min<index_type>> seg_lcp;
 };
 
 } // namespace
 
 std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
-  enum CompType {
-    uncomp,
-    rle, inc, lz, lz2
-  };
+  enum tag { uncomp, rle, inc, lz, lz2 };
 
   std::vector<uint8_t> in_odd, in_even;
   for (size_t i = 0; i < input.size(); i += 2) in_even.push_back(input[i]);
@@ -166,11 +162,12 @@ std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
   std::reverse(in_odd.begin(), in_odd.end());
 
   lz_helper helper_odd(in_odd), helper_even(in_even);
-  sssp_solver<CompType> dp_odd(in_odd.size()), dp_even(in_even.size());
+  sssp_solver<tag> dp_odd(in_odd.size()), dp_even(in_even.size());
 
   lz_helper_doom lz_helper_d(in_odd, in_even);
 
-  auto solve = [&](std::span<const uint8_t> inp, sssp_solver<CompType>& dp, lz_helper& lz_help, bool is_second) {
+  const auto solve = [&](
+      std::span<const uint8_t> inp, sssp_solver<tag>& dp, decltype(helper_odd)& lz_help, bool second) {
     size_t rlen = 0, rleni = 0;
     for (size_t i = 0; i < inp.size(); ++i) {
       dp.update(i, 1, 0x40, Linear<1, 1>(), uncomp);
@@ -184,7 +181,7 @@ std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
       auto res_lz = lz_help.find_best(i, 0x800);
       dp.update_lz(i, 3, 0x12, res_lz, Constant<2>(), lz);
 
-      if (is_second) {
+      if (second) {
         auto res_lz2 = lz_helper_d.find_best(in_odd.size() + 1 + i, 0x0801);
         dp.update_lz(i, 3, 0x12, res_lz2, Constant<2>(), lz2);
       }

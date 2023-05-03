@@ -121,7 +121,7 @@ $ ./bench <input-dir>
 | mahoujin_guru_guru_comp                  |    C | 6104 | 44A0 | 7ACB | 5582 | 45EE | 66F3 | 2E81 |  2515F | 0.0048 | 4AD757B1 |
 | maka_maka_comp                           |    5 | 5F6A | 3759 | 7FC9 | 25DD | 3858 | 6A16 | 19F3 |  1F8CF | 0.0489 | 9725EE93 |
 | marios_super_picross_comp                |    5 | 5F67 | 3759 | 7FC6 | 25DD | 3858 | 6A11 | 19F3 |  1F8C4 | 0.0467 | 43D4AA0A |
-| marvelous_comp                           |    4 | 5EBC | 3744 | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F307 | 0.1474 | 4AC48E73 |
+| marvelous_comp                           |    4 | 5EBC | 3744 | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F307 | 0.0984 | 4AC48E73 |
 | mujintou_monogatari_comp                 |    5 | 5F33 | 340D | 7FC9 | 21C2 | 3840 | 6A16 | 186B |  1EF91 | 0.0475 | 9AFCB643 |
 | odekake_lester_comp                      |    5 | 5F6A | 3759 | 7FC9 | 25DD | 3858 | 6A16 | 19F3 |  1F8CF | 0.0472 | 724C89A4 |
 | olivias_mystery_comp                     |    8 | 501E | 2B46 | 6EF8 | 1D29 | 2E9B | 5A5D | 13B8 |  1A43D | 0.2072 | 42CCF870 |
@@ -178,9 +178,9 @@ $ ./bench <input-dir>
 | wizardry5_comp_1                         |    3 | 5E72 | 35A1 | 7DC1 | 262F | 37C7 | 68D7 | 24D5 |  1FD79 | 0.0647 | 54494D6A |
 | wizardry5_comp_2                         |    3 | 645C | 3841 | 8367 | 2693 | 3B42 | 6EF1 | 212A |  211F7 | 0.0579 | EE6D3436 |
 | wizardry6_comp                           |    5 | 61AD | 36E3 | 818F | 24EB | 3A00 | 6CA0 | 1C38 |  201E7 | 0.0537 | 1DF9E6FE |
-| yatterman_comp                           |    A | 500A | 2B36 | 6EF8 | 1CD6 | 2E4E | 5A56 | 129A |  1A256 | 0.2001 | B5F20A50
-| zelda_comp_1                             |    4 | 5EBC | 374D | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F310 | 0.1325 | EC940778 |
-| zelda_comp_2                             |    4 | 5EBC | 374D | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F310 | 0.1311 | 5633014D |
+| yatterman_comp                           |    A | 500A | 2B36 | 6EF8 | 1CD6 | 2E4E | 5A56 | 129A |  1A256 | 0.2001 | B5F20A50 |
+| zelda_comp_1                             |    4 | 5EBC | 374D | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F310 | 0.0776 | EC940778 |
+| zelda_comp_2                             |    4 | 5EBC | 374D | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F310 | 0.0776 | 5633014D |
 
 ## LICENSE
 

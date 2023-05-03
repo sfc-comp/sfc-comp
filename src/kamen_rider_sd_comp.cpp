@@ -8,7 +8,7 @@ namespace sfc_comp {
 std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
 
-  enum CompType { uncomp, lzs, lz, rle0, rle1 };
+  enum tag { uncomp, lzs, lz, rle0, rle1 };
 
   static constexpr size_t rle_max_lens[2] = {9, 2};
   static constexpr size_t tab_max_size = 0x11;
@@ -74,7 +74,7 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
     for (size_t k = 0; k < pre.thres; ++k) ind[0][pre[k]] = k;
     for (size_t k = pre.thres; k < pre.size(); ++k) ind[1][pre[k]] = k - pre.thres;
 
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<tag> dp(input.size());
 
     size_t rlen = 0;
     for (size_t i = 0; i < input.size(); ++i) {
@@ -115,7 +115,7 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
       auto ret = pre_rle(first, first.size());
 
       const auto second = pick(pre, gain, limit.size - first.size());
-      std::copy(second.begin(), second.end(), std::back_inserter(ret));
+      ret.insert(ret.end(), second.begin(), second.end());
       return {{}, ret};
     } else {
       if (!pre.valid()) throw std::logic_error("Broken RLE table.");

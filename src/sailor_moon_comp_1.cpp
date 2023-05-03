@@ -8,11 +8,9 @@ namespace sfc_comp {
 std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);
 
-  enum CompType {
-    uncomp, lzs, lzls, lzll
-  };
+  enum tag { uncomp, lzs, lzls, lzll };
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
@@ -25,7 +23,7 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer_b16_hasty_l ret;
+  writer_b16_pre_l ret;
   ret.write<none>(none());
 
   size_t adr = 0;

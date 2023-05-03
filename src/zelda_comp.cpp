@@ -10,14 +10,14 @@ namespace {
 std::vector<uint8_t> zelda_comp_core(std::span<const uint8_t> input, const bool use_little_endian) {
   check_size(input.size(), 0, 0x10000);
 
-  enum CompType {
+  enum tag {
     uncomp, rle, rle16, inc, lzl,
     uncompl, rlel, rle16l, incl, lzll
   };
 
-  lz_helper_c lz_helper(input);
+  lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 1);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0, rlen16 = 0, rleni = 0;
   for (size_t i = 0; i < input.size(); ++i) {
