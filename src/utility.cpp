@@ -9,9 +9,23 @@ void check_size(size_t input_size, size_t min_size, size_t max_size) {
   }
 }
 
+void check_divisibility(size_t input_size, size_t divisor) {
+  if (divisor == 0) {
+    throw std::logic_error("divisor == 0.");
+  }
+  if (input_size % divisor != 0) {
+    throw std::invalid_argument(format("Input size (= 0x%X) should be divisible by 0x%X.",
+                                input_size, divisor));
+  }
+}
 namespace utility {
 
 uint16_t crc16(std::span<const uint8_t> input) {
+  static constexpr auto crc_table = create_array<uint16_t, 256>([](size_t i) {
+    uint16_t c = i;
+    for (size_t j = 0; j < 8; ++j) c = (c >> 1) ^ (0xa001 & -(c & 1));
+    return c;
+  });
   uint16_t ret = 0;
   for (size_t i = 0; i < input.size(); ++i) {
     ret ^= input[i];

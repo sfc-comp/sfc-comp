@@ -8,6 +8,9 @@ namespace sfc_comp {
 namespace {
 
 template <typename Writer8, typename WriterRaw, typename Writer16>
+requires std::derived_from<Writer8, writer> &&
+         std::derived_from<WriterRaw, writer> &&
+         std::derived_from<Writer16, writer>
 void koei_comp_core(std::span<const uint8_t> input,
     Writer8& writer8, WriterRaw& writer_raw, Writer16& writer16) {
 

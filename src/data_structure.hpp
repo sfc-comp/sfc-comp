@@ -109,7 +109,7 @@ public:
 
   template <typename Func>
   requires std::predicate<Func, value_type>
-  std::pair<size_t, size_t> find_range(size_t i, Func func) const {
+  std::pair<size_t, size_t> find_range(size_t i, Func&& func) const {
     size_t right = find_right(i, func);
     size_t left = find_left(i, func);
     return std::make_pair(left + 1, right);
@@ -117,7 +117,7 @@ public:
 
   template <typename Func>
   requires std::predicate<Func, value_type>
-  ptrdiff_t find_right(size_t i, Func func) const {
+  ptrdiff_t find_right(size_t i, Func&& func) const {
     size_t lo = i, hi = i + 1, k = lo + n2;
     while (hi < n2 && func(tree[k])) {
       size_t diff = hi - lo;
@@ -135,7 +135,7 @@ public:
 
   template <typename Func>
   requires std::predicate<Func, value_type>
-  ptrdiff_t find_left(size_t i, Func func) const {
+  ptrdiff_t find_left(size_t i, Func&& func) const {
     if (i == 0) return -1;
     size_t lo = i - 1, hi = i, k = lo + n2;
     while (lo > 0 && func(tree[k])) {

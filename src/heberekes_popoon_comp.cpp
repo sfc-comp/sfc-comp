@@ -8,7 +8,7 @@ namespace sfc_comp {
 std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
 
-  enum CompType { uncomp, uncompl, lz, lzpl, lzpo, lzpp };
+  enum tag { uncomp, uncompl, lz, lzpl, lzpo, lzpp };
 
   struct dist_len {
     size_t dist;
@@ -57,7 +57,7 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
   const size_t phase_total = pre_sizes.size();
   for (size_t phase = 0; phase < phase_total; ++phase) {
     uncomp_helper u_helper(input.size(), 1);
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<tag> dp(input.size());
 
     std::vector<size_t> res_lz(dists.size());
     for (size_t i = 0; i < input.size(); ++i) {
@@ -80,9 +80,7 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
       dp.update_lz(i, 3, max_len, lz_memo[i], Constant<3>(), lz);
     }
 
-    std::vector<size_t> len_map(max_len + 1);
-    for (size_t k = 0; k < lens.size(); ++k) len_map[lens[k]] = k;
-
+    const auto len_map = inverse_map<max_len + 1>(lens);
     if (phase + 1 < phase_total) {
       std::vector<size_t> dist_count(max_dist + 1);
       std::vector<size_t> len_count(max_len + 1);

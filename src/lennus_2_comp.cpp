@@ -6,7 +6,7 @@
 namespace sfc_comp {
 
 std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
-  enum CompType { uncomp, lz2, lz2_0, lz };
+  enum tag { uncomp, lz2, lz2_0, lz };
 
   static constexpr size_t pad = 0x800;
 
@@ -15,9 +15,7 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
     3, 4, 5, 6, 7, 8, 9, 10,
     11, 12, 14, 16, 24, 32, 64, 128
   });
-
-  std::array<size_t, lz_lens.back() + 1> len_code = {};
-  for (size_t i = 0; i < lz_lens.size(); ++i) len_code[lz_lens[i]] = i;
+  static constexpr auto len_code = inverse_map<lz_lens.back() + 1>(lz_lens);
 
   std::vector<uint8_t> input(in.size() + pad, 0);
   std::copy(in.begin(), in.end(), input.begin() + pad);
@@ -26,7 +24,7 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
 
   for (size_t comp_type = 0x5059; comp_type <= 0x5159; comp_type += 0x100) {
     lz_helper lz_helper(input);
-    sssp_solver<CompType> dp(input.size(), pad);
+    sssp_solver<tag> dp(input.size(), pad);
     for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
 
     for (size_t i = pad; i < input.size(); ++i) {

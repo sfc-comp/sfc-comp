@@ -437,7 +437,7 @@ class sssp_solver {
   requires std::convertible_to<std::invoke_result_t<LzFunc, size_t>, encode::lz_data> &&
            std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
   void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const vrange> lens,
-      LzFunc find_lz, TagFunc tag, size_t c, cost_type base_cost = unspecified) {
+      LzFunc&& find_lz, TagFunc&& tag, size_t c, cost_type base_cost = unspecified) {
     if (lens.empty() || offsets.empty()) return;
     const size_t lz_min_len = lens[0].min;
     if (base_cost == unspecified) base_cost = (*this)[adr].cost;
@@ -476,7 +476,7 @@ class sssp_solver {
            add_able<cost_type, std::invoke_result_t<LenCostFunc, size_t>> &&
            std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
   void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const size_t> lens,
-      LzFunc find_lz, LenCostFunc func, TagFunc tag, cost_type base_cost = unspecified) {
+      LzFunc&& find_lz, LenCostFunc&& func, TagFunc&& tag, cost_type base_cost = unspecified) {
     if (lens.empty() || offsets.empty()) return;
     const size_t lz_min_len = lens[0];
     if (base_cost == unspecified) base_cost = (*this)[adr].cost;
@@ -515,7 +515,7 @@ class sssp_solver {
 
   template <typename Func>
   requires add_able<cost_type, std::invoke_result_t<Func, size_t>>
-  void update_lz_table(size_t adr, std::span<const size_t> table, encode::lz_data lz, Func func, tag_type tag) {
+  void update_lz_table(size_t adr, std::span<const size_t> table, encode::lz_data lz, Func&& func, tag_type tag) {
     const cost_type base_cost = (*this)[adr].cost;
     for (size_t i = 0; i < table.size(); ++i) {
       const size_t l = table[i];
@@ -531,6 +531,7 @@ class sssp_solver {
   }
 
   template <typename Skip = std::greater_equal<cost_type>>
+  requires std::convertible_to<std::invoke_result_t<Skip, cost_type, cost_type>, bool>
   void update(size_t adr, size_t len, tag_type tag, cost_type cost, size_t arg = 0) {
     if (adr < len) return;
     constexpr auto skip = Skip();
@@ -547,8 +548,9 @@ class sssp_solver {
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
-  requires add_able<cost_type, std::invoke_result_t<Func, size_t>>
-  void update(size_t adr, size_t fr, size_t to, Func func,
+  requires std::convertible_to<std::invoke_result_t<Skip, cost_type, cost_type>, bool> &&
+           add_able<cost_type, std::invoke_result_t<Func, size_t>>
+  void update(size_t adr, size_t fr, size_t to, Func&& func,
       tag_type tag, cost_type base_cost = unspecified, size_t arg = 0) {
     constexpr auto skip = Skip();
     to = std::min(to, size() > adr ? (size() - 1) - adr : 0);
@@ -570,22 +572,21 @@ class sssp_solver {
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
-  void update(size_t adr, size_t fr, size_t to, size_t len, Func func,
+  void update(size_t adr, size_t fr, size_t to, size_t len, Func&& func,
       tag_type tag, cost_type base_cost = unspecified, size_t arg = 0) {
-    update<Skip, Func>(adr, fr, std::min(to, len), func, tag, base_cost, arg);
+    return update<Skip, Func>(adr, fr, std::min(to, len), std::forward<Func>(func), tag, base_cost, arg);
   }
 
   template <typename Skip = std::greater_equal<cost_type>, typename Func>
-  void update_lz(size_t adr, size_t fr, size_t to, encode::lz_data lz, Func func,
+  void update_lz(size_t adr, size_t fr, size_t to, encode::lz_data lz, Func&& func,
       tag_type tag, cost_type base_cost = unspecified) {
-    to = std::min(to, lz.len);
-    update<Skip, Func>(adr, fr, std::min(to, lz.len), func, tag, base_cost, lz.ofs);
+    return update<Skip, Func>(adr, fr, std::min(to, lz.len), std::forward<Func>(func), tag, base_cost, lz.ofs);
   }
 
   template <size_t K, typename Func>
   requires (K > 0) &&
            add_able<cost_type, std::invoke_result_t<Func, size_t>>
-  void update_k(size_t adr, size_t fr, size_t to, Func func, tag_type tag, size_t arg = 0) {
+  void update_k(size_t adr, size_t fr, size_t to, Func&& func, tag_type tag, size_t arg = 0) {
     to = std::min(to, size() > adr ? (size() - 1) - adr : 0);
     if (to < fr) return;
     to = fr + (to - fr) / K * K;
@@ -608,8 +609,8 @@ class sssp_solver {
 
   template <size_t K, typename Func>
   void update_k(size_t adr, size_t fr, size_t to,
-      size_t max_len, Func func, tag_type tag, size_t arg = 0) {
-    update_k<K>(adr, fr, std::min(max_len, to), func, tag, arg);
+      size_t max_len, Func&& func, tag_type tag, size_t arg = 0) {
+    return update_k<K>(adr, fr, std::min(max_len, to), std::forward<Func>(func), tag, arg);
   }
 
   cost_type total_cost() const {

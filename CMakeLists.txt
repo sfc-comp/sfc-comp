@@ -45,6 +45,7 @@ set(sfc_comp_src
 
   src/action_pachio_comp.cpp
   src/addams_family_comp.cpp
+  src/asameshimae_nyanko_comp.cpp
   src/bahamut_lagoon_comp.cpp
   src/bokujou_monogatari_comp.cpp
   src/burai_comp.cpp
@@ -146,6 +147,8 @@ target_link_libraries(bench ${lib_sfc_comp_static})
 set(comp_ext_list
   action_pachio_comp comp
   addams_family_comp comp
+  asameshimae_nyanko_comp comp
+  asameshimae_nyanko_4bpp_comp comp
   assault_suits_valken_comp comp
   bahamut_lagoon_comp comp
   battle_cross_comp comp

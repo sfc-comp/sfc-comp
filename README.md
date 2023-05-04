@@ -67,6 +67,7 @@ $ ./bench <input-dir>
 | **uncompressed**                         |    2 | 8000 | 8000 | 8000 | 8000 | 441B | 7000 | 7380 |  3279D | ------ | -------- |
 | action_pachio_comp                       |    7 | 5F6D | 375D | 7FC8 | 25DF | 385C | 6A14 | 19F6 |  1F8DE | 0.0735 | 19743BD3 |
 | addams_family_comp                       |    4 | 5B8D | 33A0 | 7BB2 | 2293 | 34ED | 64AD | 2199 |  1E8A9 | 0.0635 | FDCD9EB3 |
+| asameshimae_nyanko_comp                  |    8 | 57F9 | 3228 | 7633 | 2654 | 3278 | 61E0 | 19B7 |  1D4BF | 0.4104 | 6519A910 |
 | assault_suits_valken_comp                |    5 | 5F6E | 375D | 727E | 25DE | 385B | 569E | 19F5 |  1D81A | 0.0712 | 4D05E986 |
 | bahamut_lagoon_comp                      |    9 | 5F6E | 3760 | 7FCE | 25DE | 385E | 6A1B | 19F8 |  1F8F4 | 0.0504 | 3CEAFFE1 |
 | battle_cross_comp                        |    9 | 558B | 2F6A | 77AC | 1FA4 | 3055 | 5FEE | 1855 |  1C4E6 | 0.1211 | 56CA15C3 |

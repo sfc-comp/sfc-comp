@@ -25,6 +25,8 @@ void benchmark(const std::string& path) {
   const auto comps = {
     P(action_pachio_comp),
     P(addams_family_comp),
+    P(asameshimae_nyanko_comp),
+    // P(asameshimae_nyanko_4bpp_comp),
     P(assault_suits_valken_comp),
     P(bahamut_lagoon_comp),
     P(battle_cross_comp),
