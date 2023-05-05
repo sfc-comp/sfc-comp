@@ -126,7 +126,7 @@ std::vector<uint8_t> asameshimae_nyanko_comp(std::span<const uint8_t> input) {
       } else {
         if (curr == 1) {
           cmd = dpl[adr]; curr = 0;
-          if (lz_count > 0) ret.emplace_back(adr, 0, lz_count, tag(lz_cnt, 0, lv));
+          if (lz_count > 0) ret.emplace_back(-1, 0, lz_count, tag(lz_cnt, 0, lv));
         } else {
           cmd = dp[curr - 2][adr];
           if (cmd.cost.lz_count == lz_lv[curr - 2].min) curr -= 1;

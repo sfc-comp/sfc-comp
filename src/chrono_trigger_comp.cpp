@@ -57,7 +57,7 @@ std::vector<uint8_t> chrono_trigger_comp_fast_core(std::span<const uint8_t> inpu
       for (size_t i = 0; i < len; ++i) ret[ret.size() - 1 - i] = ret[ret.size() - 4 - i];
       ret[bits_pos] = (8 - ret.bit) | method_bit;
       write16(ret.out, bits_pos + 1, ret.size());
-      ret[bits_pos + 3] |= 1 << (8 - ret.bit); // Avoids 0x00. (cf. $C3:07B7, $C3:0879, etc. in Chrono Trigger)
+      ret[bits_pos + 3] |= ((1 << ret.bit) - 1) << (8 - ret.bit); // Avoids 0x00. (cf. $C3:07B7, $C3:0879, etc. in Chrono Trigger)
     }
     ret.write<d8>(method_bit);
     if (best.empty() || ret.size() < best.size()) best = std::move(ret.out);
@@ -80,8 +80,8 @@ std::vector<uint8_t> chrono_trigger_comp_core(
     const size_t lz_max_ofs = (0x10000 >> len_bits) - 1;
 
     lz_helper lz_helper(input);
-    std::array<sssp_solver<tag>, 16> dp;
-    for (size_t b = 0; b < 16; ++b) dp[b] = sssp_solver<tag>(input.size(), b == 0 ? 0 : -1);
+    std::array<sssp_solver<tag>, 8> dp;
+    for (size_t b = 0; b < 8; ++b) dp[b] = sssp_solver<tag>(input.size(), b == 0 ? 0 : -1);
 
     for (size_t i = 0; i < input.size(); ++i) {
       const auto res_lz = lz_helper.find_best(i, lz_max_ofs);
@@ -89,26 +89,17 @@ std::vector<uint8_t> chrono_trigger_comp_core(
         dp[b].update(i, 1, 1, Constant<1>(), {uncomp, from, 0}, cost);
         dp[b].update_lz(i, lz_min_len, lz_max_len, res_lz, Constant<2>(), {lz, from, 0}, cost);
       };
-      for (size_t b = 7; b > 0; --b) {
+      for (size_t b = 8; b-- > 0; ) {
         const auto cost = dp[b][i].cost;
         if (cost == dp[0].infinite_cost) continue;
-        update(b - 1, b, cost);
-      }
-      if (const auto cost = dp[0][i].cost; cost < dp[0].infinite_cost) {
-        update(7, 0, cost + 1);
-        dp[15].update(i, 0, 0, Constant<1 + 2>(), {none, 0, 0}, cost + 1);
-      }
-      for (size_t b = 15; b >= 8; --b) {
-        const auto cost = dp[b][i].cost;
-        if (cost == dp[0].infinite_cost) continue;
-        update(0, b, cost);
-        if (b > 8) update(b - 1, b, cost);
-        const size_t remain = max_bits - 1 - (15 - b);
+        const auto ncost = cost + (b == 0 ? 1 : 0);
+        update((b - 1) & 7, b, ncost);
+        if (b != 1) update(0, b, ncost + 3);
         if (res_lz.len >= lz_min_len) {
-          // lz + uncomp
+          const size_t remain = max_bits - 1 - ((8 - b) & 7);
           const size_t lz_len = std::min(res_lz.len, lz_max_len);
           for (size_t u = 1; u <= remain; ++u) {
-            dp[0].update(i, lz_len + u, lz_len + u, Constant<2>(), {lz, b, u}, cost + u, res_lz.ofs);
+            dp[0].update(i, lz_len + u, lz_len + u, Constant<2>(), {lz, b, u}, ncost + 3 + u, res_lz.ofs);
           }
         }
       }
@@ -119,23 +110,22 @@ std::vector<uint8_t> chrono_trigger_comp_core(
       using command_type = sssp_solver<tag>::vertex_type;
       std::vector<command_type> ret;
       ptrdiff_t adr = input.size();
-      size_t curr = 0; size_t offset = 0, bits = 0;
+      size_t curr = 0; size_t offset = dp[curr][adr].cost, bits = 0;
       while (adr > 0 || (adr == 0 && curr > 0)) {
         auto cmd = dp[curr][adr];
-        curr = cmd.type.oi; // previous state
-        if (curr >= 8) bits += 1 + cmd.type.li, offset += cmd.type.li;
-        if (curr == 0) offset += 1;
-        const auto tag = cmd.type.tag;
-        if (tag == uncomp) {
-          offset += 1;
-        } else if (tag == lz) {
-          offset += 2;
-        } else {
-          cmd.set_val(offset); offset = 0;
-          cmd.type.li = bits; bits = 0;
+        const size_t ulen = cmd.type.li;
+        const size_t prev = cmd.type.oi;
+        if (curr == 0 && (prev != 1 || ulen > 0)) {
+          bits = ((curr - prev) & 7) + 1 + ulen;
         }
+        curr = prev;
         adr -= cmd.len;
         ret.emplace_back(cmd);
+
+        if (curr == 0 && bits > 0) {
+          ret.emplace_back(-1, 0, offset, tag(none, 0, bits));
+          offset = dp[curr][adr].cost; bits = 0;
+        }
       }
       assert(adr == 0 && curr == 0);
       std::reverse(ret.begin(), ret.end());
@@ -148,13 +138,12 @@ std::vector<uint8_t> chrono_trigger_comp_core(
     using namespace data_type;
     writer_b8_l ret(2);
 
-    size_t remaining_bits = 0;
+    size_t bits = 0;
     const auto fix = [&](size_t b, bool avoid_zero) {
-      if (remaining_bits == 0) return;
-      assert(remaining_bits >= b);
-      remaining_bits -= b;
-      if (remaining_bits == 0) {
-        if (ret.bit > 0 && avoid_zero) ret.write<b1>(true);
+      if (bits == 0) return;
+      assert(bits >= b); bits -= b;
+      if (bits == 0) {
+        if (avoid_zero) ret.write<bnh>({ret.bit, (size_t(1) << ret.bit) - 1});
         ret.bit = 0;
       }
     };
@@ -163,12 +152,9 @@ std::vector<uint8_t> chrono_trigger_comp_core(
     for (const auto& cmd : commands) {
       switch (cmd.type.tag) {
       case none: {
-        const size_t s = ret.size();
-        const size_t o = cmd.val();
-        remaining_bits = cmd.type.li;
         assert(ret.bit == 0);
-        assert(remaining_bits <= max_bits);
-        ret.write<d8, d16>(remaining_bits | method_bit, s + 3 + o);
+        bits = cmd.type.li; assert(bits <= max_bits);
+        ret.write<d8, d16>(bits | method_bit, cmd.val() + 2);
       } break;
       case uncomp: {
         ret.write<b1, d8>(false, input[adr]); fix(1, true);
