@@ -69,7 +69,8 @@ $ ./bench <input-dir>
 | addams_family_comp                       |    4 | 5B8D | 33A0 | 7BB2 | 2293 | 34ED | 64AD | 2199 |  1E8A9 | 0.0635 | FDCD9EB3 |
 | asameshimae_nyanko_comp                  |    8 | 57F9 | 3228 | 7633 | 2654 | 3278 | 61E0 | 19B7 |  1D4BF | 0.4104 | 6519A910 |
 | assault_suits_valken_comp                |    5 | 5F6E | 375D | 727E | 25DE | 385B | 569E | 19F5 |  1D81A | 0.0712 | 4D05E986 |
-| bahamut_lagoon_comp                      |    9 | 5F6E | 3760 | 7FCE | 25DE | 385E | 6A1B | 19F8 |  1F8F4 | 0.0504 | 3CEAFFE1 |
+| bahamut_lagoon_comp                      |    9 | 5E61 | 373B | 7AA8 | 25DE | 379D | 67CB | 19F5 |  1EF88 | 0.3237 | A53985AD |
+| bahamut_lagoon_comp_fast                 |    9 | 5F6E | 3760 | 7FCE | 25DE | 385E | 6A1B | 19F8 |  1F8F4 | 0.0455 | 34E05E89 |
 | battle_cross_comp                        |    9 | 558B | 2F6A | 77AC | 1FA4 | 3055 | 5FEE | 1855 |  1C4E6 | 0.1211 | 56CA15C3 |
 | battletech_comp                          |    9 | 5949 | 31DD | 75D5 | 208B | 347E | 62AC | 1668 |  1CF21 | 0.1681 | 9014D4AF |
 | bokujou_monogatari_comp                  |    7 | 61AC | 36E3 | 8190 | 24ED | 3A01 | 6CA1 | 1C39 |  201EE | 0.0561 | 4D976D4D |
@@ -77,7 +78,8 @@ $ ./bench <input-dir>
 | brandish_comp                            |    5 | 5C72 | 32E5 | 727E | 1FEE | 35C9 | 569E | 1863 |  1C692 | 0.1566 | 32710632 |
 | burai_comp                               |    3 | 5C82 | 38D2 | 7DB6 | 2EF2 | 33A2 | 657A | 2D08 |  20823 | 0.1221 | FEF1E5C2 |
 | cb_chara_wars_comp                       |    6 | 5DE9 | 339B | 7E17 | 21AA | 3746 | 6842 | 186C |  1E93F | 0.0995 | 8947D6F0 |
-| chrono_trigger_comp                      |    9 | 5F6E | 36E8 | 7FCE | 24F2 | 385E | 6A1B | 19F8 |  1F790 | 0.0982 | 0DD1A27C |
+| chrono_trigger_comp                      |    9 | 5EB8 | 36BC | 7D06 | 24F2 | 37E1 | 688F | 19F5 |  1F1DA | 0.4201 | E4B2A68B |
+| chrono_trigger_comp_fast                 |    9 | 5F6E | 36E8 | 7FCE | 24F2 | 385E | 6A1B | 19F8 |  1F790 | 0.1011 | 4D2D4503 |
 | danzarb_comp                             |    5 | 5D01 | 35DA | 7B2E | 2458 | 36A4 | 6775 | 167E |  1E6FD | 0.0478 | D5B00688 |
 | derby_stallion_2_comp                    |    6 | 5845 | 322F | 78DA | 21D7 | 326D | 6162 | 1BFA |  1D4F4 | 0.0802 | 8B88AB93 |
 | diet_comp                                |   16 | 56E5 | 3126 | 77DF | 200B | 314C | 6037 | 1959 |  1CAE7 | 0.1058 | 29EF3CCD |

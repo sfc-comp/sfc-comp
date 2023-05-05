@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.2.3
+  VERSION 0.2.4
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -46,7 +46,6 @@ set(sfc_comp_src
   src/action_pachio_comp.cpp
   src/addams_family_comp.cpp
   src/asameshimae_nyanko_comp.cpp
-  src/bahamut_lagoon_comp.cpp
   src/bokujou_monogatari_comp.cpp
   src/burai_comp.cpp
   src/cb_chara_wars_comp.cpp
@@ -151,6 +150,7 @@ set(comp_ext_list
   asameshimae_nyanko_4bpp_comp comp
   assault_suits_valken_comp comp
   bahamut_lagoon_comp comp
+  bahamut_lagoon_comp_fast comp
   battle_cross_comp comp
   battletech_comp comp
   bokujou_monogatari_comp comp
@@ -159,6 +159,7 @@ set(comp_ext_list
   burai_comp comp
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
+  chrono_trigger_comp_fast comp
   danzarb_comp comp
   dekitate_high_school_comp_1 comp
   dekitate_high_school_comp_2 comp

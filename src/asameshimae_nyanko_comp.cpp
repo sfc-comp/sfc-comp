@@ -47,7 +47,7 @@ std::vector<uint8_t> asameshimae_nyanko_comp(std::span<const uint8_t> input) {
   static constexpr size_t lz_max_len = len_tab.back().max;
 
   if (input.size() > ulen_tab.back().max) {
-    throw std::runtime_error("This algorithm may not compress the given data.");
+    throw std::runtime_error("This algorithm may not be able to compress the given data.");
   }
 
   std::vector<std::array<encode::lz_data, ofs_tab.size()>> lz_memo(input.size());

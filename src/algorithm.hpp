@@ -354,40 +354,40 @@ struct vrange {
 };
 
 template <typename Tag>
-requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint16_t>
+requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint32_t>
 struct tag_ol {
   tag_ol() = default;
   tag_ol(Tag tag, uint64_t oi, uint64_t li) : tag(tag), oi(oi), li(li) {}
   constexpr bool operator == (const tag_ol& rhs) const {
     return tag == rhs.tag && li == rhs.li;
   }
-  Tag tag : 16;
-  uint32_t oi : 8;
-  uint32_t li : 8;
+  Tag tag : 32;
+  uint64_t oi : 16;
+  uint64_t li : 16;
 };
 
 template <typename Tag>
-requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint16_t>
+requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint32_t>
 struct tag_l {
   tag_l() = default;
   tag_l(Tag tag, uint64_t li) : tag(tag), li(li) {}
   constexpr bool operator == (const tag_l& rhs) const {
     return tag == rhs.tag && li == rhs.li;
   }
-  Tag tag : 16;
-  uint32_t li : 8;
+  Tag tag : 32;
+  uint64_t li : 16;
 };
 
 template <typename Tag>
-requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint16_t>
+requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint32_t>
 struct tag_o {
   tag_o() = default;
   tag_o(Tag tag, uint64_t oi) : tag(tag), oi(oi) {}
   constexpr bool operator == (const tag_o& rhs) const {
     return tag == rhs.tag;
   }
-  Tag tag : 16;
-  uint32_t oi : 8;
+  Tag tag : 32;
+  uint64_t oi : 16;
 };
 
 template <typename U, typename V>
@@ -414,6 +414,7 @@ class sssp_solver {
     tag_type type;
 
     size_t val() const { return lz_ofs; }
+    void set_val(size_t v) { lz_ofs = v; }
   };
 
   using vertex_type = Vertex;

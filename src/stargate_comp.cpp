@@ -26,7 +26,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   const std::array<vrange, 1> lz_offsets = {vrange(1, input.size(), 0, 0)};
 
   if (input.size() > uncomp_lens.back().max) {
-    throw std::runtime_error("This algorithm may not compress the given data.");
+    throw std::runtime_error("This algorithm may not be able to compress the given data.");
   }
 
   lz_helper lz_helper(input);
