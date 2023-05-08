@@ -214,7 +214,7 @@ std::vector<uint8_t> pac_in_time_comp_a44a(std::span<const uint8_t> input) {
     );
     lz_helpers[i & 1].add_element(i);
     if (size_t j = i + ofs_tab_b.front().min; j < input.size()) {
-      lz::find_all(j, ofs_tab_b, lz_min_len, lz_memo[j % memo_size],
+      encode::lz::find_all(j, ofs_tab_b, lz_min_len, lz_memo[j % memo_size],
         [&](size_t max_ofs) { return lz_helpers[j & 1].find_best(j, max_ofs); }
       );
     }

@@ -30,7 +30,7 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
     std::vector<std::array<encode::lz_data, max_offsets.size()>> ret(input.size());
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
-      lz::find_all(i, max_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
+      encode::lz::find_all(i, max_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
         return lz_helper.find_best_closest(i, max_ofs, input.size());
       });
       if (const auto lz = ret[i].back(); lz.len >= lz_min_len) {

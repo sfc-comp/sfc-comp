@@ -50,7 +50,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     std::vector<std::array<encode::lz_data, lz_offsets.size()>> ret(input.size());
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
-      lz::find_all(i, lz_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
+      encode::lz::find_all(i, lz_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
         return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
       });
       lz_helper.add_element(i);

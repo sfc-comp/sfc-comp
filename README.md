@@ -90,7 +90,7 @@ $ ./bench <input-dir>
 | dq12_comp                                |    5 | 5F67 | 3759 | 7FC6 | 25DD | 3858 | 6A11 | 19F3 |  1F8C4 | 0.0473 | 9E3F4EF0 |
 | dq5_comp_2                               |    5 | 5F67 | 3759 | 7FC6 | 25DD | 3858 | 6A11 | 19F3 |  1F8C4 | 0.0474 | 4F9C5071 |
 | dq6_comp                                 |    3 | 6458 | 3841 | 8366 | 2693 | 3B41 | 6EF0 | 2129 |  211EF | 0.0584 | EF916FB5 |
-| dragon_knight_4_comp_1                   |    4 | 6066 | 3675 | 8002 | 24D9 | 3901 | 6AFC | 1C31 |  1FBE8 | 0.0513 | 2CA7FBC4 |
+| dragon_knight_4_comp                     |    4 | 6066 | 3675 | 8002 | 24D9 | 3901 | 6AFC | 1C31 |  1FBE8 | 0.0513 | 2CA7FBC4 |
 | estpolis_biography_comp                  |    5 | 5BB6 | 3436 | 7A18 | 225D | 34C3 | 66D3 | 174A |  1DF46 | 0.0649 | CC9E43C3 |
 | famicom_tantei_club_part_ii_comp         |    5 | 5F6A | 3759 | 7FC9 | 25DD | 3858 | 6A16 | 19F3 |  1F8CF | 0.0473 | 23FCFD3F |
 | fe3_comp                                 |    4 | 5BFF | 3464 | 7862 | 25F4 | 3740 | 6693 | 17D5 |  1E465 | 0.2505 | DDB2F2D4 |

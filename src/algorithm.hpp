@@ -430,7 +430,7 @@ struct vrange {
   size_t val;
 };
 
-namespace lz {
+namespace encode::lz {
 
 template <typename MaxOffset, typename Func>
 requires std::convertible_to<std::invoke_result_t<MaxOffset, size_t>, size_t> &&
@@ -460,7 +460,7 @@ void find_all(size_t i, std::span<const vrange> offsets, const size_t lz_min_len
                   [&](size_t oi) { return offsets[oi].max; }, std::forward<Func>(find_lz));
 }
 
-} // namespace lz
+} // namespace encode::lz
 
 template <typename Tag>
 requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint32_t>

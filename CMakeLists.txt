@@ -173,7 +173,8 @@ set(comp_ext_list
   dq12_comp comp
   dq5_comp_2 comp
   dq6_comp comp
-  dragon_knight_4_comp_1 comp
+  dragon_knight_4_comp comp
+  dragon_knight_4_4bpp_comp comp
   estpolis_biography_comp comp
   famicom_tantei_club_part_ii_comp comp
   fe3_comp comp
