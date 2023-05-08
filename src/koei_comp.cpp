@@ -19,28 +19,28 @@ void koei_comp_core(std::span<const uint8_t> input,
   enum method { uncomp, lz };
   using tag = tag_ol<method>;
 
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x0004,  6, 0b0000'00),
-    vrange(0x0005, 0x0008,  7, 0b00010'00),
-    vrange(0x0009, 0x0020,  8, 0b00011'000),
-    vrange(0x0021, 0x0080,  9, 0b0011'00000),
-    vrange(0x0081, 0x0100, 10, 0b011'0000000),
-    vrange(0x0101, 0x0200, 11, 0b100'00000000),
-    vrange(0x0201, 0x0400, 12, 0b101'000000000),
-    vrange(0x0401, 0x0800, 13, 0b110'0000000000),
-    vrange(0x0801, 0x1000, 14, 0b111'00000000000)
-  });
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001,  6, 0b0000'00},
+    {0x0005,  7, 0b00010'00},
+    {0x0009,  8, 0b00011'000},
+    {0x0021,  9, 0b0011'00000},
+    {0x0081, 10, 0b011'0000000},
+    {0x0101, 11, 0b100'00000000},
+    {0x0201, 12, 0b101'000000000},
+    {0x0401, 13, 0b110'0000000000},
+    {0x0801, 14, 0b111'00000000000}
+  }, 0x1000);
 
-  static constexpr auto len_tab = std::to_array<vrange>({
-    vrange(0x0002, 0x0002,  1, 0b1),
-    vrange(0x0003, 0x0004,  3, 0b01'0),
-    vrange(0x0005, 0x0008,  5, 0b001'00),
-    vrange(0x0009, 0x0010,  7, 0b0001'000),
-    vrange(0x0011, 0x0020,  9, 0b00001'0000),
-    vrange(0x0021, 0x0040, 11, 0b000001'00000),
-    vrange(0x0041, 0x0080, 13, 0b0000001'000000),
-    vrange(0x0081, 0x00ff, 14, 0b0000000'0000000)
-  });
+  static constexpr auto len_tab = to_vranges({
+    {0x0002,  1, 0b1},
+    {0x0003,  3, 0b01'0},
+    {0x0005,  5, 0b001'00},
+    {0x0009,  7, 0b0001'000},
+    {0x0011,  9, 0b00001'0000},
+    {0x0021, 11, 0b000001'00000},
+    {0x0041, 13, 0b0000001'000000},
+    {0x0081, 14, 0b0000000'0000000}
+  }, 0x00ff);
 
   lz_helper lz_helper(input);
   sssp_solver<tag> dp(input.size());

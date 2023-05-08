@@ -11,25 +11,25 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   enum method { uncomp, uncompl, rle, rle0, lz2, lz };
   using tag = tag_ol<method>;
 
-  const auto len_tab = std::to_array<vrange>({
-    vrange(0x0003, 0x0003,  1, 0b1),
-    vrange(0x0004, 0x0004,  2, 0b01),
-    vrange(0x0005, 0x0005,  3, 0b001),
-    vrange(0x0006, 0x0006,  4, 0b0001),
-    vrange(0x0007, 0x0008,  6, 0b00001'0),
-    vrange(0x0009, 0x0010,  9, 0b000000'000),
-    vrange(0x0011, 0x0110, 14, 0b000001)         // 000001[]
-  });
+  const auto len_tab = to_vranges({
+    {0x0003,  1, 0b1},
+    {0x0004,  2, 0b01},
+    {0x0005,  3, 0b001},
+    {0x0006,  4, 0b0001},
+    {0x0007,  6, 0b00001'0},
+    {0x0009,  9, 0b000000'000},
+    {0x0011, 14, 0b000001}         // 000001[]
+  }, 0x0110);
 
-  const auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x00ff,  9, 0b0),             // []0
-    vrange(0x0100, 0x02ff, 11, 0b100),           // []1_0
-    vrange(0x0300, 0x06ff, 13, 0b10100),         // []1_1_0
-    vrange(0x0700, 0x0eff, 15, 0b1010100),       // []1_1_1_0
-    vrange(0x0f00, 0x1eff, 17, 0b101010100),     // []1_1_1_1_0
-    vrange(0x1f00, 0x3eff, 19, 0b10101010100),   // []1_1_1_1_1_0
-    vrange(0x3f00, 0xbeff, 21, 0b1010101010100)  // []1_1_1_1_1_1__
-  });
+  const auto ofs_tab = to_vranges({
+    {0x0001,  9, 0b0},             // []0
+    {0x0100, 11, 0b100},           // []1_0
+    {0x0300, 13, 0b10100},         // []1_1_0
+    {0x0700, 15, 0b1010100},       // []1_1_1_0
+    {0x0f00, 17, 0b101010100},     // []1_1_1_1_0
+    {0x1f00, 19, 0b10101010100},   // []1_1_1_1_1_0
+    {0x3f00, 21, 0b1010101010100}  // []1_1_1_1_1_1__
+  }, 0xbeff);
 
   lz_helper lz_helper(input);
   sssp_solver<tag> dp(input.size());

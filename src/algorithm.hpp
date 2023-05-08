@@ -427,8 +427,23 @@ struct vrange {
   size_t min;
   size_t max;
   size_t bitlen;
-  size_t val;
+  uint64_t val;
+  uint64_t mask = -1;
 };
+
+struct vrange_min {
+  size_t min;
+  size_t bitlen;
+  uint64_t val;
+  uint64_t mask = -1;
+};
+
+template <size_t N>
+constexpr std::array<vrange, N> to_vranges(vrange_min (&&a)[N], size_t max_len) {
+  return create_array<vrange, N>([&](size_t i) {
+    return vrange(a[i].min, (i + 1 == N) ? max_len : a[i + 1].min - 1, a[i].bitlen, a[i].val, a[i].mask);
+  });
+}
 
 namespace encode::lz {
 

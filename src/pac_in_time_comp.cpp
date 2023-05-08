@@ -15,23 +15,23 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
   enum method { uncomp, lz2, lz };
   using tag = tag_ol<method>;
 
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x0200, 10, 0b01),       // _1
-    vrange(0x0201, 0x0400, 11, 0b001),      // _01
-    vrange(0x0401, 0x0800, 13, 0b00001),    // _00_1
-    vrange(0x0801, 0x1000, 15, 0b0000001),  // _00_0_1
-    vrange(0x1001, 0x2000, 16, 0b00000000), // _00_0_0_
-  });
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001, 10, 0b01},       // _1
+    {0x0201, 11, 0b001},      // _01
+    {0x0401, 13, 0b00001},    // _00_1
+    {0x0801, 15, 0b0000001},  // _00_0_1
+    {0x1001, 16, 0b00000000}, // _00_0_0_
+  }, 0x2000);
 
-  static constexpr auto len_tab = std::to_array<vrange>({
-    vrange(0x0003, 0x0003,  1, 0b1),          // 1
-    vrange(0x0004, 0x0004,  2, 0b01),         // 01
-    vrange(0x0005, 0x0005,  3, 0b001),        // 001
-    vrange(0x0006, 0x0006,  4, 0b0001),       // 0001
-    vrange(0x0007, 0x0008,  6, 0b00001'0),    // 00001_
-    vrange(0x0009, 0x0010,  9, 0b000000'000), // 000000___
-    vrange(0x0011, 0x0110, 14, 0b000001)      // 000001<1B>
-  });
+  static constexpr auto len_tab = to_vranges({
+    {0x0003,  1, 0b1},          // 1
+    {0x0004,  2, 0b01},         // 01
+    {0x0005,  3, 0b001},        // 001
+    {0x0006,  4, 0b0001},       // 0001
+    {0x0007,  6, 0b00001'0},    // 00001_
+    {0x0009,  9, 0b000000'000}, // 000000___
+    {0x0011, 14, 0b000001}      // 000001<1B>
+  }, 0x0110);
 
   sssp_solver<tag> dp(input.size());
 
@@ -163,30 +163,30 @@ std::vector<uint8_t> pac_in_time_comp_a44a(std::span<const uint8_t> input) {
   enum method { uncomp, lz };
   using tag = tag_ol<method>;
 
-  static constexpr auto len_tab = std::to_array<vrange>({
-    vrange(0x0002, 0x0002,  3, 0b100),
-    vrange(0x0003, 0x0003,  3, 0b101),
-    vrange(0x0004, 0x0007,  4, 0b00'00),
-    vrange(0x0008, 0x000f,  6, 0b010'000),
-    vrange(0x0010, 0x001f,  8, 0b0111'0000),
-    vrange(0x0020, 0x003f, 10, 0b01100'00000),
-    vrange(0x0040, 0x007f, 11, 0b01101'000000)
-  });
+  static constexpr auto len_tab = to_vranges({
+    {0x0002,  3, 0b100},
+    {0x0003,  3, 0b101},
+    {0x0004,  4, 0b00'00},
+    {0x0008,  6, 0b010'000},
+    {0x0010,  8, 0b0111'0000},
+    {0x0020, 10, 0b01100'00000},
+    {0x0040, 11, 0b01101'000000}
+  }, 0x007f);
   const size_t lz_min_len = len_tab.front().min;
 
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001 * 2 - 1, 0x0008 * 2,  6, 0b100'000),
-    vrange(0x0009 * 2 - 1, 0x0010 * 2,  8, 0b11111'000),
-    vrange(0x0011 * 2 - 1, 0x0020 * 2,  8, 0b1010'0000),
-    vrange(0x0021 * 2 - 1, 0x0040 * 2,  9, 0b1011'00000),
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001 * 2 - 1,  6, 0b100'000},
+    {0x0009 * 2 - 1,  8, 0b11111'000},
+    {0x0011 * 2 - 1,  8, 0b1010'0000},
+    {0x0021 * 2 - 1,  9, 0b1011'00000},
 
-    vrange(0x0041 * 2 - 1, 0x0080 * 2,  8, 0b00'000000),
-    vrange(0x0081 * 2 - 1, 0x0100 * 2, 10, 0b110'0000000),
-    vrange(0x0101 * 2 - 1, 0x0200 * 2, 12, 0b1110'00000000),
-    vrange(0x0201 * 2 - 1, 0x0400 * 2, 12, 0b011'00000000'0),
-    vrange(0x0401 * 2 - 1, 0x0800 * 2, 13, 0b010'00000000'00),
-    vrange(0x0801 * 2 - 1, 0x0fff * 2, 16, 0b11110'00000000'000)
-  });
+    {0x0041 * 2 - 1,  8, 0b00'000000},
+    {0x0081 * 2 - 1, 10, 0b110'0000000},
+    {0x0101 * 2 - 1, 12, 0b1110'00000000},
+    {0x0201 * 2 - 1, 12, 0b011'00000000'0},
+    {0x0401 * 2 - 1, 13, 0b010'00000000'00},
+    {0x0801 * 2 - 1, 16, 0b11110'00000000'000}
+  }, 0x0fff * 2);
   // non-decreasing parts
   static constexpr auto ofs_tab_a = std::span(ofs_tab.begin(), 4);
   static constexpr auto ofs_tab_b = std::span(ofs_tab.begin() + 4, ofs_tab.size() - 4);
@@ -269,25 +269,25 @@ std::vector<uint8_t> pac_in_time_comp_a55a(std::span<const uint8_t> input) {
   enum method { uncomp, lz };
   using tag = tag_ol<method>;
 
-  static constexpr auto len_tab = std::to_array<vrange>({
-    vrange(0x0002, 0x0002,  1, 0b0),
-    vrange(0x0003, 0x0003,  4, 0b1111),
-    vrange(0x0004, 0x0007,  5, 0b100'00),
-    vrange(0x0008, 0x000f,  6, 0b101'000),
-    vrange(0x0010, 0x001f,  7, 0b110'0000),
-    vrange(0x0020, 0x003f, 10, 0b11100'00000),
-    vrange(0x0040, 0x007f, 11, 0b11101'000000)
-  });
+  static constexpr auto len_tab = to_vranges({
+    {0x0002,  1, 0b0},
+    {0x0003,  4, 0b1111},
+    {0x0004,  5, 0b100'00},
+    {0x0008,  6, 0b101'000},
+    {0x0010,  7, 0b110'0000},
+    {0x0020, 10, 0b11100'00000},
+    {0x0040, 11, 0b11101'000000}
+  }, 0x007f);
 
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0002, 0x0080,  8, 0b0000000'0),
-    vrange(0x0081, 0x0100, 10, 0b0000000'1'00),
-    vrange(0x0101, 0x0200, 11, 0b0000000'1'01'0),
-    vrange(0x0201, 0x0400, 13, 0b0000000'1'100'00),
-    vrange(0x0401, 0x0800, 14, 0b0000000'1'101'000),
-    vrange(0x0801, 0x1000, 15, 0b0000000'1'110'0000),
-    vrange(0x1001, 0x2000, 16, 0b0000000'1'111'00000),
-  });
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0002,  8, 0b0000000'0},
+    {0x0081, 10, 0b0000000'1'00},
+    {0x0101, 11, 0b0000000'1'01'0},
+    {0x0201, 13, 0b0000000'1'100'00},
+    {0x0401, 14, 0b0000000'1'101'000},
+    {0x0801, 15, 0b0000000'1'110'0000},
+    {0x1001, 16, 0b0000000'1'111'00000},
+  }, 0x2000);
 
   lz_helper lz_helper(input);
   sssp_solver<tag> dp(input.size());

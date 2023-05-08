@@ -11,20 +11,20 @@ std::vector<uint8_t> nba_jam_comp(std::span<const uint8_t> in) {
   enum method { none, uncomp, lz, lz2, lzd };
   using tag = tag_ol<method>;
 
-  static constexpr auto ulen_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x0003,  3, 0b1'00),
-    vrange(0x0004, 0x0013,  8, 0b1110'0000),
-    vrange(0x0014, 0x0103, 13, 0b11110'00000000 + 0x10),
-    vrange(0x0104, 0xffff, 21, 0b11111'0000000000000000 + 0x100)
-  });
+  static constexpr auto ulen_tab = to_vranges({
+    {0x0001,  3, 0b1'00},
+    {0x0004,  8, 0b1110'0000},
+    {0x0014, 13, 0b11110'00000000 + 0x10},
+    {0x0104, 21, 0b11111'0000000000000000 + 0x100}
+  }, 0xffff);
 
   static constexpr size_t lz_min_len = 2;
-  static constexpr auto len_tab = std::to_array<vrange>({
-                            // 0b1 (len == 2)
-    vrange(0x0003, 0x0003,  2, 0b00),
-    vrange(0x0004, 0x0013,  7, 0b010'0000),
-    vrange(0x0014, 0x0103, 11, 0b011'00000000 + 0x10),
-  });
+  static constexpr auto len_tab = to_vranges({
+              // 0b1 (len == 2)
+    {0x0003,  2, 0b00},
+    {0x0004,  7, 0b010'0000},
+    {0x0014, 11, 0b011'00000000 + 0x10},
+  }, 0x0103);
 
   static constexpr size_t lz3_min_len = len_tab.front().min;
   static constexpr size_t lz3_max_len = len_tab.back().max;
@@ -37,10 +37,10 @@ std::vector<uint8_t> nba_jam_comp(std::span<const uint8_t> in) {
   }();
 
   // (dist - len + 1)
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x00ff,  9, 0b0'00000000 + 1),
-    vrange(0x0100, 0xffff, 17, 0b1'0000000000000000 + 0x100)
-  });
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001,  9, 0b0'00000000 + 1},
+    {0x0100, 17, 0b1'0000000000000000 + 0x100}
+  }, 0xffff);
 
   std::vector<uint8_t> input(in.rbegin(), in.rend());
 

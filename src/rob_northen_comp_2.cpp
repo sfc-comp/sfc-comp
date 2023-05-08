@@ -15,13 +15,13 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   enum method { uncomp, uncompl, lz, lz2 };
   using tag = tag_ol<method>;
 
-  static constexpr auto len_tab = std::to_array<vrange>({
-                                        // 10 (len == 2)
-    vrange(0x0003, 0x0003,  3, 0b110),  // 110
-    vrange(0x0004, 0x0005,  3, 0b000),  // 0_0
-    vrange(0x0006, 0x0008,  4, 0b0010), // 0_1_
-    vrange(0x0009, 0x00ff, 11, 0b111)   // 111[]
-  });
+  static constexpr auto len_tab = to_vranges({
+                          // 10 (len == 2)
+    {0x0003,  3, 0b110},  // 110
+    {0x0004,  3, 0b000},  // 0_0
+    {0x0006,  4, 0b0010}, // 0_1_
+    {0x0009, 11, 0b111}   // 111[]
+  }, 0x00ff);
 
   lz_helper lz_helper(input);
   sssp_solver<tag> dp(input.size());
@@ -96,13 +96,13 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   return ret.out;
 }
 
-static constexpr auto rnc2_offsets = std::to_array<vrange>({
-  vrange(0x0001, 0x0100,  9, 0b0),      // 0[]
-  vrange(0x0101, 0x0200, 11, 0b110),    // 110[]
-  vrange(0x0201, 0x0400, 12, 0b1000),   // 100_[]
-  vrange(0x0401, 0x0800, 13, 0b10101),  // 1_1_1[]
-  vrange(0x0801, 0x1000, 14, 0b101000), // 1_1_0_[]
-});
+static constexpr auto rnc2_offsets = to_vranges({
+  {0x0001,  9, 0b0},      // 0[]
+  {0x0101, 11, 0b110},    // 110[]
+  {0x0201, 12, 0b1000},   // 100_[]
+  {0x0401, 13, 0b10101},  // 1_1_1[]
+  {0x0801, 14, 0b101000}, // 1_1_0_[]
+}, 0x1000);
 
 } // namespace
 

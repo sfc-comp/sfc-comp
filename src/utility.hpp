@@ -51,7 +51,7 @@ std::array<T, K> k_most(std::span<const size_t> counts) {
 
 template <typename T, size_t Extent, typename Func>
 requires std::convertible_to<std::invoke_result_t<Func, size_t>, T>
-constexpr std::array<T, Extent> create_array(Func func) {
+constexpr std::array<T, Extent> create_array(Func&& func) {
   std::array<T, Extent> ret;
   for (size_t i = 0; i < Extent; ++i) ret[i] = func(i);
   return ret;

@@ -15,14 +15,14 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
   enum method { uncomp, lz };
   using tag = tag_o<method>;
 
-  static constexpr auto lz_ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x0040,  9, 0x00 << 1), // [00, 1f] _
-    vrange(0x0041, 0x0100, 10, 0x20 << 2), // [20, 4f] __
-    vrange(0x0101, 0x0300, 11, 0x50 << 3), // [50, 8f] ___
-    vrange(0x0301, 0x0600, 12, 0x90 << 4), // [90, bf] ____
-    vrange(0x0601, 0x0c00, 13, 0xc0 << 5), // [c0, ef] _____
-    vrange(0x0c01, 0x0fff, 14, 0xf0 << 6), // [f0, ff] ______ // not 0x1000 (cf. $02:E1AB)
-  });
+  static constexpr auto lz_ofs_tab = to_vranges({
+    {0x0001,  9, 0x00 << 1}, // [00, 1f] _
+    {0x0041, 10, 0x20 << 2}, // [20, 4f] __
+    {0x0101, 11, 0x50 << 3}, // [50, 8f] ___
+    {0x0301, 12, 0x90 << 4}, // [90, bf] ____
+    {0x0601, 13, 0xc0 << 5}, // [c0, ef] _____
+    {0x0c01, 14, 0xf0 << 6}, // [f0, ff] ______
+  }, 0x0fff); // not 0x1000 (cf. $02:E1AB)
 
   static constexpr size_t word_max_count = 0x13a;
   static constexpr size_t lz_min_len = 3;

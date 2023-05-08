@@ -11,20 +11,20 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
   enum method { none, uncomp, lz2, lz3, lz };
   using tag = tag_ol<method>;
 
-  static constexpr auto len_tab = std::to_array<vrange>({
-                       // 00 (len == 2)
-                       // 01 (len == 3)
-    vrange( 4,   4,  2, 0b10),
-    vrange( 5,   6,  4, 0b110'0),
-    vrange( 7,  10,  6, 0b1110'00),
-    vrange(11, 255, 12, 0b1111'00000000 + 0x0b)
-  });
+  static constexpr auto len_tab = to_vranges({
+             // 00 (len == 2)
+             // 01 (len == 3)
+    {  4,  2, 0b10},
+    {  5,  4, 0b110'0},
+    {  7,  6, 0b1110'00},
+    { 11, 12, 0b1111'00000000 + 0x0b}
+  }, 255);
 
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x00ff, 10, 0b11'00000000 + 0x0001),
-    vrange(0x0100, 0x0fff, 14, 0b10'000000000000 + 0x0100),
-    vrange(0x1000, 0xffff, 17, 0b0'0000000000000000 + 0x1000)
-  });
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001, 10, 0b11'00000000 + 0x0001},
+    {0x0100, 14, 0b10'000000000000 + 0x0100},
+    {0x1000, 17, 0b0'0000000000000000 + 0x1000}
+  }, 0xffff);
 
   std::vector<uint8_t> input(in.rbegin(), in.rend());
 

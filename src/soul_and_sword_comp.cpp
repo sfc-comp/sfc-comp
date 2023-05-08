@@ -13,35 +13,35 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   enum method { uncomp, lz };
   using tag = tag_ol<method>;
 
-  static constexpr auto uncomp_len_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x0003,  3, 0b000),
-    vrange(0x0004, 0x0004,  4, 0b0110),
-    vrange(0x0005, 0x0005,  6, 0b011101),
-    vrange(0x0006, 0x0007,  8, 0b0111101'0),
-    vrange(0x0008, 0x000b, 10, 0b01111101'00),
-    vrange(0x000c, 0x0013, 12, 0b011111101'000),
-    vrange(0x0014, 0x0023, 14, 0b0111111101'0000),
-    vrange(0x0024, 0x0043, 16, 0b01111111101'00000),
-    vrange(0x0044, 0x0083, 18, 0b011111111101'000000),
-    vrange(0x0084, 0x0100, 20, 0b0111111111101'0000000),
-  });
+  static constexpr auto uncomp_len_tab = to_vranges({
+    {0x0001,  3, 0b000},
+    {0x0004,  4, 0b0110},
+    {0x0005,  6, 0b011101},
+    {0x0006,  8, 0b0111101'0},
+    {0x0008, 10, 0b01111101'00},
+    {0x000c, 12, 0b011111101'000},
+    {0x0014, 14, 0b0111111101'0000},
+    {0x0024, 16, 0b01111111101'00000},
+    {0x0044, 18, 0b011111111101'000000},
+    {0x0084, 20, 0b0111111111101'0000000},
+  }, 0x0100);
 
-  static constexpr auto lz_len_tab = std::to_array<vrange>({
-    vrange(0x0002, 0x0008,  3, 0b000),
-    vrange(0x0009, 0x0009,  4, 0b1110),
-    vrange(0x000a, 0x000a,  6, 0b111101),
-    vrange(0x000b, 0x000c,  8, 0b1111101'0),
-    vrange(0x000d, 0x0010, 10, 0b11111101'00),
-    vrange(0x0011, 0x0018, 12, 0b111111101'000),
-    vrange(0x0019, 0x0028, 14, 0b1111111101'0000),
-    vrange(0x0029, 0x0048, 16, 0b11111111101'00000),
-    vrange(0x0049, 0x0088, 18, 0b111111111101'000000),
-    vrange(0x0089, 0x00ff, 20, 0b1111111111101'0000000),
-  });
+  static constexpr auto lz_len_tab = to_vranges({
+    {0x0002,  3, 0b000},
+    {0x0009,  4, 0b1110},
+    {0x000a,  6, 0b111101},
+    {0x000b,  8, 0b1111101'0},
+    {0x000d, 10, 0b11111101'00},
+    {0x0011, 12, 0b111111101'000},
+    {0x0019, 14, 0b1111111101'0000},
+    {0x0029, 16, 0b11111111101'00000},
+    {0x0049, 18, 0b111111111101'000000},
+    {0x0089, 20, 0b1111111111101'0000000},
+  }, 0x00ff);
 
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x0fff, 0, 0) // dynamically changed
-  });
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001, 0, 0} // dynamically changed
+  }, 0x0fff);
 
   lz_helper lz_helper(input);
   sssp_solver<tag> dp(input.size(), skipped_size);

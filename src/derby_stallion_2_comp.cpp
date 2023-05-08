@@ -11,18 +11,18 @@ std::vector<uint8_t> derby_stallion_2_comp(std::span<const uint8_t> input) {
   enum method { uncomp, lz };
   using tag = tag_ol<method>;
 
-  static constexpr auto ofs_tab = std::to_array<vrange>({
-    vrange(0x0001, 0x00ff,  9, 0b0'00000000 + 1),
-    vrange(0x0100, 0x08ff, 12, 0b1'00000000000),
-  });
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001,  9, 0b0'00000000 + 1},
+    {0x0100, 12, 0b1'00000000000},
+  }, 0x08ff);
 
-  static constexpr auto len_tab = std::to_array<vrange>({
-    vrange(0x0002, 0x0002,  1, 0b1),
-    vrange(0x0003, 0x0003,  2, 0b01),
-    vrange(0x0004, 0x0007,  5, 0b001'00),
-    vrange(0x0008, 0x000f,  7, 0b0001'000),
-    vrange(0x0010, 0x002f,  9, 0b0000'00000),
-  });
+  static constexpr auto len_tab = to_vranges({
+    {0x0002,  1, 0b1},
+    {0x0003,  2, 0b01},
+    {0x0004,  5, 0b001'00},
+    {0x0008,  7, 0b0001'000},
+    {0x0010,  9, 0b0000'00000},
+  }, 0x002f);
 
   lz_helper lz_helper(input);
   sssp_solver<tag> dp(input.size());
