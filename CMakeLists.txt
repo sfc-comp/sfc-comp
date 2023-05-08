@@ -52,7 +52,6 @@ set(sfc_comp_src
   src/chrono_trigger_comp.cpp
   src/danzarb_comp.cpp
   src/derby_stallion_2_comp.cpp
-  src/diet_comp.cpp
   src/dokapon_comp.cpp
   src/doom_comp.cpp
   src/doraemon_comp.cpp
@@ -86,7 +85,9 @@ set(sfc_comp_src
   src/marios_super_picross_comp.cpp
   src/marvelous_comp.cpp
   src/mujintou_monogatari_comp.cpp
+  src/nba_jam_comp.cpp
   src/oscar_comp.cpp
+  src/pac_in_time_comp.cpp
   src/papuwa_comp.cpp
   src/picross_np_comp.cpp
   src/pokemon_gold_comp.cpp
@@ -210,9 +211,11 @@ set(comp_ext_list
   marios_super_picross_comp comp
   marvelous_comp comp
   mujintou_monogatari_comp comp
+  nba_jam_comp comp
   odekake_lester_comp comp
   olivias_mystery_comp comp
   oscar_comp comp
+  pac_in_time_comp comp
   papuwa_comp comp
   picross_np_comp comp
   pokemon_gold_comp comp

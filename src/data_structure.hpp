@@ -181,4 +181,131 @@ private:
   std::vector<value_type> tree;
 };
 
+template <typename T>
+requires std::unsigned_integral<T>
+class wavelet_matrix {
+ public:
+  using value_type = T;
+  static constexpr value_type nval = value_type(-1);
+
+ private:
+  using block_type = uint64_t;
+  static constexpr size_t block_size = sizeof(block_type);
+
+  struct counter {
+    size_t cumu;
+    block_type f;
+  };
+
+  size_t rank(size_t b, size_t i) const {
+    const auto c = bit_vectors[b * vector_size + (i / block_size)];
+    const auto mask = (block_type(1) << (i % block_size)) - 1;
+    return c.cumu + std::popcount(c.f & mask);
+  }
+
+ public:
+  wavelet_matrix() = default;
+  wavelet_matrix(std::span<const value_type> input)
+      : n(input.size()), vector_size(1 + n / block_size) {
+    max_v = 0;
+    for (const auto v : input) max_v = std::max(max_v, v);
+    bit_width = std::bit_width(max_v);
+    bit_vectors.resize(vector_size * bit_width);
+    zeros.resize(bit_width);
+    build(input);
+  }
+
+  value_type kth(size_t beg, size_t end, size_t k) const {
+    if (end - beg <= k) return nval;
+    value_type ret = 0;
+    for (size_t b = bit_width; b-- > 0; ) {
+      const size_t rb = rank(b, beg), re = rank(b, end), c = re - rb;
+      if (c <= k) {
+        beg += zeros[b] - rb; end += zeros[b] - re;
+        k -= c; ret |= value_type(1) << b;
+      } else {
+        beg = rb; end = re;
+      }
+    }
+    return ret;
+  }
+
+  size_t count_lt(size_t beg, size_t end, value_type v) const {
+    if (v > max_v) return end - beg;
+    if (v == 0) return 0;
+    size_t ret = 0;
+    for (size_t b = bit_width; beg < end && b-- > 0; ) {
+      const size_t rb = rank(b, beg), re = rank(b, end);
+      const auto mask = value_type(1) << b;
+      if (v & mask) {
+        ret += re - rb; v -= mask;
+        if (v == 0) break;
+        beg += zeros[b] - rb; end += zeros[b] - re;
+      } else {
+        beg = rb; end = re;
+      }
+    }
+    return ret;
+  }
+
+ private:
+  void build(std::span<const value_type> input) {
+    std::vector<value_type> s(input.begin(), input.end()), t(n);
+    for (size_t b = bit_width; b-- > 0; ) {
+      size_t si = 0, ti = 0;
+      auto bv = std::span(&bit_vectors[b * vector_size], vector_size);
+      for (size_t i = 0; i < input.size(); ++i) {
+        const auto v = s[i];
+        if ((v >> b) & 1) {
+          t[ti++] = v;
+        } else {
+          s[si++] = v;
+          bv[i / block_size].f |= block_type(1) << (i % block_size);
+        }
+      }
+      bv[0].cumu = 0;
+      for (size_t i = 1; i < vector_size; ++i) {
+        bv[i].cumu = bv[i - 1].cumu + std::popcount(bv[i - 1].f);
+      }
+      zeros[b] = si;
+      std::copy_n(t.begin(), ti, s.begin() + si);
+    }
+  }
+
+ private:
+  size_t n;
+  size_t vector_size;
+  value_type max_v;
+  size_t bit_width;
+  std::vector<counter> bit_vectors;
+  std::vector<size_t> zeros;
+};
+
+template <typename T, size_t WindowSize, typename Compare = std::greater<T>>
+class sliding_window_max {
+ public:
+  static constexpr size_t capacity = WindowSize;
+  using value_type = T;
+
+  struct pair {
+    value_type val;
+    size_t key;
+  };
+
+  sliding_window_max() : head(0), tail(0) {}
+  void add(size_t i, T val) {
+    while (head < tail && Compare()(val, que[tail - 1].val)) --tail;
+    que[tail++] = {val, i};
+  }
+
+  pair get() const { return que[head]; }
+  void pop(size_t i) { if (que[head].key == i) ++head; }
+  bool empty() const { return head == tail; }
+
+ private:
+  size_t head;
+  size_t tail;
+  std::array<pair, WindowSize> que;
+};
+
 } // namespace sfc_comp

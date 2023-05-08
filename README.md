@@ -126,9 +126,11 @@ $ ./bench <input-dir>
 | marios_super_picross_comp                |    5 | 5F67 | 3759 | 7FC6 | 25DD | 3858 | 6A11 | 19F3 |  1F8C4 | 0.0467 | 43D4AA0A |
 | marvelous_comp                           |    4 | 5EBC | 3744 | 794C | 27F9 | 395A | 68C4 | 19A0 |  1F307 | 0.0984 | 4AC48E73 |
 | mujintou_monogatari_comp                 |    5 | 5F33 | 340D | 7FC9 | 21C2 | 3840 | 6A16 | 186B |  1EF91 | 0.0475 | 9AFCB643 |
+| nba_jam_comp                             |    8 | 5B00 | 33BF | 7694 | 226D | 31FF | 63A1 | 175D |  1D4C5 | 0.6489 | 1A6279B3 |
 | odekake_lester_comp                      |    5 | 5F6A | 3759 | 7FC9 | 25DD | 3858 | 6A16 | 19F3 |  1F8CF | 0.0472 | 724C89A4 |
 | olivias_mystery_comp                     |    8 | 501E | 2B46 | 6EF8 | 1D29 | 2E9B | 5A5D | 13B8 |  1A43D | 0.2072 | 42CCF870 |
 | oscar_comp                               |    7 | 5954 | 313D | 76EE | 1F58 | 3486 | 64C9 | 14D9 |  1CF06 | 0.1566 | 4C3F30B1 |
+| pac_in_time_comp                         |    7 | 575B | 30B2 | 7804 | 2023 | 30EE | 6083 | 1553 |  1C6FF | 0.7436 | 4AECEA66 |
 | papuwa_comp                              |    5 | 5CD1 | 33DD | 785A | 220B | 369C | 66B8 | 1967 |  1E1D3 | 0.1516 | FC58730D |
 | picross_np_comp                          |    5 | 5F6B | 375C | 7FC7 | 25DD | 385A | 6A12 | 19F4 |  1F8D0 | 0.0475 | 06D9CAB2 |
 | pokemon_gold_comp                        |    4 | 59C3 | 32E8 | 7781 | 2739 | 3761 | 660D | 17AA |  1E081 | 0.4326 | 6156B892 |

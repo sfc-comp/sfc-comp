@@ -50,20 +50,17 @@ std::vector<uint8_t> asameshimae_nyanko_comp(std::span<const uint8_t> input) {
     throw std::runtime_error("This algorithm may not be able to compress the given data.");
   }
 
-  std::vector<std::array<encode::lz_data, ofs_tab.size()>> lz_memo(input.size());
-  {
+  const auto lz_memo = [&] {
+    std::vector<std::array<encode::lz_data, ofs_tab.size()>> ret(input.size());
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
-      for (ptrdiff_t oi = ofs_tab.size() - 1; oi >= 0; ) {
-        auto res_lz = lz_helper.find_best_closest(i, ofs_tab[oi].max, lz_max_len);
-        if (res_lz.len < lz_min_len) res_lz = {0, 0};
-        do {
-          lz_memo[i][oi--] = res_lz;
-        } while (oi >= 0 && (res_lz.len < lz_min_len || (i - res_lz.ofs) <= ofs_tab[oi].max));
-      }
+      lz::find_all(i, ofs_tab, lz_min_len, ret[i], [&](size_t max_ofs) {
+        return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
+      });
       lz_helper.add_element(i);
     }
-  }
+    return ret;
+  }();
 
   const size_t lv_max = ilog2(input.size());
 

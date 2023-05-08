@@ -140,7 +140,7 @@ public:
 
 public:
   encode::lz_data find_best(size_t pos, size_t block_size) const {
-    return encode::lz::find_best(pos, rank[pos], block_size, seg_lcp, seg);
+    return encode::lz::find(pos, rank[pos], block_size, seg_lcp, seg);
   }
 
 private:

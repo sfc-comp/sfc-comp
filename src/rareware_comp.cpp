@@ -52,14 +52,15 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       lzl_memo[i] = lz_helper.find_best(i, 0xffff);
-      const size_t j = i + 0x0102;
-      if (j < input.size()) lzm_memo[j] = lz_helper.find_best(j, 0x1102);
-      for (size_t l = 3; l <= 0x12; ++l) {
-        const size_t j = i + l - 1;
-        if (j >= input.size()) break;
-        lz_memo[j][l - 3] = lz_helper.find_best(j, l + 0xff);
-      }
       lz_helper.add_element(i);
+      if (const size_t j = i + 0x0103; j < input.size()) {
+        lzm_memo[j] = lz_helper.find_best(j, 0x0103 + 0x0fff);
+      }
+      for (size_t l = 3; l <= 0x12; ++l) {
+        if (const size_t j = i + l; j < input.size()) {
+          lz_memo[j][l - 3] = lz_helper.find_best(j, l + 0xff);
+        }
+      }
     }
   }
 

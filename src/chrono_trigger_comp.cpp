@@ -57,7 +57,7 @@ std::vector<uint8_t> chrono_trigger_comp_fast_core(std::span<const uint8_t> inpu
       for (size_t i = 0; i < len; ++i) ret[ret.size() - 1 - i] = ret[ret.size() - 4 - i];
       ret[bits_pos] = (8 - ret.bit) | method_bit;
       write16(ret.out, bits_pos + 1, ret.size());
-      ret[bits_pos + 3] |= ((1 << ret.bit) - 1) << (8 - ret.bit); // Avoids 0x00. (cf. $C3:07B7, $C3:0879, etc. in Chrono Trigger)
+      ret[bits_pos + 3] |= low_bits_mask(ret.bit) << (8 - ret.bit); // Avoids 0x00. (cf. $C3:07B7, $C3:0879, etc. in Chrono Trigger)
     }
     ret.write<d8>(method_bit);
     if (best.empty() || ret.size() < best.size()) best = std::move(ret.out);
@@ -143,7 +143,7 @@ std::vector<uint8_t> chrono_trigger_comp_core(
       if (bits == 0) return;
       assert(bits >= b); bits -= b;
       if (bits == 0) {
-        if (avoid_zero) ret.write<bnh>({ret.bit, (size_t(1) << ret.bit) - 1});
+        if (avoid_zero) ret.write<bnh>({ret.bit, low_bits_mask(ret.bit)});
         ret.bit = 0;
       }
     };

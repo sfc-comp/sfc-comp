@@ -38,44 +38,85 @@ struct range_min {
 namespace encode {
 
 struct lz_data {
+  constexpr bool operator == (const lz_data& rhs) const = default;
+  constexpr bool operator > (const lz_data& rhs) const {
+    return len > rhs.len || (len == rhs.len && ofs > rhs.ofs);
+  }
   ptrdiff_t ofs;
   size_t len;
 };
 
 namespace lz {
 
-template <typename U, typename S>
-requires std::integral<U> && std::signed_integral<S>
-encode::lz_data find_best(
-    size_t adr, size_t index, size_t block_size,
-    const segment_tree<range_min<U>>& seg_lcp,
-    const segment_tree<range_max<S>>& seg) {
-  auto r = seg.find_range(index, [&](S v) {
-    return v + static_cast<S>(block_size) < static_cast<S>(adr);
+template <typename U, typename S = std::make_signed_t<U>>
+requires std::integral<U>
+encode::lz_data find(size_t adr, size_t rank, size_t max_dist,
+    const segment_tree<range_min<U>>& seg_lcp, const segment_tree<range_max<S>>& seg_sa) {
+  const auto r = seg_sa.find_range(rank, [&](S offset) {
+    return offset + static_cast<S>(max_dist) < static_cast<S>(adr);
   });
   U len = 0; S offset = -1;
   if (r.first > 0) {
-    const U len_l = seg_lcp.fold(r.first - 1, index);
-    if (len_l > len) len = len_l, offset = seg[r.first - 1];
+    const U len_l = seg_lcp.fold(r.first - 1, rank);
+    if (len_l > len) len = len_l, offset = seg_sa[r.first - 1];
   }
-  if (r.second < seg.size()) {
-    const U len_r = seg_lcp.fold(index, r.second);
-    if (len_r > len) len = len_r, offset = seg[r.second];
+  if (r.second < seg_sa.size()) {
+    const U len_r = seg_lcp.fold(rank, r.second);
+    if (len_r > len) len = len_r, offset = seg_sa[r.second];
   }
   return {offset, len};
 }
 
-template <typename U, typename S>
-requires std::integral<U> && std::signed_integral<S>
-encode::lz_data find_best_closest(
-    size_t pos, size_t index, size_t block_size, size_t max_len,
-    const segment_tree<range_min<U>>& seg_lcp,
-    const segment_tree<range_max<S>>& seg) {
-  auto ret = find_best(pos, index, block_size, seg_lcp, seg);
+template <typename U, typename S = std::make_signed_t<U>>
+requires std::integral<U>
+encode::lz_data find_closest(size_t adr, size_t rank, size_t max_dist, size_t max_len,
+    const segment_tree<range_min<U>>& seg_lcp, const segment_tree<range_max<S>>& seg_sa) {
+  auto ret = find(adr, rank, max_dist, seg_lcp, seg_sa);
   if (ret.len > 0) {
     if (ret.len > max_len) ret.len = max_len;
-    const auto r2 = seg_lcp.find_range(index, [&](size_t v) { return v >= ret.len; });
-    ret.ofs = seg.fold(r2.first, r2.second + 1);
+    const auto r = seg_lcp.find_range(rank, [&](size_t len) { return len >= ret.len; });
+    ret.ofs = seg_sa.fold(r.first, r.second + 1);
+  }
+  return ret;
+}
+
+template <typename U, typename Elem>
+requires std::integral<U>
+encode::lz_data find(size_t i, size_t j, size_t rank, const wavelet_matrix<U>& wm,
+    const segment_tree<range_min<U>>& seg_lcp, const suffix_array<Elem, U>& sa) {
+  using S = std::make_signed_t<U>;
+  const auto k = wm.count_lt(i, j, rank);
+  U len = 0; S offset = -1;
+  if (k > 0) {
+    const auto rank_l = wm.kth(i, j, k - 1);
+    const auto len_l = seg_lcp.fold(rank_l, rank);
+    if (len_l > len) len = len_l, offset = sa[rank_l];
+  }
+  if (k < (j - i)) {
+    const auto rank_r = wm.kth(i, j, k);
+    const auto len_r = seg_lcp.fold(rank, rank_r);
+    if (len_r > len) len = len_r, offset = sa[rank_r];
+  }
+  return encode::lz_data(offset, len);
+}
+
+template <typename Func>
+requires std::convertible_to<std::invoke_result_t<Func, size_t>, encode::lz_data>
+encode::lz_data find_non_overlapping(size_t adr_l, size_t adr, Func&& find_lz, encode::lz_data prev) {
+  constexpr auto overlapped = [](size_t i, const encode::lz_data& res) {
+    return res.len > 0 && res.ofs + res.len > i;
+  };
+  if (prev.len >= 1) prev.len -= 1, prev.ofs += 1;
+  auto ret = find_lz(adr - (std::max<size_t>(prev.len, 1) - 1));
+  if (!overlapped(adr, ret)) return ret;
+  size_t len_hi = std::min(adr - adr_l, ret.len);
+  ret.len = adr - ret.ofs;
+  while (ret.len < len_hi) {
+    const size_t len = (ret.len + len_hi + 1) / 2;
+    auto lz = find_lz(adr - (len - 1));
+    if (overlapped(adr, lz)) lz.len = adr - lz.ofs;
+    if (lz > ret) ret = lz;
+    if (lz.len < len) len_hi = len - 1;
   }
   return ret;
 }
@@ -91,29 +132,29 @@ public:
   using index_type = U;
   using signed_index_type = std::make_signed_t<index_type>;
 
-  lz_helper(std::span<const uint8_t> input) : n(input.size()), segtree(n) {
+  lz_helper(std::span<const uint8_t> input) : n(input.size()), seg(n) {
     const auto [lcp, rank]= suffix_array<uint8_t>(input).lcp_rank();
     this->rank = std::move(rank);
-    segtree_lcp = decltype(segtree_lcp)(lcp);
+    seg_lcp = decltype(seg_lcp)(lcp);
   }
 
-  encode::lz_data find_best(size_t pos, size_t block_size) const {
-    return encode::lz::find_best(pos, rank[pos], block_size, segtree_lcp, segtree);
+  encode::lz_data find_best(size_t pos, size_t max_dist) const {
+    return encode::lz::find(pos, rank[pos], max_dist, seg_lcp, seg);
   }
 
-  encode::lz_data find_best_closest(size_t pos, size_t block_size, size_t max_len) const {
-    return encode::lz::find_best_closest(pos, rank[pos], block_size, max_len, segtree_lcp, segtree);
+  encode::lz_data find_best_closest(size_t pos, size_t max_dist, size_t max_len) const {
+    return encode::lz::find_closest(pos, rank[pos], max_dist, max_len, seg_lcp, seg);
   }
 
   void add_element(size_t i) {
-    segtree.update(rank[i], i);
+    seg.update(rank[i], i);
   }
 
 private:
   const size_t n;
   std::vector<index_type> rank;
-  segment_tree<range_max<signed_index_type>> segtree;
-  segment_tree<range_min<index_type>> segtree_lcp;
+  segment_tree<range_max<signed_index_type>> seg;
+  segment_tree<range_min<index_type>> seg_lcp;
 };
 
 template <typename U = uint32_t>
@@ -136,38 +177,38 @@ public:
   lz_helper_c(std::span<const uint8_t> input) : n(input.size()) {
     const auto [lcp, rank] = suffix_array<int16_t>(complement_appended(input)).lcp_rank();
     this->rank = std::move(rank);
-    segtree = decltype(segtree)(rank.size());
-    segtree_c = decltype(segtree_c)(rank.size());
-    segtree_lcp = decltype(segtree_lcp)(lcp);
+    seg = decltype(seg)(rank.size());
+    seg_c = decltype(seg_c)(rank.size());
+    seg_lcp = decltype(seg_lcp)(lcp);
   }
 
 public:
-  encode::lz_data find_best(size_t pos, size_t block_size) const {
-    return encode::lz::find_best(pos, rank[pos], block_size, segtree_lcp, segtree);
+  encode::lz_data find_best(size_t pos, size_t max_dist) const {
+    return encode::lz::find(pos, rank[pos], max_dist, seg_lcp, seg);
   }
 
-  encode::lz_data find_best_c(size_t pos, size_t block_size) const {
-    return encode::lz::find_best(pos, rank[pos], block_size, segtree_lcp, segtree_c);
+  encode::lz_data find_best_c(size_t pos, size_t max_dist) const {
+    return encode::lz::find(pos, rank[pos], max_dist, seg_lcp, seg_c);
   }
 
-  encode::lz_data find_best_closest(size_t pos, size_t block_size, size_t max_len) const {
-    return encode::lz::find_best_closest(pos, rank[pos], block_size, max_len, segtree_lcp, segtree);
+  encode::lz_data find_closest(size_t pos, size_t max_dist, size_t max_len) const {
+    return encode::lz::find_closest(pos, rank[pos], max_dist, max_len, seg_lcp, seg);
   }
 
-  encode::lz_data find_best_closest_c(size_t pos, size_t block_size, size_t max_len) const {
-    return encode::lz::find_best_closest(pos, rank[pos], block_size, max_len, segtree_lcp, segtree_c);
+  encode::lz_data find_best_closest_c(size_t pos, size_t max_dist, size_t max_len) const {
+    return encode::lz::find_closest(pos, rank[pos], max_dist, max_len, seg_lcp, seg_c);
   }
 
   void add_element(size_t i) {
-    segtree.update(rank[i], signed_index_type(i));
-    segtree_c.update(rank[i + n + 1], signed_index_type(i));
+    seg.update(rank[i], signed_index_type(i));
+    seg_c.update(rank[i + n + 1], signed_index_type(i));
   }
 
 private:
   const size_t n;
   std::vector<index_type> rank;
-  segment_tree<range_max<signed_index_type>> segtree, segtree_c;
-  segment_tree<range_min<index_type>> segtree_lcp;
+  segment_tree<range_max<signed_index_type>> seg, seg_c;
+  segment_tree<range_min<index_type>> seg_lcp;
 };
 
 constexpr auto bit_reversed = [] {
@@ -221,16 +262,16 @@ public:
   }
 
 public:
-  encode::lz_data find_best(size_t pos, size_t block_size) const {
-    return encode::lz::find_best(pos, rank_h[pos], block_size, seg_lcp_h, seg);
+  encode::lz_data find_best(size_t pos, size_t max_dist) const {
+    return encode::lz::find(pos, rank_h[pos], max_dist, seg_lcp_h, seg);
   }
 
-  encode::lz_data find_best_h(size_t pos, size_t block_size) const {
-    return encode::lz::find_best(pos, rank_h[pos], block_size, seg_lcp_h, seg_h);
+  encode::lz_data find_best_h(size_t pos, size_t max_dist) const {
+    return encode::lz::find(pos, rank_h[pos], max_dist, seg_lcp_h, seg_h);
   }
 
-  encode::lz_data find_best_v(size_t pos, size_t block_size) const {
-    return encode::lz::find_best(pos, rank_v[pos], block_size, seg_lcp_v, seg_v);
+  encode::lz_data find_best_v(size_t pos, size_t max_dist) const {
+    return encode::lz::find(pos, rank_v[pos], max_dist, seg_lcp_v, seg_v);
   }
 
   void add_element(size_t i) {
@@ -244,6 +285,42 @@ private:
   std::vector<index_type> rank_h, rank_v;
   segment_tree<range_min<index_type>> seg_lcp_h, seg_lcp_v;
   segment_tree<range_max<signed_index_type>> seg, seg_h, seg_v;
+};
+
+template <typename U = uint32_t>
+requires std::unsigned_integral<U>
+class non_overlapping_lz_helper {
+ public:
+  using index_type = U;
+  using signed_index_type = std::make_signed_t<index_type>;
+
+  non_overlapping_lz_helper(std::span<const uint8_t> input) : n(input.size()), sa(input) {
+    const auto [lcp, rank]= sa.lcp_rank();
+    this->rank = std::move(rank);
+    this->wm = decltype(wm)(this->rank);
+    seg_lcp = decltype(seg_lcp)(lcp);
+  }
+
+  encode::lz_data find_non_overlapping(const size_t adr, const size_t max_dist,
+      const encode::lz_data prev = {}) const {
+    const size_t adr_l = (adr < max_dist) ? 0 : adr - max_dist;
+    const size_t rank = this->rank[adr];
+    return encode::lz::find_non_overlapping(adr_l, adr, [&](size_t adr_r) {
+      return encode::lz::find(adr_l, adr_r, rank, wm, seg_lcp, sa);
+    }, prev);
+  }
+
+  encode::lz_data find(const size_t adr, const size_t max_dist) const {
+    const size_t adr_l = (adr < max_dist) ? 0 : adr - max_dist;
+    return encode::lz::find(adr_l, adr, rank[adr], wm, seg_lcp, sa);
+  }
+
+ private:
+  const size_t n;
+  suffix_array<uint8_t> sa;
+  std::vector<index_type> rank;
+  wavelet_matrix<index_type> wm;
+  segment_tree<range_min<index_type>> seg_lcp;
 };
 
 template <size_t A, size_t B, size_t C>
@@ -353,6 +430,38 @@ struct vrange {
   size_t val;
 };
 
+namespace lz {
+
+template <typename MaxOffset, typename Func>
+requires std::convertible_to<std::invoke_result_t<MaxOffset, size_t>, size_t> &&
+         std::convertible_to<std::invoke_result_t<Func, size_t>, encode::lz_data>
+void find_all(size_t i, size_t o_size, const size_t lz_min_len,
+    std::span<encode::lz_data> dest, MaxOffset&& max_ofs, Func&& find_lz) {
+  for (ptrdiff_t oi = o_size - 1; oi >= 0; ) {
+    auto res_lz = find_lz(max_ofs(oi));
+    if (res_lz.len < lz_min_len) res_lz = {0, 0};
+    do {
+      dest[oi--] = res_lz;
+    } while (oi >= 0 && (res_lz.len < lz_min_len || (i - res_lz.ofs) <= max_ofs(oi)));
+  }
+}
+
+template <typename Func>
+void find_all(size_t i, std::span<const size_t> max_offsets, const size_t lz_min_len,
+    std::span<encode::lz_data> dest, Func&& find_lz) {
+  return find_all(i, max_offsets.size(), lz_min_len, dest,
+                  [&](size_t oi) { return max_offsets[oi]; }, std::forward<Func>(find_lz));
+}
+
+template <typename Func>
+void find_all(size_t i, std::span<const vrange> offsets, const size_t lz_min_len,
+    std::span<encode::lz_data> dest, Func&& find_lz) {
+  return find_all(i, offsets.size(), lz_min_len, dest,
+                  [&](size_t oi) { return offsets[oi].max; }, std::forward<Func>(find_lz));
+}
+
+} // namespace lz
+
 template <typename Tag>
 requires std::equality_comparable<Tag> && std::convertible_to<Tag, uint32_t>
 struct tag_ol {
@@ -434,6 +543,7 @@ class sssp_solver {
     for (size_t i = begin; i < end; ++i) reset(i);
   }
 
+  // Assumes that the cost function for offsets is non-decreasing and defined for every possible values.
   template <typename LzFunc, typename TagFunc>
   requires std::convertible_to<std::invoke_result_t<LzFunc, size_t>, encode::lz_data> &&
            std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
@@ -472,6 +582,7 @@ class sssp_solver {
     }
   }
 
+  // Assumes that the cost function for offsets is non-decreasing and defined for every possible values.
   template <typename LzFunc, typename TagFunc, typename LenCostFunc>
   requires std::convertible_to<std::invoke_result_t<LzFunc, size_t>, encode::lz_data> &&
            add_able<cost_type, std::invoke_result_t<LenCostFunc, size_t>> &&

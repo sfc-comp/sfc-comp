@@ -25,22 +25,22 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
     return (i < ofs_min_bits) ? 0 : (1 << i) - 1;
   });
 
-  lz_helper lz_helper(input);
-  std::vector<std::array<encode::lz_data, ofs_max_bits + 1>> lz_memo(input.size());
-
-  size_t longest_lz_len = 0, longest_lz_dist = 0;
-  for (size_t i = 0; i < input.size(); ++i) {
-    for (ptrdiff_t oi = ofs_max_bits; oi >= 0; ) {
-      auto res_lz = lz_helper.find_best_closest(i, max_offsets[oi], input.size());
-      longest_lz_len = std::max(longest_lz_len, res_lz.len);
-      if (res_lz.len >= lz_min_len) longest_lz_dist = std::max(longest_lz_dist, i - res_lz.ofs);
-      else res_lz = {0, 0};
-      do {
-        lz_memo[i][oi--] = res_lz;
-      } while (oi >= 0 && (res_lz.len < lz_min_len || (i - res_lz.ofs) <= max_offsets[oi]));
+  const auto [lz_memo, longest_lz_len, longest_lz_dist] = [&] {
+    size_t longest_lz_len = 0, longest_lz_dist = 0;
+    std::vector<std::array<encode::lz_data, max_offsets.size()>> ret(input.size());
+    lz_helper lz_helper(input);
+    for (size_t i = 0; i < input.size(); ++i) {
+      lz::find_all(i, max_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
+        return lz_helper.find_best_closest(i, max_ofs, input.size());
+      });
+      if (const auto lz = ret[i].back(); lz.len >= lz_min_len) {
+        longest_lz_len = std::max(longest_lz_len, lz.len);
+        longest_lz_dist = std::max(longest_lz_dist, i - lz.ofs);
+      }
+      lz_helper.add_element(i);
     }
-    lz_helper.add_element(i);
-  }
+    return std::make_tuple(std::move(ret), longest_lz_len, longest_lz_dist);
+  }();
 
   std::vector<uint8_t> best;
 

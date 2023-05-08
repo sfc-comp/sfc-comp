@@ -40,6 +40,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
     dp1.update(i, 0, 0, Constant<1>(), {none, 0}, cost0);
     for (size_t k = 0; k < uncomp_lens.size(); ++k) {
       const auto res_u = u_helper.find(i + 1, uncomp_lens[k].min, uncomp_lens[k].max);
+      if (res_u.len == u_helper.nlen) continue;
       dp1.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + uncomp_lens[k].bitlen);
     }
     dp0.update_lz_matrix(i, lz_offsets, lz_lens,
@@ -50,12 +51,13 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
     lz_helper.add_element(i);
   }
 
-  const auto commands = [&]{
+  const auto [commands, min_cost] = [&]{
     using command_type = decltype(dp0)::vertex_type;
     std::vector<command_type> ret;
-    size_t adr = input.size();
-    size_t curr = (dp0.total_cost() < dp1.total_cost()) ? 0 : 1;
-    while (adr > 0) {
+    const auto min_cost = std::min(dp0.total_cost(), dp1.total_cost());
+    ptrdiff_t adr = input.size();
+    size_t curr = (dp0.total_cost() == min_cost) ? 0 : 1;
+    while (adr > 0 || (adr == 0 && curr > 0)) {
       command_type cmd;
       if (curr == 0) cmd = dp0[adr], curr = 1, assert(cmd.len > 0);
       else cmd = dp1[adr], curr = 0;
@@ -64,7 +66,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
     }
     assert(adr == 0 && curr == 0);
     std::reverse(ret.begin(), ret.end());
-    return ret;
+    return std::make_pair(std::move(ret), min_cost);
   }();
 
   using namespace data_type;
@@ -100,7 +102,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 2);
   assert(adr == input.size());
-  assert((std::min(dp0.total_cost(), dp1.total_cost()) - 1) + 32 == flags.bit_length() + 8 * ret.size());
+  assert((min_cost - 1) + 32 == flags.bit_length() + 8 * ret.size());
   ret.extend(flags);
 
   return ret.out;

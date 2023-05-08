@@ -46,20 +46,17 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     return *std::max_element(words.begin(), words.end());
   };
 
-  std::vector<std::array<encode::lz_data, lz_ofs_max_bits + 1>> lz_memo(input.size());
-  {
+  const auto lz_memo = [&] {
+    std::vector<std::array<encode::lz_data, lz_offsets.size()>> ret(input.size());
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
-      for (ptrdiff_t oi = lz_offsets.size() - 1; oi >= 0; ) {
-        auto res_lz = lz_helper.find_best_closest(i, lz_offsets[oi].max, lz_max_len);
-        if (res_lz.len < lz_min_len) res_lz = {0, 0};
-        do {
-          lz_memo[i][oi--] = res_lz;
-        } while (oi >= 0 && (res_lz.len < lz_min_len || (i - res_lz.ofs) <= lz_offsets[oi].max));
-      }
+      lz::find_all(i, lz_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
+        return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
+      });
       lz_helper.add_element(i);
     }
-  }
+    return ret;
+  }();
 
   using namespace data_type;
   writer_b16_l ret(0x12); ret.write<bnl>({2, 0});

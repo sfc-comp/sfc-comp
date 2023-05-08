@@ -19,7 +19,7 @@ std::vector<uint8_t> gokinjo_boukentai_comp_1(std::span<const uint8_t> input, co
   for (const auto w : huff.words) {
     const auto c = huff.codewords[w];
     const size_t r_zero = std::min<size_t>(std::countr_zero(c.val), c.bitlen);
-    ret.write<bnh, b1, bnh>({r_zero, (size_t(1) << r_zero) - 1}, false, {8, w});
+    ret.write<bnh, b1, bnh>({r_zero, low_bits_mask(r_zero)}, false, {8, w});
   }
   for (const auto v : input) ret.write<bnh>(huff.codewords[v]);
   return ret.out;

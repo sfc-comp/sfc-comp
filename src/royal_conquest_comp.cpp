@@ -34,24 +34,17 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
   std::vector<uint8_t> input(in.size() + pad, 0);
   std::copy(in.begin(), in.end(), input.begin() + pad);
 
-  lz_helper lz_helper(input);
-  std::vector<std::array<encode::lz_data, lz_ofs_tab.size()>> lz_memo(input.size());
-
-  for (size_t i = 0; i < input.size(); ++i) {
-    size_t o = lz_ofs_tab.size() - 1;
-    auto res_lz = lz_helper.find_best_closest(i, lz_ofs_tab[o].max, lz_max_len);
-    if (res_lz.len < lz_min_len) res_lz = {0, 0};
-    lz_memo[i][o] = res_lz;
-    for (; o-- > 0; ) {
-      const size_t d = i - res_lz.ofs;
-      const size_t max_ofs = lz_ofs_tab[o].max;
-      if (res_lz.len >= lz_min_len && d > max_ofs) {
-        res_lz = lz_helper.find_best_closest(i, max_ofs, lz_max_len);
-      }
-      lz_memo[i][o] = res_lz;
+  const auto lz_memo = [&] {
+    std::vector<std::array<encode::lz_data, lz_ofs_tab.size()>> ret(input.size());
+    lz_helper lz_helper(input);
+    for (size_t i = 0; i < input.size(); ++i) {
+      lz::find_all(i, lz_ofs_tab, lz_min_len, ret[i], [&](size_t max_ofs) {
+        return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
+      });
+      lz_helper.add_element(i);
     }
-    lz_helper.add_element(i);
-  }
+    return ret;
+  }();
 
   static constexpr auto lz_lens = create_array<size_t, (lz_max_len - lz_min_len) + 1>([&](size_t i) {
     return i + lz_min_len;
@@ -134,7 +127,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
         const auto w = huff.words[i];
         const auto c = huff.codewords[w];
         const size_t r_zero = std::min<size_t>(std::countr_zero(c.val), c.bitlen);
-        tree.write<bnh>({r_zero, (size_t(1) << r_zero) - 1});
+        tree.write<bnh>({r_zero, low_bits_mask(r_zero)});
         tree.write<b1>(false);
         ret[4 + 0x4f + (i >> 3)] |= (w >> 8) << (7 - (i & 7));
         ret[4 + 0x77 + i] = w & 0xff;

@@ -50,7 +50,7 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     case rle0: {
       const auto k = cmd.type.li;
       ret.write<b1, b1, b1>(true, true, false);
-      ret.write<bnh>({k, (size_t(1) << k) - 1});
+      ret.write<bnh>({k, low_bits_mask(k)});
       ret.write<b1>(false);
       const size_t l = cmd.len - (rle_lens[0].min - 1);
       ret.write<bnh>({k, l ^ (1 << k)});

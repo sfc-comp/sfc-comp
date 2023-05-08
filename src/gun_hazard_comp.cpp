@@ -8,7 +8,7 @@ namespace sfc_comp {
 namespace {
 
 std::vector<uint8_t> gun_hazard_comp_1(std::span<const uint8_t> input, const uint8_t header_val) {
-  if (input.size() % 32 != 0) throw std::logic_error("The input size must be a multiple of 32.");
+  check_divisibility(input.size(), 32);
   check_size(input.size(), 0x0020, 0x10000);
 
   using namespace data_type;
@@ -31,7 +31,7 @@ std::vector<uint8_t> gun_hazard_comp_1(std::span<const uint8_t> input, const uin
 }
 
 std::vector<uint8_t> gun_hazard_comp_2(std::span<const uint8_t> input, const uint8_t header_val) {
-  if (input.size() % 32 != 0) throw std::logic_error("The input size must be a multiple of 32.");
+  check_divisibility(input.size(), 0x20);
   check_size(input.size(), 0x0020, 0x10000);
 
   std::array<std::vector<size_t>, 3> zeros;
@@ -242,14 +242,14 @@ std::vector<uint8_t> gun_hazard_comp_4(std::span<const uint8_t> input, const uin
 }
 
 std::vector<uint8_t> gun_hazard_comp_5(std::span<const uint8_t> input, const uint8_t header_val) {
-  if (input.size() % 32 != 0) throw std::logic_error("The input size must be a multiple of 32.");
+  check_divisibility(input.size(), 0x20);
   auto ret = gun_hazard_comp_3(snes4bpp::to_indexed16_h_8_1(input), header_val);
   ret[0] = header_val | 0x05;
   return ret;
 }
 
 std::vector<uint8_t> gun_hazard_comp_6(std::span<const uint8_t> input, const uint8_t header_val) {
-  if (input.size() % 32 != 0) throw std::logic_error("The input size must be a multiple of 32.");
+  check_divisibility(input.size(), 0x20);
   auto ret = gun_hazard_comp_4(snes4bpp::to_indexed16_h_8_1(input), header_val);
   ret[0] = header_val | 0x06;
   return ret;

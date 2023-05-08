@@ -77,6 +77,11 @@ inline constexpr size_t ilog2(size_t n) {
   return std::bit_width(n) - 1;
 }
 
+inline constexpr uint64_t low_bits_mask(size_t bits) {
+  // bits < 64
+  return uint64_t(0x7fff'ffff'ffff'ffff) >> (63 - bits);
+}
+
 inline uint16_t read16(std::span<const uint8_t> input, size_t i) {
   return input[i] | (input[i + 1] << 8);
 }
