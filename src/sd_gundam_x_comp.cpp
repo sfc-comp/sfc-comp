@@ -18,47 +18,56 @@ struct huffman {
 };
 
 huffman huffman_encode(std::span<const size_t> counts) {
-  auto huff = encode::huffman(counts, false);
-  if (huff.words.empty()) return huffman();
+  struct node {
+    constexpr auto operator <=> (const node& rhs) const = default;
+    size_t depth;
+    size_t priority;
+    size_t code;
+  };
 
-  size_t depth = huff.codewords[huff.words.back()].bitlen;
+  auto huff = encode::huffman(counts, true);
+  auto& words = huff.words;
+  auto& codewords = huff.codewords;
+  if (words.empty()) return huffman();
 
-  std::array<size_t, 64> depth_counts = {};
-  for (const auto word : huff.words) depth_counts[huff.codewords[word].bitlen] += 1;
-  std::reverse(huff.words.begin(), huff.words.end());
-
-  huffman ret;
-  std::vector<encode::node> huff_table;
-
-  if (depth > 0) {
-    size_t prev_count = 0, node_id = 0, word_id = 0;
-    for (; depth > 0; --depth) {
-      size_t cnt = depth_counts[depth];
-      size_t next_node_id = huff_table.size();
-      node_id += huff.words.size();
-      for (size_t i = 0; i < (prev_count / 2); ++i) {
-        huff_table.push_back({node_id, node_id + 1});
-        node_id += 2;
-      }
-      if (prev_count & 1) {
-        assert(cnt & 1);
-        huff_table.push_back({node_id, word_id});
-        node_id += 1; word_id += 1;
-      }
-      for (size_t i = 0; i < (cnt / 2); ++i) {
-        huff_table.push_back({word_id, word_id + 1});
-        word_id += 2;
-      }
-      prev_count = (cnt + prev_count) / 2;
-      node_id = next_node_id;
-    }
-    assert(prev_count == 1);
+  std::ranges::reverse(words);
+  std::vector<size_t> depth_counts(codewords[words.front()].bitlen + 1);
+  std::priority_queue<node> que;
+  for (size_t i = 0; i < words.size(); ++i) {
+    const size_t depth = codewords[words[i]].bitlen;
+    depth_counts[depth] += 1;
+    que.emplace(depth, 1, ~i);
   }
 
-  ret.codewords = std::move(huff.codewords);
-  ret.words = std::move(huff.words);
-  ret.table = std::move(huff_table);
-  return ret;
+  std::vector<encode::node> nodes;
+  size_t node_id = words.size();
+  size_t priority = 0;
+  size_t curr_depth = depth_counts.size() - 1;
+  while (que.size() >= 2) {
+    const auto left = que.top(); que.pop();
+    const auto right = que.top(); que.pop();
+    assert(left.depth == right.depth);
+    if (left.depth < curr_depth) {
+      curr_depth -= 1;
+      assert(curr_depth > 0);
+      if (depth_counts[curr_depth - 1] > 0) priority = 2 - priority;
+      else priority = 0;
+    }
+    nodes.emplace_back(~left.code, ~right.code);
+    que.emplace(left.depth - 1, priority, ~(node_id++));
+  }
+
+  const std::function<void(size_t, size_t)> traverse = [&](size_t id, size_t codeword) {
+    if (id >= words.size()) {
+      id -= words.size();
+      traverse(nodes[id].left,  2 * codeword + 0);
+      traverse(nodes[id].right, 2 * codeword + 1);
+    } else {
+      codewords[words[id]].val = codeword;
+    }
+  };
+  traverse(node_id - 1, 0);
+  return huffman(std::move(words), std::move(codewords), std::move(nodes));
 }
 
 } // namespace
