@@ -66,33 +66,37 @@ huffman huffman_encode(std::span<const size_t> counts) {
 std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
 
-  if (input.size() == 0) {
-    return std::vector<uint8_t>(2, 0);
-  }
+  if (input.size() == 0) return std::vector<uint8_t>(2, 0);
 
-  enum CompType {
-    uncomp, lzs, lzl
-  };
-
-  lz_helper lz_helper(input);
-  std::vector<encode::lz_data> lz_memo_s(input.size());
-  std::vector<encode::lz_data> lz_memo_l(input.size());
-
-  for (size_t i = 0; i < input.size(); ++i) {
-    lz_memo_s[i] = lz_helper.find_best(i, 0x0080);
-    lz_memo_l[i] = lz_helper.find_best(i, 0x0400);
-    lz_helper.add_element(i);
-  }
+  enum method {uncomp, lz};
+  using tag = tag_o<method>;
 
   static constexpr size_t word_max_count = 0x180;
   static constexpr size_t lz_min_len = 3;
   static constexpr size_t lz_max_len = lz_min_len + 0xff;
-  static constexpr size_t lz_huff_offset = 0x0100 - lz_min_len;
+  static constexpr size_t huff_offset = 0x0100 - lz_min_len;
   static constexpr auto lz_lens = create_array<size_t, (lz_max_len - lz_min_len) + 1>([&](size_t i) {
     return lz_min_len + i;
   });
 
-  auto huff_bitlens = [&]{
+  static constexpr auto ofs_tab = to_vranges({
+    {0x0001,  8, 0b0'0000000},
+    {0x0081, 11, 0b1'0000000000 + 0x80}
+  }, 0x0400);
+
+  const auto lz_memo = [&] {
+    std::vector<std::array<encode::lz_data, 2>> ret(input.size());
+    lz_helper lz_helper(input);
+    for (size_t i = 0; i < input.size(); ++i) {
+      encode::lz::find_all(i, ofs_tab, lz_min_len, ret[i], [&](size_t max_ofs) {
+        return lz_helper.find_best(i, max_ofs);
+      });
+      lz_helper.add_element(i);
+    }
+    return ret;
+  }();
+
+  auto huff_bitlens = [&] {
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
     const auto h = encode::huffman(utility::freq_u8(input), true);
@@ -100,7 +104,7 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
     return ret;
   }();
 
-  auto update_huffman_costs = [&](const huffman& huff, size_t penalty = 0) {
+  const auto update_costs = [&](const huffman& huff, size_t penalty = 0) {
     const auto& codewords = huff.codewords;
     size_t longest_bit_size = 0;
     for (const auto w : huff.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
@@ -109,43 +113,37 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
   };
 
   std::vector<uint8_t> best;
-
   size_t penalty = ilog2(2 * input.size() + 1) + 9;
 
   while (true) {
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<tag> dp(input.size());
     for (size_t i = 0; i < input.size(); ++i) {
-      dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, uncomp);
-      dp.update_lz_table(i, lz_lens, lz_memo_s[i],
-        [&](size_t j) { return 8 + huff_bitlens[lz_lens[j] + lz_huff_offset]; }, lzs);
-      dp.update_lz_table(i, lz_lens, lz_memo_l[i],
-        [&](size_t j) { return 11 + huff_bitlens[lz_lens[j] + lz_huff_offset]; }, lzl);
+      dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, {uncomp, 0});
+      dp.update_lz_matrix(i, ofs_tab, lz_lens,
+        [&](size_t oi) { return lz_memo[i][oi]; },
+        [&](size_t li) { return huff_bitlens[lz_lens[li] + huff_offset]; },
+        [&](size_t oi, size_t) -> tag { return {lz, oi}; }
+      );
     }
 
     const auto commands = dp.commands();
-
     std::array<size_t, 0x100 + lz_lens.size()> code_counts = {};
     {
       size_t adr = 0;
       for (const auto& cmd : commands) {
-        switch (cmd.type) {
+        switch (cmd.type.tag) {
         case uncomp: code_counts[input[adr]] += 1; break;
-        case lzs:
-        case lzl: code_counts[cmd.len + lz_huff_offset] += 1; break;
+        case lz: code_counts[cmd.len + huff_offset] += 1; break;
         default: assert(0);
         }
         adr += cmd.len;
       }
       assert(adr == input.size());
-      size_t non_zeros = 0;
-      for (size_t i = 0; i < code_counts.size(); ++i) {
-        if (code_counts[i] > 0) non_zeros += 1;
-      }
+      const size_t non_zeros = std::ranges::count_if(code_counts, [&](size_t c) { return c > 0; });
       if (non_zeros == 1) code_counts[0x100] += 1;
     }
 
     const auto huff = huffman_encode(code_counts);
-
     if (huff.words.size() > word_max_count) {
       size_t excess = huff.words.size() - word_max_count;
       for (size_t i = 0; i < huff.words.size(); ++i) {
@@ -155,53 +153,40 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
         --excess;
         if (excess == 0) break;
       }
-      const auto huff_fixed = huffman_encode(code_counts);
-      update_huffman_costs(huff_fixed, penalty);
+      update_costs(huffman_encode(code_counts), penalty);
       penalty = penalty * 1.25 + 1;
-      if (penalty >= 1e9) {
-        // this should not happen.
-        throw std::runtime_error("Failed to compress the given input.");
-      }
+
+      // this should not happen.
+      if (penalty >= 1e9) throw std::runtime_error("Failed to compress the given input.");
     } else {
       using namespace data_type;
       writer_b8_h ret; ret.write<bnh>({16, input.size()});
 
       assert(huff.words.size() >= 2);
       ret.write<bnh>({9, huff.words.size()});
-      for (size_t i = 0; i < huff.words.size(); ++i) {
-        ret.write<bnh>({9, huff.words[i]});
-      }
+      for (const auto w : huff.words) ret.write<bnh>({9, w});
+
       size_t prev = 0;
-      auto write_child = [&](size_t v) {
-        if (v == prev) {
-          ret.write<b1>(false);
-        } else {
-          ret.write<b1, bnh>(true, {10, v});
-          prev = v;
-        }
-        ++prev;
+      const auto write_child = [&](size_t v) {
+        if (v == prev) ret.write<b1>(false);
+        else ret.write<b1, bnh>(true, {10, v});
+        prev = v + 1;
       };
-      for (size_t i = 0; i < huff.table.size(); ++i) {
-        const auto& h = huff.table[i];
+      for (const auto& h : huff.table) {
         write_child(h.left);
         write_child(h.right);
       }
 
       size_t adr = 0;
       for (const auto& cmd : commands) {
-        switch (cmd.type) {
+        switch (cmd.type.tag) {
         case uncomp: {
           ret.write<bnh>(huff.codewords[input[adr]]);
         } break;
-        case lzs:
-        case lzl: {
-          ret.write<bnh>(huff.codewords[cmd.len + lz_huff_offset]);
-          const size_t d = adr - cmd.lz_ofs;
-          if (cmd.type == lzs) {
-            ret.write<b1, bnh>(false, {7, d - 1});
-          } else {
-            ret.write<b1, bnh>(true, {10, d - 1});
-          }
+        case lz: {
+          ret.write<bnh>(huff.codewords[cmd.len + huff_offset]);
+          const auto& o = ofs_tab[cmd.type.oi];
+          ret.write<bnh>({o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min)});
         } break;
         default: assert(0);
         }
@@ -211,10 +196,10 @@ std::vector<uint8_t> sd_gundam_x_comp(std::span<const uint8_t> input) {
 
       if (best.empty() || ret.size() < best.size()) {
         best = std::move(ret.out);
+        update_costs(huff);
       } else {
         break;
       }
-      update_huffman_costs(huff);
     }
   }
 

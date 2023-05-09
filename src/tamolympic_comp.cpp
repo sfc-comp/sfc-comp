@@ -22,13 +22,13 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   }, 0x0110);
 
   const auto ofs_tab = to_vranges({
-    {0x0001,  9, 0b0},             // []0
-    {0x0100, 11, 0b100},           // []1_0
-    {0x0300, 13, 0b10100},         // []1_1_0
-    {0x0700, 15, 0b1010100},       // []1_1_1_0
-    {0x0f00, 17, 0b101010100},     // []1_1_1_1_0
-    {0x1f00, 19, 0b10101010100},   // []1_1_1_1_1_0
-    {0x3f00, 21, 0b1010101010100}  // []1_1_1_1_1_1__
+    {0x0001,  9, 0b0,             0b0},
+    {0x0100, 11, 0b100,           0b010},
+    {0x0300, 13, 0b10100,         0b01010},
+    {0x0700, 15, 0b1010100,       0b0101010},
+    {0x0f00, 17, 0b101010100,     0b010101010},
+    {0x1f00, 19, 0b10101010100,   0b01010101010},
+    {0x3f00, 21, 0b1010101010100, 0b0101010101011}
   }, 0xbeff);
 
   lz_helper lz_helper(input);
@@ -116,16 +116,10 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     } break;
 
     case lz: {
-      const auto min_dist = ofs_tab[oi].min - (oi == 0 ? 1 : 0);
-      ret.write<b1, d8, b1>(false, d & 0xff, true);
-      assert(d >= min_dist);
-      size_t h = (d - min_dist) >> 8, t = 0;
-      if (min_dist >= 0x3f00) t = h & 1, h >>= 1;
-      for (size_t s = oi; s > 0; ) {
-        --s;
-        ret.write<bnh>({2, 2 + ((h >> s) & 1)});
-      }
-      ret.write<b1>(t);
+      const auto& o = ofs_tab[oi];
+      const size_t od = (d - o.min + (oi == 0 ? 1 : 0));
+      ret.write<b1, d8, b1>(false, od & 0xff, true);
+      ret.write<bnh>({o.bitlen - 8, masked_add(o.val, od >> 8, o.mask)});
       write_len(li, cmd.len);
     } break;
     default: assert(0);

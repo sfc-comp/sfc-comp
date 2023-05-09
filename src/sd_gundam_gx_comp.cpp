@@ -65,11 +65,11 @@ shannon_fano shannon_fano_encode(std::span<const size_t> counts, bool add_header
       if (least_num_words >= words.size()) {
         if (cost >= ret.cost) break;
 
-        static constexpr size_t encode_costs[0x13] = {
+        static constexpr auto encode_costs = std::to_array<size_t>({
           2, 3, 3, 6, 6, 6, 6, 6,
           6, 6, 6, 6, 6, 6, 6, 6,
           6, 6, 6
-        };
+        });
         size_t encode_cost = cost;
 
         if (add_header_cost) {
@@ -158,8 +158,8 @@ shannon_fano shannon_fano_encode(std::span<const size_t> counts, bool add_header
 
 } // namespace
 
-std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, const bool is_dsp3_ver) {
-  if (is_dsp3_ver) {
+std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, const bool dsp3) {
+  if (dsp3) {
     check_size(input.size(), 1, 0xffff);
   } else {
     check_size(input.size(), 0, 0xffff);
@@ -168,31 +168,34 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
     }
   }
 
-  const size_t lzs_ofs_bits = (is_dsp3_ver) ? 8 : 9;
-  const size_t lzl_ofs_bits = (is_dsp3_ver) ? 12 : 13;
-  const size_t lzs_max_ofs = 1 << lzs_ofs_bits;
-  const size_t lzl_max_ofs = 1 << lzl_ofs_bits;
-
-  enum CompType {
-    uncomp, lzs, lzl
-  };
-
-  lz_helper lz_helper(input);
-  std::vector<encode::lz_data> lz_memo_s(input.size());
-  std::vector<encode::lz_data> lz_memo_l(input.size());
-
-  for (size_t i = 0; i < input.size(); ++i) {
-    lz_memo_s[i] = lz_helper.find_best(i, lzs_max_ofs);
-    lz_memo_l[i] = lz_helper.find_best(i, lzl_max_ofs);
-    lz_helper.add_element(i);
-  }
+  enum method { uncomp, lz };
+  using tag = tag_o<method>;
 
   static constexpr size_t lz_min_len = 3;
   static constexpr size_t lz_max_len = lz_min_len + 0xff;
-  static constexpr size_t lz_sf_offset = 0x0100 - lz_min_len;
+  static constexpr size_t sf_offset = 0x0100 - lz_min_len;
   static constexpr auto lz_lens = create_array<size_t, lz_max_len - lz_min_len + 1>([&](size_t i) {
     return lz_min_len + i;
   });
+
+  const size_t ofs_bits_s = (dsp3) ? 8 : 9;
+  const size_t ofs_bits_l = ofs_bits_s + 4;
+  const auto ofs_tab = to_vranges({
+    {size_t(1),                     ofs_bits_s + 1, size_t(0b0 << ofs_bits_s)},
+    {size_t(1) + (1 << ofs_bits_s), ofs_bits_l + 1, size_t(0b1 << ofs_bits_l) + (1 << ofs_bits_s)}
+  }, 1 << ofs_bits_l);
+
+  const auto lz_memo = [&] {
+    std::vector<std::array<encode::lz_data, 2>> ret(input.size());
+    lz_helper lz_helper(input);
+    for (size_t i = 0; i < input.size(); ++i) {
+      encode::lz::find_all(i, ofs_tab, lz_min_len, ret[i], [&](size_t max_ofs) {
+        return lz_helper.find_best(i, max_ofs);
+      });
+      lz_helper.add_element(i);
+    }
+    return ret;
+  }();
 
   auto sf_bitlens = [&]{
     // [Todo] Find a reasonable initialization.
@@ -202,41 +205,39 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
     return ret;
   }();
 
-  auto update_shannon_fano_costs = [&](const shannon_fano& sf) {
+  const auto update_costs = [&](const shannon_fano& sf) {
     const auto& codewords = sf.codewords;
-    size_t longest_bit_size = 0;
-    for (const auto w : sf.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
-    sf_bitlens.assign(sf_bitlens.size(), longest_bit_size + 9);
+    size_t longest = 0;
+    for (const auto w : sf.words) longest = std::max<size_t>(longest, codewords[w].bitlen);
+    sf_bitlens.assign(sf_bitlens.size(), longest + 9);
     for (const auto w : sf.words) sf_bitlens[w] = codewords[w].bitlen;
   };
 
   std::vector<uint8_t> best;
 
   while (true) {
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<tag> dp(input.size());
     for (size_t i = 0; i < input.size(); ++i) {
-      dp.update(i, 1, 1, [&](size_t) { return sf_bitlens[input[i]]; }, uncomp);
-      dp.update_lz_table(i, lz_lens, lz_memo_s[i],
-        [&](size_t j) { return 1 + lzs_ofs_bits + sf_bitlens[lz_lens[j] + lz_sf_offset]; }, lzs);
-      dp.update_lz_table(i, lz_lens, lz_memo_l[i],
-        [&](size_t j) { return 1 + lzl_ofs_bits + sf_bitlens[lz_lens[j] + lz_sf_offset]; }, lzl);
+      dp.update(i, 1, 1, [&](size_t) { return sf_bitlens[input[i]]; }, {uncomp, 0});
+      dp.update_lz_matrix(i, ofs_tab, lz_lens,
+        [&](size_t oi) { return lz_memo[i][oi]; },
+        [&](size_t li) { return sf_bitlens[lz_lens[li] + sf_offset]; },
+        [&](size_t oi, size_t) -> tag { return {lz, oi}; }
+      );
     }
 
     const auto commands = dp.commands();
 
     std::array<size_t, 0x100 + lz_lens.size()> code_counts = {};
-    size_t num_commands = 0;
     {
       size_t adr = 0;
       for (const auto& cmd : commands) {
-        switch (cmd.type) {
+        switch (cmd.type.tag) {
         case uncomp: code_counts[input[adr]] += 1; break;
-        case lzs:
-        case lzl: code_counts[cmd.len + lz_sf_offset] += 1; break;
+        case lz: code_counts[cmd.len + sf_offset] += 1; break;
         default: assert(0);
         }
         adr += cmd.len;
-        ++num_commands;
       }
       assert(adr == input.size());
     }
@@ -244,19 +245,17 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
     bool updated = false;
     for (size_t trial = 0; trial < 2; ++trial) {
       bool add_header_cost = (trial == 0) ? false : true;
-      auto shannon_fano = shannon_fano_encode(code_counts, add_header_cost);
+      auto sf = shannon_fano_encode(code_counts, add_header_cost);
 
       using namespace data_type;
       writer_b16_h ret;
 
-      if (!is_dsp3_ver) {
-        ret.write<bnh>({16, input.size()});
-      }
-      ret.write<bnh>({16, shannon_fano.words.size()});
-      ret.write<bnh>({16, num_commands});
+      if (!dsp3) ret.write<bnh>({16, input.size()});
+      ret.write<bnh>({16, sf.words.size()});
+      ret.write<bnh>({16, commands.size()});
 
       size_t previous_word = 0x100 + lz_lens.size(); // (i.e. invalid word)
-      for (const auto word : shannon_fano.words) {
+      for (const auto word : sf.words) {
         if (word <= previous_word || word >= previous_word + 0x14) {
           ret.write<bnh>({11, word});
         } else {
@@ -272,37 +271,29 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
         previous_word = word;
       }
 
-      assert(shannon_fano.bits.size() == 4 || shannon_fano.bits.size() == 8);
-      ret.write<b1>(shannon_fano.bits.size() == 4 ? 0 : 1);
-      for (const auto suffix_bitsize : shannon_fano.bits) {
-        ret.write<bnh>({3, suffix_bitsize - 1});
-      }
+      assert(sf.bits.size() == 4 || sf.bits.size() == 8);
+      ret.write<b1>(sf.bits.size() == 4 ? 0 : 1);
+      for (const auto b : sf.bits) ret.write<bnh>({3, b - 1});
 
       size_t adr = 0;
       for (const auto& cmd : commands) {
-        switch (cmd.type) {
+        switch (cmd.type.tag) {
         case uncomp: {
-          ret.write<bnh>(shannon_fano.codewords[input[adr]]);
+          ret.write<bnh>(sf.codewords[input[adr]]);
         } break;
-        case lzs:
-        case lzl: {
-          ret.write<bnh>(shannon_fano.codewords[cmd.len + lz_sf_offset]);
-          const size_t d = adr - cmd.lz_ofs;
-          if (cmd.type == lzs) {
-            ret.write<b1, bnh>(false, {lzs_ofs_bits, d - 1});
-          } else {
-            ret.write<b1, bnh>(true, {lzl_ofs_bits, d - 1});
-          }
+        case lz: {
+          ret.write<bnh>(sf.codewords[cmd.len + sf_offset]);
+          const auto& o = ofs_tab[cmd.type.oi];
+          ret.write<bnh>({o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min)});
         } break;
         default: assert(0);
         }
         adr += cmd.len;
       }
       assert(adr == input.size());
-
       if (best.empty() || ret.size() < best.size()) {
         best = std::move(ret.out);
-        update_shannon_fano_costs(shannon_fano);
+        update_costs(sf);
         updated = true;
         break;
       }

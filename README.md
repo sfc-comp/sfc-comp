@@ -146,8 +146,8 @@ $ ./bench <input-dir>
 | sailor_moon_comp_1                       |    7 | 5A2C | 3200 | 7C02 | 1F91 | 32C2 | 64BA | 1870 |  1D7B2 | 0.0824 | D74045B9 |
 | sansara_naga2_comp                       |    9 | 5E36 | 35CE | 78D1 | 265D | 3777 | 672C | 213A |  1F318 | 0.1131 | C70FEA18 |
 | sd_gundam_gnext_comp                     |    4 | 6247 | 3766 | 8002 | 24F0 | 39D8 | 6BDC | 1920 |  1FD77 | 0.0465 | 6D69932E |
-| sd_gundam_gx_comp                        |    A | 536E | 2D62 | 7066 | 1EAA | 2FFE | 5C22 | 15F2 |  1B1FC | 0.1648 | 71518908 |
-| sd_gundam_x_comp                         |    6 | 5412 | 2E3E | 70DA | 2142 | 31C1 | 5C84 | 1C55 |  1BF0C | 0.1576 | 3E503482 |
+| sd_gundam_gx_comp                        |    A | 536E | 2D62 | 7066 | 1EAA | 2FFE | 5C22 | 15F2 |  1B1FC | 0.1428 | 71518908 |
+| sd_gundam_x_comp                         |    6 | 5412 | 2E3E | 70DA | 2142 | 31C1 | 5C84 | 1C55 |  1BF0C | 0.1391 | 3E503482 |
 | seiken_densetsu_2_comp                   |    7 | 5FCD | 39DC | 77F0 | 2980 | 380F | 65FF | 1EA6 |  1F7D4 | 0.3739 | 3F9A5966 |
 | shadowrun_comp                           |    7 | 5841 | 3137 | 750F | 2031 | 33E3 | 61A5 | 1632 |  1CA79 | 0.1591 | D4043BA3 |
 | shima_kousaku_comp                       |    A | 500E | 2B2D | 6EF9 | 1CD6 | 2E4C | 5A53 | 12A4 |  1A257 | 0.1984 | C6B8D8D8 |

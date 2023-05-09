@@ -16,11 +16,11 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
   using tag = tag_ol<method>;
 
   static constexpr auto ofs_tab = to_vranges({
-    {0x0001, 10, 0b01},       // _1
-    {0x0201, 11, 0b001},      // _01
-    {0x0401, 13, 0b00001},    // _00_1
-    {0x0801, 15, 0b0000001},  // _00_0_1
-    {0x1001, 16, 0b00000000}, // _00_0_0_
+    {0x0001, 10, 0b01,       0b10},
+    {0x0201, 11, 0b001,      0b100},
+    {0x0401, 13, 0b00001,    0b10010},
+    {0x0801, 15, 0b0000001,  0b1001010},
+    {0x1001, 16, 0b00000000, 0b10010101},
   }, 0x2000);
 
   static constexpr auto len_tab = to_vranges({
@@ -80,36 +80,16 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
       }
     } break;
     case lz: {
-      const size_t d = adr - cmd.lz_ofs;
-      const size_t oi = cmd.type.oi;
-      const auto& o = ofs_tab[oi];
-
-      ret.write<bnh, d8>({2, 1}, -d & 0xff);
-      size_t v = (o.max - d) >> 8;
-      if (oi == 0) {
-        v <<= 1;
-      } else if (oi == 1) {
-        v <<= 2;
-      } else if (oi == 2) {
-        v <<= 1;
-        v += (v & 0x04) * 3;
-      } else if (oi == 3) {
-        v <<= 1;
-        v += v & ~3;
-        v += (v & 0x10) * 3;
-      } else {
-        v += v & ~1;
-        v += v & ~7;
-        v += (v & 0x20) * 3;
-      }
-      ret.write<bnh>({o.bitlen - 8, v | o.val});
-
+      const auto& o = ofs_tab[cmd.type.oi];
+      const size_t ov = (o.max - (adr - cmd.lz_ofs));
+      ret.write<bnh, d8>({2, 1}, ov & 0xff);
+      ret.write<bnh>({o.bitlen - 8, masked_add(o.val, ov >> 8, o.mask)});
       const auto& l = len_tab[cmd.type.li];
-      const size_t len_v = cmd.len - l.min;
-      if (l.bitlen < 10) {
-        ret.write<bnh>({l.bitlen, len_v | l.val});
+      const size_t ld = cmd.len - l.min;
+      if (l.bitlen <= 9) {
+        ret.write<bnh>({l.bitlen, l.val | ld});
       } else {
-        ret.write<bnh, d8>({l.bitlen - 8, l.val}, len_v);
+        ret.write<bnh, d8>({l.bitlen - 8, l.val}, ld);
       }
     } break;
     default: assert(0);

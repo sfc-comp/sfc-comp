@@ -50,7 +50,7 @@ std::vector<uint8_t> chrono_trigger_comp_fast_core(std::span<const uint8_t> inpu
       const size_t bits_pos = ret.bits_pos;
       write16(ret.out, 0, bits_pos - 2);
 
-      const size_t len = (8 - ret.bit) + popcount32(ret.out[bits_pos]) + 1;
+      const size_t len = (8 - ret.bit) + std::popcount(ret.out[bits_pos]) + 1;
       assert(ret.size() == bits_pos + len);
       ret.write<d8, d8, d8>(0, 0, 0);
 

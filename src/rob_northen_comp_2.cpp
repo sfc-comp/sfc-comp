@@ -16,11 +16,11 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   using tag = tag_ol<method>;
 
   static constexpr auto len_tab = to_vranges({
-                          // 10 (len == 2)
-    {0x0003,  3, 0b110},  // 110
-    {0x0004,  3, 0b000},  // 0_0
-    {0x0006,  4, 0b0010}, // 0_1_
-    {0x0009, 11, 0b111}   // 111[]
+              // 0b10 (len == 2)
+    {0x0003,  3, 0b110,          0b000},
+    {0x0004,  3, 0b000,          0b010},
+    {0x0006,  4, 0b0010,         0b0101},
+    {0x0009, 11, 0b11100000001,  0b00011111111}
   }, 0x00ff);
 
   lz_helper lz_helper(input);
@@ -57,35 +57,19 @@ std::vector<uint8_t> rob_northen_comp_2_core(
       ret.write<b1, bnh, d8>(true, {2, 2}, d - 1);
     } break;
     case lz: {
-      const size_t li = cmd.type.li;
-      const auto& l = len_tab[li];
+      const auto& l = len_tab[cmd.type.li];
+      const size_t ld = cmd.len - l.min;
+      const auto lval = masked_add(l.val, ld, l.mask);
       ret.write<b1>(true);
-      size_t v = cmd.len - l.min;
-      if (li == 1) {
-        v <<= 1;
-      } else if (li == 2) {
-        v += (v & ~1);
-      }
       if (l.bitlen < 8) {
-        ret.write<bnh>({l.bitlen, v | l.val});
+        ret.write<bnh>({l.bitlen, lval});
       } else {
-        ret.write<bnh>({l.bitlen - 8, l.val});
-        ret.write<d8>(cmd.len - (l.min - 1));
+        ret.write<bnh, d8>({l.bitlen - 8, l.val >> 8}, lval & 0xff);
       }
-
-      const size_t oi = cmd.type.oi;
-      const auto& o = ofs_tab[oi];
-      size_t delta = d - o.min;
-      size_t ov = delta >> 8;
-      if (oi == 3) {
-        ov <<= 1;
-        ov += ov & ~3;
-      } else if (oi == 4) {
-        ov += ov & ~1;
-        ov += ov & ~7;
-      }
-      ret.write<bnh>({o.bitlen - 8, ov | o.val});
-      ret.write<d8>(delta & 0xff);
+      const auto& o = ofs_tab[cmd.type.oi];
+      const auto od = d - o.min;
+      ret.write<bnh>({o.bitlen - 8, masked_add(o.val, od >> 8, o.mask)});
+      ret.write<d8>(od & 0xff);
     } break;
     default: assert(0);
     }
@@ -97,11 +81,11 @@ std::vector<uint8_t> rob_northen_comp_2_core(
 }
 
 static constexpr auto rnc2_offsets = to_vranges({
-  {0x0001,  9, 0b0},      // 0[]
-  {0x0101, 11, 0b110},    // 110[]
-  {0x0201, 12, 0b1000},   // 100_[]
-  {0x0401, 13, 0b10101},  // 1_1_1[]
-  {0x0801, 14, 0b101000}, // 1_1_0_[]
+  {0x0001,  9, 0b0,      0b0},
+  {0x0101, 11, 0b110,    0b000},
+  {0x0201, 12, 0b1000,   0b0001},
+  {0x0401, 13, 0b10101,  0b01010},
+  {0x0801, 14, 0b101000, 0b010101},
 }, 0x1000);
 
 } // namespace

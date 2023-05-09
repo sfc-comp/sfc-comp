@@ -34,20 +34,22 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   sssp_solver<tag> dp0(input.size()), dp1(input.size(), -1);
 
   for (size_t i = 0; i < input.size(); ++i) {
-    const auto cost0 = dp0[i].cost;
-    u_helper.update(i, cost0);
-
-    dp1.update(i, 0, 0, Constant<1>(), {none, 0}, cost0);
+    if (const auto cost0 = dp0[i].cost; cost0 < dp0.infinite_cost) {
+      u_helper.update(i, cost0);
+      dp1.update(i, 0, 0, Constant<1>(), {none, 0}, cost0);
+    }
     for (size_t k = 0; k < uncomp_lens.size(); ++k) {
       const auto res_u = u_helper.find(i + 1, uncomp_lens[k].min, uncomp_lens[k].max);
       if (res_u.len == u_helper.nlen) continue;
       dp1.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + uncomp_lens[k].bitlen);
     }
-    dp0.update_lz_matrix(i, lz_offsets, lz_lens,
-      [&](size_t oi) { return lz_helper.find_best(i, lz_offsets[oi].max); },
-      [&](size_t, size_t li) -> tag { return {lz, li}; },
-      ilog2(2 * i + 1), dp1[i].cost
-    );
+    if (const auto cost1 = dp1[i].cost; cost1 < dp1.infinite_cost) {
+      dp0.update_lz_matrix(i, lz_offsets, lz_lens,
+        [&](size_t oi) { return lz_helper.find_best(i, lz_offsets[oi].max); },
+        [&](size_t, size_t li) -> tag { return {lz, li}; },
+        ilog2(2 * i + 1), cost1
+      );
+    }
     lz_helper.add_element(i);
   }
 

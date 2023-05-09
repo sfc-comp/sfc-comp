@@ -69,8 +69,28 @@ constexpr auto inverse_map(std::span<const size_t> vals) {
   return ret;
 }
 
-inline constexpr int popcount32(uint32_t x) {
-  return std::popcount(x);
+inline constexpr uint64_t pext(uint64_t v, uint64_t mask) {
+  uint64_t ret = 0;
+  for (uint64_t t = 1; mask > 0; t <<= 1) {
+    uint64_t lowest = mask & -mask;
+    if (v & lowest) ret |= t;
+    mask -= lowest;
+  }
+  return ret;
+}
+
+inline constexpr uint64_t pdep(uint64_t v, uint64_t mask) {
+  uint64_t ret = 0;
+  for (; mask > 0; v >>= 1) {
+    uint64_t lowest = mask & -mask;
+    if (v & 1) ret |= lowest;
+    mask -= lowest;
+  }
+  return ret;
+}
+
+inline constexpr uint64_t masked_add(uint64_t src, uint64_t v, uint64_t mask) {
+  return (src & ~mask) | pdep(pext(src, mask) + v, mask);
 }
 
 inline constexpr size_t ilog2(size_t n) {

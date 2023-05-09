@@ -558,86 +558,74 @@ class sssp_solver {
     for (size_t i = begin; i < end; ++i) reset(i);
   }
 
-  // Assumes that the cost function for offsets is non-decreasing and defined for every possible values.
-  template <typename LzFunc, typename TagFunc>
+ private:
+  template <typename LzFunc, typename Func>
   requires std::convertible_to<std::invoke_result_t<LzFunc, size_t>, encode::lz_data> &&
-           std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
-  void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const vrange> lens,
-      LzFunc&& find_lz, TagFunc&& tag, size_t c, cost_type base_cost = unspecified) {
-    if (lens.empty() || offsets.empty()) return;
-    const size_t lz_min_len = lens[0].min;
-    if (base_cost == unspecified) base_cost = (*this)[adr].cost;
-
+           std::convertible_to<std::invoke_result_t<Func, ptrdiff_t, size_t, size_t, size_t, encode::lz_data>, ptrdiff_t>
+  void update_lz_matrix_(size_t adr, size_t li, encode::lz_data res_lz, const size_t lz_min_len,
+      std::span<const vrange> offsets, LzFunc&& find_lz, Func&& update) {
     using encode::lz_data;
-    ptrdiff_t oi = offsets.size() - 1;
-    ptrdiff_t li = lens.size() - 1;
-
-    ptrdiff_t best_oi = -1;
+    ptrdiff_t best_oi = -1; lz_data best_lz = {0, 0};
     size_t best_bitlen = std::numeric_limits<size_t>::max();
-    encode::lz_data best_lz = {0, 0};
-    for (lz_data res_lz = find_lz(oi); ; ) {
+    ptrdiff_t oi = offsets.size() - 1;
+    while (true) {
       const size_t d = adr - res_lz.ofs;
       if (res_lz.len < lz_min_len) break;
       while (oi >= 0 && d < offsets[oi].min) --oi;
       if (oi < 0) break;
       if (offsets[oi].bitlen <= best_bitlen) {
-        best_bitlen = offsets[oi].bitlen; best_oi = oi; best_lz = res_lz;
+        best_oi = oi; best_bitlen = offsets[best_oi].bitlen; best_lz = res_lz;
       }
       lz_data nres_lz = (oi == 0) ? lz_data(0, 0) : find_lz(oi - 1);
-      for (; li >= 0 && res_lz.len < lens[li].min; --li);
-      const size_t min_len = nres_lz.len + 1;
-      for (; li >= 0 && min_len <= lens[li].max; --li) {
-        const auto& l = lens[li];
-        const auto cost = base_cost + (best_bitlen + l.bitlen + c);
-        update_lz(adr, std::max(min_len, l.min), l.max, best_lz, Constant<0>(), tag(best_oi, li), cost);
-        if (min_len > l.min) break;
-      }
+      li = update(li, best_oi, nres_lz.len + 1, res_lz.len, best_lz);
       if (--oi < 0) break;
       res_lz = std::move(nres_lz);
     }
   }
 
-  // Assumes that the cost function for offsets is non-decreasing and defined for every possible values.
+ public:
+  template <typename LzFunc, typename TagFunc>
+  requires std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
+  void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const vrange> lens,
+      LzFunc&& find_lz, TagFunc&& tag, size_t c, cost_type base_cost = unspecified) {
+    if (lens.empty() || offsets.empty()) return;
+    if (base_cost == unspecified) base_cost = (*this)[adr].cost;
+    const auto f = [&](ptrdiff_t li, size_t oi, size_t min_len, size_t max_len, encode::lz_data best_lz) {
+      for (; li >= 0 && max_len < lens[li].min; --li);
+      for (; li >= 0 && min_len <= lens[li].max; --li) {
+        const auto& l = lens[li];
+        const auto cost = base_cost + (offsets[oi].bitlen + l.bitlen + c);
+        update_lz(adr, std::max(min_len, l.min), std::min(max_len, l.max), best_lz, Constant<0>(), tag(oi, li), cost);
+        if (min_len > l.min) break;
+      }
+      return li;
+    };
+    return update_lz_matrix_(adr, lens.size() - 1, find_lz(offsets.size() - 1), lens[0].min, offsets,
+                             std::forward<LzFunc>(find_lz), std::forward<decltype(f)>(f));
+  }
+
   template <typename LzFunc, typename TagFunc, typename LenCostFunc>
-  requires std::convertible_to<std::invoke_result_t<LzFunc, size_t>, encode::lz_data> &&
-           add_able<cost_type, std::invoke_result_t<LenCostFunc, size_t>> &&
+  requires add_able<cost_type, std::invoke_result_t<LenCostFunc, size_t>> &&
            std::convertible_to<std::invoke_result_t<TagFunc, size_t, size_t>, tag_type>
   void update_lz_matrix(size_t adr, std::span<const vrange> offsets, std::span<const size_t> lens,
-      LzFunc&& find_lz, LenCostFunc&& func, TagFunc&& tag, cost_type base_cost = unspecified) {
+      LzFunc&& find_lz, LenCostFunc&& len_cost, TagFunc&& tag, cost_type base_cost = unspecified) {
     if (lens.empty() || offsets.empty()) return;
-    const size_t lz_min_len = lens[0];
     if (base_cost == unspecified) base_cost = (*this)[adr].cost;
-
-    using encode::lz_data;
-    ptrdiff_t oi = offsets.size() - 1;
-    lz_data res_lz = find_lz(oi);
-    ptrdiff_t li = (std::upper_bound(lens.begin(), lens.end(), res_lz.len) - lens.begin()) - 1;
-
-    ptrdiff_t best_oi = -1;
-    size_t best_bitlen = std::numeric_limits<size_t>::max();
-    encode::lz_data best_lz = {0, 0};
-    for (; ;) {
-      const size_t d = adr - res_lz.ofs;
-      if (res_lz.len < lz_min_len) break;
-      while (oi >= 0 && d < offsets[oi].min) --oi;
-      if (oi < 0) break;
-      if (offsets[oi].bitlen <= best_bitlen) {
-        best_bitlen = offsets[oi].bitlen; best_oi = oi; best_lz = res_lz;
-      }
-      lz_data nres_lz = (oi == 0) ? lz_data(0, 0) : find_lz(oi - 1);
-      for (; li >= 0 && res_lz.len < lens[li]; --li);
-      const size_t min_len = nres_lz.len + 1;
+    const auto f = [&](ptrdiff_t li, size_t oi, size_t min_len, size_t max_len, encode::lz_data best_lz) {
+      for (; li >= 0 && max_len < lens[li]; --li);
       for (; li >= 0 && min_len <= lens[li]; --li) {
-        const size_t l = lens[li];
-        const auto cost = base_cost + (best_bitlen + func(li));
-        if (adr + l >= size()) continue;
-        auto& target = (*this)[adr + l];
+        const auto cost = base_cost + (offsets[oi].bitlen + len_cost(li));
+        auto& target = (*this)[adr + lens[li]];
         if (cost >= target.cost) continue;
-        target = {cost, l, size_t(best_lz.ofs), tag(best_oi, li)};
+        target = {cost, lens[li], size_t(best_lz.ofs), tag(oi, li)};
       }
-      if (--oi < 0) break;
-      res_lz = std::move(nres_lz);
-    }
+      return li;
+    };
+    encode::lz_data res_lz = find_lz(offsets.size() - 1);
+    res_lz.len = std::min(res_lz.len, (size() - 1) - adr); // needed when compressing chunks.
+    ptrdiff_t li = (std::ranges::upper_bound(lens, res_lz.len) - lens.begin()) - 1;
+    return update_lz_matrix_(adr, li, res_lz, lens[0], offsets,
+                             std::forward<LzFunc>(find_lz), std::forward<decltype(f)>(f));
   }
 
   template <typename Func>
