@@ -108,7 +108,7 @@ class recomp_lz_helper {
     head[v] = j;
   }
 
-  encode::lz_data find_best(
+  encode::lz_data find(
       std::span<const uint8_t> output, size_t i,
       const size_t max_ofs, const size_t max_len) const {
     const uint8_t v = input[i];
@@ -168,7 +168,7 @@ std::vector<uint8_t> recomp(std::span<const uint8_t> input) {
     uint8_t code = input[addr];
     const size_t code_len = re::code_lens[code];
     assert(code_len != 0);
-    auto res_lz = lz_helper.find_best(ret, addr, re::lzl_max_ofs, re::lzl_max_len);
+    auto res_lz = lz_helper.find(ret, addr, re::lzl_max_ofs, re::lzl_max_len);
     size_t d = ret.size() - res_lz.ofs;
     if (res_lz.len < 3 || (res_lz.len == 3 && d > re::lzs_max_ofs)) {
       res_lz.len = 0;
@@ -224,7 +224,7 @@ std::vector<uint8_t> recomp(std::span<const uint8_t> input) {
 } // namespace
 
 std::vector<uint8_t> fe4_comp(std::span<const uint8_t> input) {
-  enum CompType {
+  enum tag {
     uncomp, coupled,
     common_lo16, common_hi16,
     common_lo8_0, common_lo8_f, common_lo8,
@@ -234,15 +234,15 @@ std::vector<uint8_t> fe4_comp(std::span<const uint8_t> input) {
   };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
-  using cost_type = typename sssp_solver<CompType>::cost_type;
+  sssp_solver<tag> dp(input.size());
+  using cost_type = typename sssp_solver<tag>::cost_type;
 
   size_t rlen = 0;
   for (size_t i = 0; i < input.size(); ++i) {
-    auto res_lz = lz_helper.find_best_closest(i, 0x3ff, 0x11);
+    auto res_lz = lz_helper.find_closest(i, 0x3ff, 2, 0x11);
     dp.update_lz<std::greater<cost_type>>(i, 2, 0x11, res_lz, Constant<2>(), lzs);
 
-    auto res_lzl = lz_helper.find_best_closest(i, 0x7fff, 0x41);
+    auto res_lzl = lz_helper.find_closest(i, 0x7fff, 2, 0x41);
     dp.update_lz<std::greater<cost_type>>(i, 0x2, 0x41, res_lzl, Constant<3>(), lzl);
 
     dp.update<std::greater<cost_type>>(i, 1, 0x40, Linear<1, 1>(), uncomp);
@@ -310,7 +310,7 @@ std::vector<uint8_t> fe4_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() == ret.size());
+  assert(dp.optimal_cost() == ret.size());
   assert(adr == input.size());
   ret.write<d8>(0xff);
   ret.out = recomp(ret.out);

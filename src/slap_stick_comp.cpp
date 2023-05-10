@@ -8,9 +8,7 @@ namespace sfc_comp {
 std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t> in) {
   check_size(in.size(), 1, 0x10000);
 
-  enum CompType {
-    uncomp, lz
-  };
+  enum tag { uncomp, lz };
 
   static constexpr size_t pad = 0x11;
 
@@ -19,13 +17,13 @@ std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t> in) {
   for (size_t i = 0; i < pad; ++i) input[i] = 0x20;
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size(), pad);
+  sssp_solver<tag> dp(input.size(), pad);
 
   for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
 
   for (size_t i = pad; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x100);
+    auto res_lz = lz_helper.find(i, 0x100, 2);
     dp.update_lz(i, 2, 0x11, res_lz, Constant<13>(), lz);
     lz_helper.add_element(i);
   }
@@ -44,7 +42,7 @@ std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t> in) {
   write16(ret.out, 0, in.size());
 
   assert(adr - pad == in.size());
-  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 2 * 8 == ret.bit_length());
 
   return ret.out;
 }

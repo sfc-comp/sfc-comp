@@ -18,8 +18,8 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
   std::vector<std::array<encode::lz_data, 2>> lz_memo(input.size());
   for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
   for (size_t i = pad; i < input.size(); ++i) {
-    lz_memo[i][0] = lz_helper.find_best(i, 0x100);
-    lz_memo[i][1] = lz_helper.find_best(i, 0x1000);
+    lz_memo[i][0] = lz_helper.find(i, 0x100, 2);
+    lz_memo[i][1] = lz_helper.find(i, 0x1000, 3);
     lz_helper.add_element(i);
   }
 
@@ -108,7 +108,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
       write16(raw.out, 0, in.size());
       std::copy_n(cands.begin(), 4, raw.out.begin() + 2);
       assert(adr == input.size());
-      assert(dp.total_cost() + 8 * 8 == raw.size() * 8 + ret.bit_length());
+      assert(dp.optimal_cost() + 8 * 8 == raw.size() * 8 + ret.bit_length());
       ret.extend(raw);
       return ret.out;
     }

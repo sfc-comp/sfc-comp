@@ -31,7 +31,7 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       encode::lz::find_all(i, max_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
-        return lz_helper.find_best_closest(i, max_ofs, input.size());
+        return lz_helper.find_closest(i, max_ofs, lz_min_len, input.size());
       });
       if (const auto lz = ret[i].back(); lz.len >= lz_min_len) {
         longest_lz_len = std::max(longest_lz_len, lz.len);
@@ -75,8 +75,8 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
 
     size_t last_len_bits = 0, min_cost = dp[len_min_bits].infinite_cost;
     for (size_t len_bits = len_min_bits; len_bits <= len_bits_limit; ++len_bits) {
-      if (dp[len_bits].total_cost() < min_cost) {
-        min_cost = dp[len_bits].total_cost();
+      if (dp[len_bits].optimal_cost() < min_cost) {
+        min_cost = dp[len_bits].optimal_cost();
         last_len_bits = len_bits;
       }
     }
@@ -93,7 +93,7 @@ std::vector<uint8_t> syndicate_comp(std::span<const uint8_t> input) {
         ret.emplace_back(cmd);
       }
       assert(adr == 0);
-      std::reverse(ret.begin(), ret.end());
+      std::ranges::reverse(ret);
       return ret;
     }(curr_len_bits);
 

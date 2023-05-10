@@ -6,7 +6,7 @@
 namespace sfc_comp {
 
 std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
-  enum CompType {
+  enum tag {
     uncomp,
     rle8z, rle8,
     rle16z, rle16,
@@ -17,7 +17,7 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
   };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen8 = 0, rlen16 = 0, rlen24 = 0;
   encode::rle_data c16[2] = {{}, {}}, c24[3] = {{}, {}, {}}, c32[4] = {{}, {}, {}, {}};
@@ -76,15 +76,15 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
       }
     }
 
-    auto res_lzl = lz_helper.find_best(i, 0x1000);
+    auto res_lzl = lz_helper.find(i, 0x1000, 4);
     dp.update_lz(i, 4, 0x13, res_lzl, Constant<3>(), lzl);
 
-    auto res_lzs = lz_helper.find_best(i, 0x100);
+    auto res_lzs = lz_helper.find(i, 0x100, 0x14);
     dp.update_lz(i, 0x14, 0x113, res_lzs, Constant<3>(), lzs);
 
     for (size_t k = 0; k < 0x10; ++k) lz8s[k] = encode::lz_dist(input, i, 8 * (k + 1), lz8s[k]);
     const size_t best_k = std::max_element(lz8s.begin(), lz8s.end()) - lz8s.begin();
-    dp.update_lz(i, 3, 0x12, {ptrdiff_t(i - 8 * (best_k + 1)), lz8s[best_k]}, Constant<2>(), lz8);
+    dp.update_lz(i, 3, 0x12, {i - 8 * (best_k + 1), lz8s[best_k]}, Constant<2>(), lz8);
 
     // offset should be >= 2.
     if (i >= 1) lz_helper.add_element(i - 1);
@@ -160,7 +160,7 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
     adr += cmd.len;
   }
   ret.write<d8>(0xff);
-  assert(dp.total_cost() + 2 == ret.size());
+  assert(dp.optimal_cost() + 2 == ret.size());
   assert(adr == input.size());
   return ret.out;
 }

@@ -61,7 +61,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
     }
     const size_t ofs_bitsize = std::min<size_t>(12, 1 + ilog2(i));
     dp.update_lz_matrix(i, ofs_tab, lz_len_tab,
-      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, lz_len_tab.front().min); },
       [&](size_t, size_t li) -> tag { return {lz, ofs_bitsize, li}; },
       1 + ofs_bitsize
     );
@@ -94,7 +94,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 4);
-  assert(dp.total_cost() + 8 * (4 + skipped_size) == raws.size() * 8 + ret.bit_length());
+  assert(dp.optimal_cost() + 8 * (4 + skipped_size) == raws.size() * 8 + ret.bit_length());
   ret.extend(raws);
 
   return ret.out;

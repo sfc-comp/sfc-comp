@@ -8,7 +8,7 @@ namespace sfc_comp {
 namespace {
 
 template <typename LzFunc, typename LzUpdateFunc>
-requires std::convertible_to<std::invoke_result_t<LzFunc, size_t, size_t>, encode::lz_data> &&
+requires std::convertible_to<std::invoke_result_t<LzFunc, size_t, size_t, size_t>, encode::lz_data> &&
          std::invocable<LzUpdateFunc, size_t>
 std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t header_size,
     LzFunc&& find_lz, LzUpdateFunc&& lz_helper_update) {
@@ -46,15 +46,15 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
       }
     }
     dp.update_lz_matrix(i, ofs_tab, len_tab,
-      [&](size_t oi) { return find_lz(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return find_lz(i, ofs_tab[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       2
     );
     // dist should be >= 2.
     if (i + 1 < input.size()) {
-      res_lz2 = find_lz(i + 1, 0x900);
+      res_lz2 = find_lz(i + 1, 0x900, 2);
       if (res_lz2.len >= 2) {
-        res_lz2s = find_lz(i + 1, 0x100);
+        res_lz2s = find_lz(i + 1, 0x100, 2);
       }
     }
     lz_helper_update(i);
@@ -100,7 +100,7 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
   ret.trim();
 
   assert(adr == input.size());
-  assert(dp.total_cost() + 11 + header_size * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 11 + header_size * 8 == ret.bit_length());
 
   return ret.out;
 }
@@ -112,7 +112,7 @@ std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
 
   lz_helper lz_helper(input);
   auto ret = diet_comp_core(input, 0x11,
-    [&](size_t i, size_t max_dist) { return lz_helper.find_best(i, max_dist); },
+    [&](size_t i, size_t max_dist, size_t min_len) { return lz_helper.find(i, max_dist, min_len); },
     [&](size_t i) { lz_helper.add_element(i); }
   );
   static constexpr auto header = std::to_array<uint8_t>({
@@ -132,7 +132,7 @@ namespace {
 std::vector<uint8_t> pac_in_time_comp_3439(std::span<const uint8_t> input) {
   non_overlapping_lz_helper lz_helper(input);
   auto ret = diet_comp_core(input, 2,
-    [&](size_t i, size_t max_dist) { return lz_helper.find_non_overlapping(i, max_dist); },
+    [&](size_t i, size_t max_dist, size_t) { return lz_helper.find_non_overlapping(i, max_dist); },
     [&](size_t) {}
   );
   write16(ret, 0, 0x3439);
@@ -183,7 +183,7 @@ std::vector<uint8_t> pac_in_time_comp_a44a(std::span<const uint8_t> input) {
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<10>(), {uncomp, 0, 0});
     dp.update_lz_matrix(i, ofs_tab_a, len_tab,
-      [&](size_t oi) { return lz_helpers[i & 1].find_best(i, ofs_tab_a[oi].max); },
+      [&](size_t oi) { return lz_helpers[i & 1].find(i, ofs_tab_a[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       0
     );
@@ -195,7 +195,7 @@ std::vector<uint8_t> pac_in_time_comp_a44a(std::span<const uint8_t> input) {
     lz_helpers[i & 1].add_element(i);
     if (size_t j = i + ofs_tab_b.front().min; j < input.size()) {
       encode::lz::find_all(j, ofs_tab_b, lz_min_len, lz_memo[j % memo_size],
-        [&](size_t max_ofs) { return lz_helpers[j & 1].find_best(j, max_ofs); }
+        [&](size_t max_ofs) { return lz_helpers[j & 1].find(j, max_ofs, lz_min_len); }
       );
     }
   }
@@ -239,7 +239,7 @@ std::vector<uint8_t> pac_in_time_comp_a44a(std::span<const uint8_t> input) {
   ret.trim();
 
   assert(adr == input.size());
-  assert(dp.total_cost() + 2 * 8 +
+  assert(dp.optimal_cost() + 2 * 8 +
          len_tab.front().bitlen + ofs_tab.back().bitlen == ret.bit_length());
   write16(ret.out, 0, 0xa44a);
   return ret.out;
@@ -275,7 +275,7 @@ std::vector<uint8_t> pac_in_time_comp_a55a(std::span<const uint8_t> input) {
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
     dp.update_lz_matrix(i, ofs_tab, len_tab,
-      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       1
     );
@@ -313,7 +313,7 @@ std::vector<uint8_t> pac_in_time_comp_a55a(std::span<const uint8_t> input) {
   ret.write<b1, d8>(false, 0xfe);
   ret.trim();
   assert(adr == input.size());
-  assert(dp.total_cost() + 9 + 2 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 9 + 2 * 8 == ret.bit_length());
 
   write16(ret.out, 0, 0xa55a);
   return ret.out;

@@ -22,11 +22,11 @@ std::vector<uint8_t> super_4wd_the_baja_comp(std::span<const uint8_t> in) {
     const auto u2 = u_helper.find(i + 1, 9, 9 + 0xff);
     dp.update_u(i + 1, u2.len, uncompl, u2.cost + 11);
 
-    const auto res_lz = lz_helper.find_best(i, 0xff);
+    const auto res_lz = lz_helper.find(i, 0xff, 2);
     dp.update_lz(i, 2, 2, res_lz, Constant<10>(), lz2);
-    const auto res_lz3 = lz_helper.find_best(i, 0x1ff);
+    const auto res_lz3 = lz_helper.find(i, 0x1ff, 3);
     dp.update_lz(i, 3, 3, res_lz3, Constant<12>(), lz3);
-    const auto res_lz4 = lz_helper.find_best(i, 0x3ff);
+    const auto res_lz4 = lz_helper.find(i, 0x3ff, 4);
     dp.update_lz(i, 4, 4, res_lz4, Constant<13>(), lz4);
     dp.update_lz(i, 5, 5 + 0xff, res_lz, Constant<19>(), lz);
 
@@ -60,7 +60,7 @@ std::vector<uint8_t> super_4wd_the_baja_comp(std::span<const uint8_t> in) {
     adr += cmd.len;
   }
   assert(adr == input.size());
-  assert(dp.total_cost() + 1 + 16 == ret.bit_length());
+  assert(dp.optimal_cost() + 1 + 16 == ret.bit_length());
 
   if (ret.size() < 4) throw std::logic_error("Input is empty.");
 

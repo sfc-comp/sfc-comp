@@ -18,7 +18,7 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
   static constexpr auto len_code = inverse_map<lz_lens.back() + 1>(lz_lens);
 
   std::vector<uint8_t> input(in.size() + pad, 0);
-  std::copy(in.begin(), in.end(), input.begin() + pad);
+  std::ranges::copy(in, input.begin() + pad);
 
   std::vector<uint8_t> best;
 
@@ -30,15 +30,15 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
     for (size_t i = pad; i < input.size(); ++i) {
       dp.update(i, 1, 1, Constant<9>(), uncomp);
       if (comp_type == 0x5059) {
-        const auto res_lz = lz_helper.find_best(i, 0x1000);
+        const auto res_lz = lz_helper.find(i, 0x1000, lz_lens.front());
         dp.update_lz_table(i, lz_lens, res_lz, Constant<17>(), lz);
       } else {
-        const auto res_lzs = lz_helper.find_best(i, 0x7f);
+        const auto res_lzs = lz_helper.find(i, 0x7f, 2);
         dp.update_lz(i, 2, 2, res_lzs, Constant<9>(), lz2);
         if (i + 1 < input.size() && read16(input, i - 0x800) == read16(input, i)) {
           dp.update(i, 2, 2, Constant<9>(), lz2_0);
         }
-        const auto res_lz = lz_helper.find_best(i, 0x800);
+        const auto res_lz = lz_helper.find(i, 0x800, lz_lens.front());
         dp.update_lz_table(i, lz_lens, res_lz, Constant<17>(), lz);
       }
       lz_helper.add_element(i);
@@ -68,7 +68,7 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
     write24(ret.out, 2, in.size());
     write24(ret.out, 5, ret.size() - 8);
     assert(adr == input.size());
-    assert(dp.total_cost() + 8 * 8 == ret.bit_length());
+    assert(dp.optimal_cost() + 8 * 8 == ret.bit_length());
     if (best.empty() || ret.size() < best.size()) best = std::move(ret.out);
   }
   return best;

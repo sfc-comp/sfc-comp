@@ -8,24 +8,24 @@ namespace sfc_comp {
 std::vector<uint8_t> rayearth_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
 
-  enum CompType {
+  enum tag {
     uncomp, uncompl,
     lz, lzl,
     lz4, lz4l
   };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 0x01, 0x3f, Linear<1, 1>(), uncomp);
     dp.update(i, 0x40, 0xff, Linear<1, 2>(), uncompl);
-    if (auto res_lz4 = lz_helper.find_best(i, 0x03fe); res_lz4.len >= 3) {
+    if (auto res_lz4 = lz_helper.find(i, 0x03fe, 3); res_lz4.len >= 3) {
       if (i - res_lz4.ofs >= 0x02ff) {
         dp.update_lz(i, 0x0003, 0x0041, res_lz4, Constant<3>(), lz4);
         dp.update_lz(i, 0x0042, 0x00ff, res_lz4, Constant<4>(), lz4l);
       }
-      if (auto res_lz = lz_helper.find_best(i, 0x02fe); res_lz.len >= 3) {
+      if (auto res_lz = lz_helper.find(i, 0x02fe, 3); res_lz.len >= 3) {
         dp.update_lz(i, 0x0003, 0x0041, res_lz, Constant<2>(), lz);
         dp.update_lz(i, 0x0042, 0x00ff, res_lz, Constant<3>(), lzl);
       }
@@ -34,8 +34,7 @@ std::vector<uint8_t> rayearth_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer ret;
-  ret.write<d8, d16>(0, 0);
+  writer ret(3);
 
   size_t adr = 0;
   for (const auto cmd : dp.commands(0)) {
@@ -60,9 +59,9 @@ std::vector<uint8_t> rayearth_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  ret.out[0] = 0;
+  ret[0] = 0;
   write16(ret.out, 1, input.size());
-  assert(ret.size() == 3 + dp.total_cost());
+  assert(ret.size() == 3 + dp.optimal_cost());
   assert(adr == input.size());
 
   return ret.out;

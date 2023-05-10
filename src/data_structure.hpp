@@ -175,6 +175,10 @@ public:
     return n;
   }
 
+  std::span<const value_type> nodes() const {
+    return std::span(tree.data(), tree.size());
+  }
+
 private:
   size_t n;
   size_t n2;

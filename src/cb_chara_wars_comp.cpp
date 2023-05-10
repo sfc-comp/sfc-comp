@@ -8,26 +8,24 @@ namespace sfc_comp {
 std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x8000);
 
-  enum CompType {
-    uncomp, lz, lzl
-  };
+  enum tag { uncomp, lz, lzl };
+
+  // [TODO] Find a clever way.
+  static constexpr auto lz_min_lens = std::to_array<size_t>({
+    2, 3, 4, 5, 6, 7, 8, 16, 32, 64, 127
+  });
 
   lz_helper lz_helper(input);
   std::vector<encode::lz_data> lz_memo(input.size());
   for (size_t i = 0; i < input.size(); ++i) {
-    lz_memo[i] = lz_helper.find_best(i, 0x1000);
+    lz_memo[i] = lz_helper.find(i, 0x1000, lz_min_lens.front());
     lz_helper.add_element(i);
   }
 
-  // [TODO] Find a clever way.
-  static constexpr auto lz_min_len_table = std::to_array<size_t>({
-    2, 3, 4, 5, 6, 7, 8, 16, 32, 64, 127
-  });
-
   std::vector<uint8_t> best;
   for (size_t long_len = 0; long_len < 2; long_len++) {
-    for (const size_t lz_min_len : lz_min_len_table) {
-      sssp_solver<CompType> dp(input.size());
+    for (const size_t lz_min_len : lz_min_lens) {
+      sssp_solver<tag> dp(input.size());
 
       for (size_t i = 0; i < input.size(); ++i) {
         dp.update(i, 1, 1, Constant<9>(), uncomp);
@@ -41,9 +39,8 @@ std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t> input) {
       }
 
       using namespace data_type;
-      writer_b8_l ret;
+      writer_b8_l ret; ret.write<d8, d16>((long_len) << 7 | lz_min_len, 0);
       size_t adr = 0;
-      ret.write<d8, d16>((long_len) << 7 | lz_min_len, 0);
       for (const auto cmd : dp.commands()) {
         const size_t d = adr - cmd.lz_ofs;
         switch (cmd.type) {
@@ -55,11 +52,9 @@ std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t> input) {
         adr += cmd.len;
       }
       assert(adr == input.size());
-      assert(dp.total_cost() + 3 * 8 == ret.bit_length());
+      assert(dp.optimal_cost() + 3 * 8 == ret.bit_length());
       write16(ret.out, 1, input.size());
-      if (best.empty() || ret.size() < best.size()) {
-        best = std::move(ret.out);
-      }
+      if (best.empty() || ret.size() < best.size()) best = std::move(ret.out);
     }
   }
 

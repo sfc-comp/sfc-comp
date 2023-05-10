@@ -52,7 +52,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
       }
     }
 
-    const auto res_lz2 = lz_helper.find_best_closest(i, 0x8ff, 2);
+    const auto res_lz2 = lz_helper.find_closest(i, 0x8ff, 2, 2);
     if (res_lz2.len == 2) {
       if ((i - res_lz2.ofs) < 0x100) {
         dp.update_lz(i, 2, 2, res_lz2, Constant<11>(), {lz2, 0, 0});
@@ -62,7 +62,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     }
 
     dp.update_lz_matrix(i, ofs_tab, len_tab,
-      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       2
     );
@@ -128,7 +128,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   }
   ret.trim();
   assert(adr == input.size());
-  assert(dp.total_cost() + 16 == ret.bit_length());
+  assert(dp.optimal_cost() + 16 == ret.bit_length());
   write16(ret.out, 0, input.size());
   return ret.out;
 }

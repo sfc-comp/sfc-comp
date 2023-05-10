@@ -55,7 +55,7 @@ std::vector<uint8_t> asameshimae_nyanko_comp(std::span<const uint8_t> input) {
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       encode::lz::find_all(i, ofs_tab, lz_min_len, ret[i], [&](size_t max_ofs) {
-        return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
+        return lz_helper.find_closest(i, max_ofs, lz_min_len, lz_max_len);
       });
       lz_helper.add_element(i);
     }
@@ -72,7 +72,7 @@ std::vector<uint8_t> asameshimae_nyanko_comp(std::span<const uint8_t> input) {
     for (size_t lv = 0; lv <= lv_max; ++lv) {
       const auto cost = nyanko_cost(dp[lv][i].cost.value);
       if (cost == dpu.infinite_cost) continue;
-      dpu.update_lz(i, 0, 0, {ptrdiff_t(lv), 0}, Constant<0>(), {none, 0, 0}, cost);
+      dpu.update_lz(i, 0, 0, {lv, 0}, Constant<0>(), {none, 0, 0}, cost);
     }
     if (i == input.size()) break;
     u_helper.update(i, dpu[i].cost.value);
@@ -107,11 +107,11 @@ std::vector<uint8_t> asameshimae_nyanko_comp(std::span<const uint8_t> input) {
     }
   }
 
-  const auto best_cost = std::min(dpu.total_cost(), dpl.total_cost()).value;
+  const auto best_cost = std::min(dpu.optimal_cost(), dpl.optimal_cost()).value;
   const auto commands = [&] {
     using command_type = decltype(dpu)::vertex_type;
     std::vector<command_type> ret;
-    size_t curr = (dpu.total_cost().value == best_cost) ? 0 : 1;
+    size_t curr = (dpu.optimal_cost().value == best_cost) ? 0 : 1;
     ptrdiff_t adr = input.size();
     size_t lz_count = 0, lv = -1;
     while (adr > 0 || (adr == 0 && curr > 0)) {

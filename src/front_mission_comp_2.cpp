@@ -16,14 +16,11 @@ std::vector<uint8_t> front_mission_comp_2(std::span<const uint8_t> input) {
   encode::lz_data res_lz_curr = {}, res_lz_next = {};
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz1 = lz_helper.find_best(i, 1);
+    auto res_lz1 = lz_helper.find(i, 1, 3);
     dp.update(i, 3, 0x82, res_lz1.len, Constant<9>(), rle);
     res_lz_curr = res_lz_next;
-    if (i + 1 < input.size()) {
-      res_lz_next = lz_helper.find_best(i + 1, 0xfff);
-    }
-    dp.update_k<2>(
-      i, 4, 0x12, res_lz_curr.len, Constant<17>(), lz, res_lz_curr.ofs);
+    if (i + 1 < input.size()) res_lz_next = lz_helper.find(i + 1, 0xfff, 4);
+    dp.update_k<2>(i, 4, 0x12, res_lz_curr.len, Constant<17>(), lz, res_lz_curr.ofs);
     lz_helper.add_element(i);
   }
   using namespace data_type;
@@ -43,7 +40,7 @@ std::vector<uint8_t> front_mission_comp_2(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, num_codes);
   assert(adr == input.size());
-  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 2 * 8 == ret.bit_length());
   return ret.out;
 }
 

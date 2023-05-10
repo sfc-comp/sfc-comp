@@ -8,14 +8,14 @@ namespace sfc_comp {
 std::vector<uint8_t> pokemon_gold_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x8000);
 
-  enum CompType {
+  enum tag {
     uncomp, rle, rle16, rle0, lz, lzh, lzv, lzs, lzhs, lzvs,
     uncompl, rlel, rle16l, rle0l, lzl, lzhl, lzvl, lzsl, lzhsl, lzvsl
   };
 
   lz_helper_kirby lz_helper(input);
   uncomp_helper u_helper(input.size(), 1);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0, rlen16 = 0;
   for (size_t i = 0; i < input.size(); ++i) {
@@ -36,24 +36,24 @@ std::vector<uint8_t> pokemon_gold_comp(std::span<const uint8_t> input) {
     dp.update(i, 1, 0x20, rlen16, Constant<3>(), rle16);
     dp.update(i, 0x21, 0x400, rlen16, Constant<4>(), rle16l);
 
-    auto res_lz = lz_helper.find_best(i, 0x8000);
+    auto res_lz = lz_helper.find(i, 0x8000, 3);
     dp.update_lz(i, 1, 0x20, res_lz, Constant<3>(), lz);
     dp.update_lz(i, 0x21, 0x400, res_lz, Constant<4>(), lzl);
-    auto res_lzs = lz_helper.find_best(i, 0x80);
+    auto res_lzs = lz_helper.find(i, 0x80, 2);
     dp.update_lz(i, 1, 0x20, res_lzs, Constant<2>(), lzs);
     dp.update_lz(i, 0x21, 0x400, res_lzs, Constant<3>(), lzsl);
 
-    auto res_lzh = lz_helper.find_best_h(i, 0x8000);
+    auto res_lzh = lz_helper.find_h(i, 0x8000, 3);
     dp.update_lz(i, 1, 0x20, res_lzh, Constant<3>(), lzh);
     dp.update_lz(i, 0x21, 0x400, res_lzh, Constant<4>(), lzhl);
-    auto res_lzhs = lz_helper.find_best_h(i, 0x80);
+    auto res_lzhs = lz_helper.find_h(i, 0x80, 2);
     dp.update_lz(i, 1, 0x20, res_lzhs, Constant<2>(), lzhs);
     dp.update_lz(i, 0x21, 0x400, res_lzhs, Constant<3>(), lzhsl);
 
-    auto res_lzv = lz_helper.find_best_v(i, 0x8000);
+    auto res_lzv = lz_helper.find_v(i, 0x8000, 3);
     dp.update_lz(i, 1, 0x20, res_lzv, Constant<3>(), lzv);
     dp.update_lz(i, 0x21, 0x400, res_lzv, Constant<4>(), lzvl);
-    auto res_lzvs = lz_helper.find_best_v(i, 0x80);
+    auto res_lzvs = lz_helper.find_v(i, 0x80, 2);
     dp.update_lz(i, 1, 0x20, res_lzvs, Constant<2>(), lzvs);
     dp.update_lz(i, 0x21, 0x400, res_lzvs, Constant<3>(), lzvsl);
 
@@ -91,7 +91,7 @@ std::vector<uint8_t> pokemon_gold_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() == ret.size());
+  assert(dp.optimal_cost() == ret.size());
   assert(adr == input.size());
   ret.write<d8>(0xff);
 

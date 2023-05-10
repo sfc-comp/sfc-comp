@@ -10,7 +10,7 @@ std::vector<uint8_t> super_bomberman_5_comp(std::span<const uint8_t> in) {
   // but the decompressor only accepts inputs whose size is divisible by 2.
   check_size(in.size(), 2, 0x8100);
 
-  enum CompType { uncomp, inc, lz };
+  enum tag { uncomp, inc, lz };
 
   static constexpr auto dists = std::to_array<size_t>({1, 2, 4, 16, 32, 64});
   static constexpr size_t pad = 0x100;
@@ -18,7 +18,7 @@ std::vector<uint8_t> super_bomberman_5_comp(std::span<const uint8_t> in) {
   std::vector<uint8_t> input(in.size() + pad);
   std::copy(in.begin(), in.end(), input.begin() + pad);
 
-  sssp_solver<CompType> dp(input.size(), pad);
+  sssp_solver<tag> dp(input.size(), pad);
 
   size_t rleni = encode::run_length(input, pad - 1, 0, 1);
   std::array<size_t, dists.size()> res_lz = {};
@@ -30,7 +30,7 @@ std::vector<uint8_t> super_bomberman_5_comp(std::span<const uint8_t> in) {
 
     for (size_t k = 0; k < dists.size(); ++k) {
       res_lz[k] = encode::lz_dist(input, i, dists[k], res_lz[k]);
-      dp.update_lz(i, 1, 0x20, {ptrdiff_t(k + 2), res_lz[k]}, Constant<1>(), lz);
+      dp.update_lz(i, 1, 0x20, {k + 2, res_lz[k]}, Constant<1>(), lz);
     }
   }
 
@@ -46,7 +46,7 @@ std::vector<uint8_t> super_bomberman_5_comp(std::span<const uint8_t> in) {
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() == ret.size());
+  assert(dp.optimal_cost() == ret.size());
   assert(adr == input.size());
 
   return ret.out;

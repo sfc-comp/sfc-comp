@@ -9,15 +9,13 @@ namespace {
 
 std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool use_old_version) {
   check_size(in.size(), 0, 0x10000);
-  enum CompType {
-    uncomp, rle0, rle0l, rle, lz, common16
-  };
+  enum tag { uncomp, rle0, rle0l, rle, lz, common16 };
   static constexpr size_t pad = 0x21;
   std::vector<uint8_t> input(in.size() + pad);
-  std::copy(in.begin(), in.end(), input.begin() + pad);
+  std::ranges::copy(in, input.begin() + pad);
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size(), pad);
+  sssp_solver<tag> dp(input.size(), pad);
 
   for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
 
@@ -35,7 +33,7 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool us
         dp.update(i, 0x21, 0x101, rlen, Constant<2>(), rle0l);
       }
     }
-    auto res_lz = lz_helper.find_best(i, 0x400);
+    auto res_lz = lz_helper.find(i, 0x400, 2);
     dp.update_lz(i, 2, 0x21, res_lz, Constant<2>(), lz);
     if (input[i] == 0) {
       auto common16_len = encode::common_lo16(input, i, 0x42).len;
@@ -48,7 +46,7 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool us
   writer ret(2);
   size_t adr = pad;
   for (const auto cmd : dp.commands(pad)) {
-    size_t d = (cmd.lz_ofs - pad - 0x21) & 0x03ff;
+    const size_t d = (cmd.lz_ofs - pad - 0x21) & 0x03ff;
     switch (cmd.type) {
     case lz: ret.write<d16b>((cmd.len - 2) << 10 | d); break;
     case uncomp: ret.write<d8, d8n>(0x80 + cmd.len, {cmd.len, &input[adr]}); break;
@@ -63,7 +61,7 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool us
     adr += cmd.len;
   }
   write16(ret.out, 0, ret.size());
-  assert(dp.total_cost() + 2 == ret.size());
+  assert(dp.optimal_cost() + 2 == ret.size());
   assert(adr - pad == in.size());
   return ret.out;
 }

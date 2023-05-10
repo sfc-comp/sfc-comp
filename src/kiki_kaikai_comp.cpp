@@ -16,7 +16,7 @@ std::vector<uint8_t> kiki_kaikai_comp(std::span<const uint8_t> input) {
   write16(ret, 1, input.size());
   if (input.size() > 0 && input.size() + 3 <= ret.size()) {
     ret.resize(input.size() + 3);
-    std::copy(input.begin(), input.end(), ret.begin() + 3);
+    std::ranges::copy(input, ret.begin() + 3);
     ret[0] = 0x00;
   }
   return ret;
@@ -27,8 +27,8 @@ namespace {
 std::vector<uint8_t> wild_guns_comp_2(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
 
-  enum CompType { uncomp, rle, inc, dec };
-  sssp_solver<CompType> dp(input.size() / 2 * 2);
+  enum tag { uncomp, rle, inc, dec };
+  sssp_solver<tag> dp(input.size() / 2 * 2);
 
   encode::rle_data rlen16 = {0, 0};
   for (size_t i = 0; i + 1 < input.size(); i += 2) {
@@ -57,7 +57,7 @@ std::vector<uint8_t> wild_guns_comp_2(std::span<const uint8_t> input) {
   ret[0] = 0x02;
   write16(ret.out, 1, input.size());
   assert(adr == input.size() / 2 * 2);
-  assert(dp.total_cost() + 3 + (input.size() & 1) == ret.size());
+  assert(dp.optimal_cost() + 3 + (input.size() & 1) == ret.size());
   return ret.out;
 }
 

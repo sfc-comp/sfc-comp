@@ -29,10 +29,10 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
     dp.update_k<4>(i, 12, 72, Linear<8, 9>(), {uncompl, 0, 0});
-    const auto res_lz2 = lz_helper.find_best(i, 0x100);
+    const auto res_lz2 = lz_helper.find(i, 0x100, 2);
     dp.update_lz(i, 2, 2, res_lz2, Constant<11>(), {lz2, 0, 0});
     dp.update_lz_matrix(i, ofs_tab, len_tab,
-      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       1
     );
@@ -76,7 +76,7 @@ std::vector<uint8_t> rob_northen_comp_2_core(
     adr += cmd.len;
   }
   ret.write<bnh, d8, b1>({4, 0x0f}, 0, false);
-  assert(header_size * 8 + 2 + dp.total_cost() + 4 + 8 + 1 == ret.bit_length());
+  assert(header_size * 8 + 2 + dp.optimal_cost() + 4 + 8 + 1 == ret.bit_length());
   return ret.out;
 }
 

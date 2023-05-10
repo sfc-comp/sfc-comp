@@ -37,7 +37,7 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
       dp.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + uncomp_lens[k].bitlen);
     }
     dp.update_lz_matrix(i, lz_offsets, lz_lens,
-      [&](size_t oi) { return lz_helper.find_best(i, lz_offsets[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, lz_offsets[oi].max, lz_lens.front().min); },
       [&](size_t, size_t li) -> tag { return {lz, li}; },
       1 + ilog2(2 * i + 1)
     );
@@ -75,7 +75,7 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 2);
   assert(adr == input.size());
-  assert(dp.total_cost() + 32 == flags.bit_length() + 8 * ret.size());
+  assert(dp.optimal_cost() + 32 == flags.bit_length() + 8 * ret.size());
   ret.extend(flags);
 
   return ret.out;

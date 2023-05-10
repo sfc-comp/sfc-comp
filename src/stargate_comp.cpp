@@ -45,7 +45,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
     }
     if (const auto cost1 = dp1[i].cost; cost1 < dp1.infinite_cost) {
       dp0.update_lz_matrix(i, lz_offsets, lz_lens,
-        [&](size_t oi) { return lz_helper.find_best(i, lz_offsets[oi].max); },
+        [&](size_t oi) { return lz_helper.find(i, lz_offsets[oi].max, lz_lens.front().min); },
         [&](size_t, size_t li) -> tag { return {lz, li}; },
         ilog2(2 * i + 1), cost1
       );
@@ -56,9 +56,9 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   const auto [commands, min_cost] = [&]{
     using command_type = decltype(dp0)::vertex_type;
     std::vector<command_type> ret;
-    const auto min_cost = std::min(dp0.total_cost(), dp1.total_cost());
+    const auto min_cost = std::min(dp0.optimal_cost(), dp1.optimal_cost());
     ptrdiff_t adr = input.size();
-    size_t curr = (dp0.total_cost() == min_cost) ? 0 : 1;
+    size_t curr = (dp0.optimal_cost() == min_cost) ? 0 : 1;
     while (adr > 0 || (adr == 0 && curr > 0)) {
       command_type cmd;
       if (curr == 0) cmd = dp0[adr], curr = 1, assert(cmd.len > 0);

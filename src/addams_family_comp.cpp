@@ -8,15 +8,13 @@ namespace sfc_comp {
 std::vector<uint8_t> addams_family_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);
 
-  enum CompType {
-    uncomp, lzs, lzm, lzl
-  };
+  enum tag { uncomp, lzs, lzm, lzl };
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x400);
+    auto res_lz = lz_helper.find(i, 0x400, 2);
     dp.update_lz(i, 2, 2, res_lz, Constant<12>(), lzs);
     dp.update_lz(i, 3, 9, res_lz, Constant<15>(), lzm);
     dp.update_lz(i, 10, 264, res_lz, Constant<23>(), lzl);
@@ -46,7 +44,7 @@ std::vector<uint8_t> addams_family_comp(std::span<const uint8_t> input) {
   }
   ret.write<bnh>({13, 0x1800});
   assert(adr == input.size());
-  assert(dp.total_cost() + 13 == ret.bit_length());
+  assert(dp.optimal_cost() + 13 == ret.bit_length());
   return ret.out;
 }
 

@@ -43,8 +43,8 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
   std::vector<encode::lz_data> lzs_memo(input.size()), lz_memo(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
-    lzs_memo[i] = lz_helper.find_best(i, 0x20);
-    lz_memo[i] = lz_helper.find_best(i, 0x1000);
+    lzs_memo[i] = lz_helper.find(i, 0x20, 2);
+    lz_memo[i] = lz_helper.find(i, 0x1000, 3);
     lz_helper.add_element(i);
   }
 
@@ -85,7 +85,7 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
       if (rlen <= 1) continue;
       for (size_t l = 0; l < 2; ++l) {
         if (auto k = ind[l][input[i]]; k >= 0) {
-          dp.update_lz(i, 2, rle_max_lens[l], {k, rlen}, Constant<9>(), (l == 0) ? rle0 : rle1);
+          dp.update_lz(i, 2, rle_max_lens[l], {size_t(k), rlen}, Constant<9>(), (l == 0) ? rle0 : rle1);
         }
       }
     }
@@ -141,9 +141,9 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
       ret.write<b1, d8>(true, 0xbf);
       assert(adr == input.size());
       if (header_val >= 0x20) {
-        assert(dp.total_cost() + 1 + (1 + 1) * 8 == ret.bit_length());
+        assert(dp.optimal_cost() + 1 + (1 + 1) * 8 == ret.bit_length());
       } else {
-        assert(dp.total_cost() + 1 + (1 + pre.size() + 1) * 8 == ret.bit_length());
+        assert(dp.optimal_cost() + 1 + (1 + pre.size() + 1) * 8 == ret.bit_length());
       }
       return {ret.out, {}};
     }

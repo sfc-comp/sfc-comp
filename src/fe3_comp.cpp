@@ -8,14 +8,14 @@ namespace sfc_comp {
 std::vector<uint8_t> fe3_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x10000);
 
-  enum CompType {
+  enum tag {
     uncomp, rle, rle16, inc, lzl, lzs, lzcl, lzcs,
     uncompl, rlel, rle16l, incl, lzll, lzsl, lzcll, lzcsl
   };
 
   lz_helper_c lz_helper(input);
   uncomp_helper u_helper(input.size(), 1);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0, rlen16 = 0, rleni = 0;
   for (size_t i = 0; i < input.size(); ++i) {
@@ -35,16 +35,16 @@ std::vector<uint8_t> fe3_comp(std::span<const uint8_t> input) {
     dp.update(i, 1, 0x20, rleni, Constant<2>(), inc);
     dp.update(i, 0x21, 0x400, rleni, Constant<3>(), incl);
 
-    auto res_lzl = lz_helper.find_best(i, 0x10000);
+    auto res_lzl = lz_helper.find(i, 0x10000, 3);
     dp.update_lz(i, 1, 0x20, res_lzl, Constant<3>(), lzl);
     dp.update_lz(i, 0x21, 0x400, res_lzl, Constant<4>(), lzll);
-    auto res_lzcl = lz_helper.find_best_c(i, 0x10000);
+    auto res_lzcl = lz_helper.find_c(i, 0x10000, 3);
     dp.update_lz(i, 1, 0x20, res_lzcl, Constant<3>(), lzcl);
     dp.update_lz(i, 0x21, 0x400, res_lzcl, Constant<4>(), lzcll);
-    auto res_lz = lz_helper.find_best(i, 0xff);
+    auto res_lz = lz_helper.find(i, 0xff, 2);
     dp.update_lz(i, 1, 0x20, res_lz, Constant<2>(), lzs);
     dp.update_lz(i, 0x21, 0x400, res_lz, Constant<3>(), lzsl);
-    auto res_lzc = lz_helper.find_best_c(i, 0xff);
+    auto res_lzc = lz_helper.find_c(i, 0xff, 2);
     dp.update_lz(i, 1, 0x300, res_lzc, Constant<3>(), lzcsl);
     lz_helper.add_element(i);
   }
@@ -74,7 +74,7 @@ std::vector<uint8_t> fe3_comp(std::span<const uint8_t> input) {
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() == ret.size());
+  assert(dp.optimal_cost() == ret.size());
   assert(adr == input.size());
   ret.write<d8>(0xff);
 

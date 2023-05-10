@@ -18,13 +18,13 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> in) {
     dp.update(i, 1, 8, Linear<8, 5>(), uncomp);
     dp.update(i, 9, 0x108, Linear<8, 11>(), uncompl);
 
-    auto res_lz2 = lz_helper.find_best(i, 0x00ff);
+    auto res_lz2 = lz_helper.find(i, 0x00ff, 2);
     dp.update_lz(i, 2, 2, res_lz2, Constant<10>(), lz2);
-    auto res_lz3 = lz_helper.find_best(i, 0x01ff);
+    auto res_lz3 = lz_helper.find(i, 0x01ff, 3);
     dp.update_lz(i, 3, 3, res_lz3, Constant<12>(), lz3);
-    auto res_lz4 = lz_helper.find_best(i, 0x03ff);
+    auto res_lz4 = lz_helper.find(i, 0x03ff, 4);
     dp.update_lz(i, 4, 4, res_lz4, Constant<13>(), lz4);
-    auto res_lz5 = lz_helper.find_best(i, 0x0fff);
+    auto res_lz5 = lz_helper.find(i, 0x0fff, 5);
     dp.update_lz(i, 5, 0x104, res_lz5, Constant<23>(), lz5);
 
     lz_helper.add_element(i);
@@ -54,7 +54,7 @@ std::vector<uint8_t> doom_comp_04(std::span<const uint8_t> in) {
   std::reverse(ret.out.begin() + 4, ret.out.end());
   for (size_t i = 4; i < ret.size(); i += 2) std::swap(ret.out[i], ret.out[i + 1]);
   assert(adr == in.size());
-  assert(dp.total_cost() + 1 + 4 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 1 + 4 * 8 == ret.bit_length());
   return ret.out;
 }
 
@@ -74,12 +74,10 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> in) {
     rlen = encode::run_length(input, i, rlen);
     dp.update(i, 3, 0x21, rlen, Constant<2>(), rle);
 
-    auto res_lzs = lz_helper.find_best(i, 0x20);
+    auto res_lzs = lz_helper.find(i, 0x20, 1);
     dp.update_lz(i, 1, 1, res_lzs, Constant<1>(), lzs);
     dp.update_lz(i, 3, 0x12, curr_lz, Constant<2>(), lz);
-    if (i + 1 < input.size()) {
-      curr_lz = lz_helper.find_best(i + 1, 0x0800);
-    }
+    if (i + 1 < input.size()) curr_lz = lz_helper.find(i + 1, 0x0800, 3);
     lz_helper.add_element(i);
   }
 
@@ -109,7 +107,7 @@ std::vector<uint8_t> doom_comp_08(std::span<const uint8_t> in) {
   write16(ret.out, 0, in.size());
   ret.write<d8>(0x00);
   assert(adr == in.size());
-  assert(dp.total_cost() + 4 == ret.size());
+  assert(dp.optimal_cost() + 4 == ret.size());
   return ret.out;
 }
 
@@ -132,21 +130,20 @@ public:
 
     const auto [lcp, rank] = suffix_array<int16_t>(input).lcp_rank();
     this->rank = std::move(rank);
+    this->lcp = decltype(this->lcp)(lcp);
     seg = decltype(seg)(rank.size());
-    seg_lcp = decltype(seg_lcp)(lcp);
-
     for (size_t i = 0; i < so; ++i) seg.update(rank[i], i);
   }
 
 public:
-  encode::lz_data find_best(size_t pos, size_t block_size) const {
-    return encode::lz::find(pos, rank[pos], block_size, seg_lcp, seg);
+  encode::lz_data find(size_t pos, size_t max_dist, size_t min_len) const {
+    return encode::lz::find(pos, rank[pos], max_dist, min_len, lcp.nodes(), seg.nodes());
   }
 
 private:
   std::vector<index_type> rank;
   segment_tree<range_max<signed_index_type>> seg;
-  segment_tree<range_min<index_type>> seg_lcp;
+  segment_tree<range_min<index_type>> lcp;
 };
 
 } // namespace
@@ -178,11 +175,11 @@ std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
       rleni = encode::run_length(inp, i, rleni, 0xff);
       dp.update(i, 3, 0x22, rleni, Constant<2>(), inc);
 
-      auto res_lz = lz_help.find_best(i, 0x800);
+      auto res_lz = lz_help.find(i, 0x800, 3);
       dp.update_lz(i, 3, 0x12, res_lz, Constant<2>(), lz);
 
       if (second) {
-        auto res_lz2 = lz_helper_d.find_best(in_odd.size() + 1 + i, 0x0801);
+        auto res_lz2 = lz_helper_d.find(in_odd.size() + 1 + i, 0x0801, 3);
         dp.update_lz(i, 3, 0x12, res_lz2, Constant<2>(), lz2);
       }
 
@@ -227,7 +224,7 @@ std::vector<uint8_t> doom_comp_0c(std::span<const uint8_t> input) {
   }
   ret.write<d8>(0x00);
   write16(ret.out, 0, input.size());
-  assert(3 + dp_odd.total_cost() + dp_even.total_cost() + 1 == ret.size());
+  assert(3 + dp_odd.optimal_cost() + dp_even.optimal_cost() + 1 == ret.size());
   return ret.out;
 }
 

@@ -8,7 +8,7 @@ namespace sfc_comp {
 std::vector<uint8_t> burai_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);
 
-  enum CompType {
+  enum tag {
     uncomp,
     lzs1, lzs2, lzs3,
     lzl2, lzl3, lzl4, lzl
@@ -24,16 +24,16 @@ std::vector<uint8_t> burai_comp(std::span<const uint8_t> input) {
   });
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, [&](size_t) { return codewords[input[i]].bitlen; }, uncomp);
-    auto res_lz4 = lz_helper.find_best(i, 0x10);
-    auto res_lz8 = lz_helper.find_best(i, 0x100);
-
+    auto res_lz4 = lz_helper.find(i, 0x10, 1);
     dp.update_lz(i, 1, 1, res_lz4, Constant<6>(), lzs1);
     dp.update_lz(i, 2, 2, res_lz4, Constant<7>(), lzs2);
     dp.update_lz(i, 3, 3, res_lz4, Constant<8>(), lzs3);
+
+    auto res_lz8 = lz_helper.find(i, 0x100, 2);
     dp.update_lz(i, 2, 2, res_lz8, Constant<13>(), lzl2);
     dp.update_lz(i, 3, 3, res_lz8, Constant<14>(), lzl3);
     dp.update_lz(i, 4, 4, res_lz8, Constant<15>(), lzl4);
@@ -75,7 +75,7 @@ std::vector<uint8_t> burai_comp(std::span<const uint8_t> input) {
   }
   ret.write<bnh>({8, 0x7f});
   assert(adr == input.size());
-  assert(dp.total_cost() + 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 8 == ret.bit_length());
   return ret.out;
 }
 

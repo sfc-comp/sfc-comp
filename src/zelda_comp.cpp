@@ -37,7 +37,7 @@ std::vector<uint8_t> zelda_comp_core(std::span<const uint8_t> input, const bool 
     dp.update(i, 1, 0x20, rleni, Constant<2>(), inc);
     dp.update(i, 0x21, 0x400, rleni, Constant<3>(), incl);
 
-    auto res_lzl = lz_helper.find_best(i, 0x10000);
+    auto res_lzl = lz_helper.find(i, 0x10000, 3);
     dp.update_lz(i, 1, 0x20, res_lzl, Constant<3>(), lzl);
     dp.update_lz(i, 0x21, 0x400, res_lzl, Constant<4>(), lzll);
     lz_helper.add_element(i);
@@ -75,7 +75,7 @@ std::vector<uint8_t> zelda_comp_core(std::span<const uint8_t> input, const bool 
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() == ret.size());
+  assert(dp.optimal_cost() == ret.size());
   assert(adr == input.size());
   ret.write<d8>(0xff);
 

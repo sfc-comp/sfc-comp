@@ -32,7 +32,7 @@ struct pre_table {
 std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);
 
-  enum CompType {
+  enum tag {
     uncomp, uncomp1, uncomp2, rle,
     pre8_1, pre8_2, pre_rle8_1, pre_rle8_2,
     lzvs, lzs, lzm, lzl,
@@ -51,14 +51,14 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
   {
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
-      lzl_memo[i] = lz_helper.find_best(i, 0xffff);
+      lzl_memo[i] = lz_helper.find(i, 0xffff, 3);
       lz_helper.add_element(i);
       if (const size_t j = i + 0x0103; j < input.size()) {
-        lzm_memo[j] = lz_helper.find_best(j, 0x0103 + 0x0fff);
+        lzm_memo[j] = lz_helper.find(j, 0x0103 + 0x0fff, 3);
       }
       for (size_t l = 3; l <= 0x12; ++l) {
         if (const size_t j = i + l; j < input.size()) {
-          lz_memo[j][l - 3] = lz_helper.find_best(j, l + 0xff);
+          lz_memo[j][l - 3] = lz_helper.find(j, l + 0xff, l);
         }
       }
     }
@@ -71,7 +71,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
   for (size_t phase = 0; phase < phase_total; ++phase) {
     for (size_t i = 0; i < candidate.size(); ++i) pre16[candidate[i]] = i;
 
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<tag> dp(input.size());
 
     size_t rlen = 0;
     for (size_t i = 0; i < input.size(); ++i) {
@@ -110,7 +110,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
         }
         const int16_t ind = pre16[v16];
         if (ind == 0) dp.update(i, 2, 2, Constant<1>(), pre16_1);
-        else if (ind > 0) dp.update_lz(i, 2, 2, {ind, 2}, Constant<2>(), pre16s);
+        else if (ind > 0) dp.update_lz(i, 2, 2, {size_t(ind), 2}, Constant<2>(), pre16s);
       }
       for (size_t l = 3; l <= 0x12; ++l) {
         dp.update_lz(i, l, l, lz_memo[i][l - 3], Constant<4>(), lzs);
@@ -193,7 +193,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
         adr += cmd.len;
       }
       assert(adr == input.size());
-      assert(dp.total_cost() + 0x27 * 2 == ret.nibble_size());
+      assert(dp.optimal_cost() + 0x27 * 2 == ret.nibble_size());
       ret.write<d8>(0x00);
       for (size_t i = 0; i < 2; ++i) ret[i + 1] = pre.rle_b8[i];
       for (size_t i = 0; i < 2; ++i) ret[i + 3] = pre.b8[i];

@@ -51,7 +51,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       encode::lz::find_all(i, lz_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
-        return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
+        return lz_helper.find_closest(i, max_ofs, lz_min_len, lz_max_len);
       });
       lz_helper.add_element(i);
     }
@@ -86,7 +86,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
       uncomp_helper u_helper(size, 8);
 
       const auto shift_lz = [&](const encode::lz_data& p) -> encode::lz_data {
-        return {ptrdiff_t(p.ofs - begin), p.len};
+        return {p.ofs - begin, p.len}; // Note: can be negative
       };
 
       for (size_t i = 0; i <= size; ++i) {
@@ -113,7 +113,7 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
           0, cost1
         );
       }
-      if (dp1.total_cost() == dp1.infinite_cost) {
+      if (dp1.optimal_cost() == dp1.infinite_cost) {
         throw std::logic_error("Failed to compress. chunk_size may be too large.");
       }
 
@@ -275,8 +275,8 @@ std::vector<uint8_t> rob_northen_comp_1(std::span<const uint8_t> input) {
   write32b(ret.out, 8, ret.size() - 18);
   write16b(ret.out, 12, utility::crc16(input, 0, input.size()));
   write16b(ret.out, 14, utility::crc16(ret.out, 18, ret.size() - 18));
-  ret.out[0x10] = 0; // leeway
-  ret.out[0x11] = chunk;
+  ret[0x10] = 0; // leeway
+  ret[0x11] = chunk;
 
   return ret.out;
 }

@@ -188,7 +188,7 @@ std::vector<uint8_t> gun_hazard_comp_3(std::span<const uint8_t> input, const uin
     input, 0, [](std::span<const uint8_t>) {},
     0x0fff, 3, 0x12,
     3, true,
-    [&] (size_t i, size_t o, size_t l) {
+    [&](size_t i, size_t o, size_t l) {
       size_t d = (i - o);
       return (d & 0x0f00) << 4 | (l - 3) << 8 | (d & 0x00ff);
     }
@@ -201,18 +201,16 @@ std::vector<uint8_t> gun_hazard_comp_3(std::span<const uint8_t> input, const uin
 std::vector<uint8_t> gun_hazard_comp_4(std::span<const uint8_t> input, const uint8_t header_val) {
   check_size(input.size(), 1, 0x10000);
 
-  enum CompType {
-    uncomp, lzs, lzl, lzll
-  };
+  enum tag { uncomp, lzs, lzl, lzll };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lzs = lz_helper.find_best(i, 0xff);
+    auto res_lzs = lz_helper.find(i, 0xff, 3);
     dp.update_lz(i, 3, 6, res_lzs, Constant<12>(), lzs);
-    auto res_lzl = lz_helper.find_best(i, 0x1fff);
+    auto res_lzl = lz_helper.find(i, 0x1fff, 3);
     dp.update_lz(i, 3, 9, res_lzl, Constant<18>(), lzl);
     dp.update_lz(i, 1, 256, res_lzl, Constant<26>(), lzll);
     lz_helper.add_element(i);
@@ -234,7 +232,7 @@ std::vector<uint8_t> gun_hazard_comp_4(std::span<const uint8_t> input, const uin
     adr += cmd.len;
   }
   assert(adr == input.size());
-  assert(dp.total_cost() + 3 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 3 * 8 == ret.bit_length());
 
   ret[0] = header_val | 0x04;
   write16(ret.out, 1, input.size());

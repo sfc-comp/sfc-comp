@@ -14,9 +14,9 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lzs = lz_helper.find_best(i, 0x100);
+    auto res_lzs = lz_helper.find(i, 0x100, 2);
     dp.update_lz(i, 2, 5, res_lzs, Constant<12>(), lzs);
-    auto res_lzl = lz_helper.find_best(i, 0x2000);
+    auto res_lzl = lz_helper.find(i, 0x2000, 3);
     dp.update_lz(i, 3, 9, res_lzl, Constant<18>(), lzls);
     dp.update_lz(i, 10, 256, res_lzl, Constant<26>(), lzll);
     lz_helper.add_element(i);
@@ -51,7 +51,7 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   ret.write<bnh, d16, d8>({2, 1}, 0xf000, 0);
   ret.trim();
   assert(adr == input.size());
-  assert(dp.total_cost() + 2 + 3 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 2 + 3 * 8 == ret.bit_length());
   return ret.out;
 }
 

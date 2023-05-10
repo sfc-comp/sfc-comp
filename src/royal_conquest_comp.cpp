@@ -39,7 +39,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       encode::lz::find_all(i, lz_ofs_tab, lz_min_len, ret[i], [&](size_t max_ofs) {
-        return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
+        return lz_helper.find_closest(i, max_ofs, lz_min_len, lz_max_len);
       });
       lz_helper.add_element(i);
     }

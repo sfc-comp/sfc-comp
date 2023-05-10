@@ -49,13 +49,13 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
 
     const auto cost1 = dp1[i].cost;
     if (cost1 < dp1.infinite_cost) {
-      auto res_lzs = lz_helper.find_best(i, 0xff);
-      auto res_l3 = lz_helper.find_best(i, 0x3fff);
+      auto res_lzs = lz_helper.find(i, 0xff, 2);
+      auto res_l3 = lz_helper.find(i, 0x3fff, 3);
       dp0.update_lz(i, 2, 2, res_lzs, Constant<10>(), {lz2, 0, 0}, cost1);
       dp0.update_lz(i, 3, 3, res_lzs, Constant<11>(), {lz3, 0, 0}, cost1);
       dp0.update_lz(i, 3, 3, res_l3,  Constant<17>(), {lz3, 1, 0}, cost1);
       dp0.update_lz_matrix(i, ofs_tab, len_tab,
-        [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+        [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
         [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
         0, cost1
       );
@@ -63,7 +63,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
     lz_helper.add_element(i);
   }
 
-  if (dp1.total_cost() == dp1.infinite_cost) {
+  if (dp1.optimal_cost() == dp1.infinite_cost) {
     // For example, this happens when the input is a de Bruijn sequence.
     throw std::runtime_error("This algorithm cannot compress the given data.");
   }
@@ -81,7 +81,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
       commands.emplace_back(cmd);
     }
     assert(adr == 0 && curr == 0);
-    std::reverse(commands.begin(), commands.end());
+    std::ranges::reverse(commands);
     return commands;
   };
 
@@ -125,7 +125,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
     adr += cmd.len;
   }
   assert(adr == input.size());
-  assert(dp1.total_cost() + 33 == ret.bit_length());
+  assert(dp1.optimal_cost() + 33 == ret.bit_length());
   write32(ret.out, 0, input.size());
 
   const size_t s = std::min<size_t>(8, ret.size());
@@ -134,7 +134,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
   v >>= 1;
   for (size_t i = 4; i < s; ++i) ret.out[i] = v & 0xff, v >>= 8;
 
-  std::reverse(ret.out.begin(), ret.out.end());
+  std::ranges::reverse(ret.out);
   return ret.out;
 }
 

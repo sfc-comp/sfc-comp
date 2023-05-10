@@ -7,21 +7,20 @@ namespace sfc_comp {
 
 std::vector<uint8_t> sd_gundam_gnext_comp(std::span<const uint8_t> in) {
   check_size(in.size(), 1, 0x8000);
-  enum CompType {
-    uncomp, lz
-  };
+
+  enum tag { uncomp, lz };
+
   const size_t pad = 0x22;
   std::vector<uint8_t> input(in.size() + pad);
-  std::copy(in.begin(), in.end(), input.begin() + pad);
+  std::ranges::copy(in, input.begin() + pad);
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size(), pad);
+  sssp_solver<tag> dp(input.size(), pad);
 
   for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
-
   for (size_t i = pad; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x1000);
+    auto res_lz = lz_helper.find(i, 0x1000, 3);
     dp.update_k<2>(i, 3, 0x21, res_lz.len, Constant<17>(), lz, res_lz.ofs);
     lz_helper.add_element(i);
   }
@@ -41,7 +40,7 @@ std::vector<uint8_t> sd_gundam_gnext_comp(std::span<const uint8_t> in) {
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 2 * 8 == ret.bit_length());
   assert(adr - pad == in.size());
 
   if (ret.size() < in.size() + 2) {
@@ -49,7 +48,7 @@ std::vector<uint8_t> sd_gundam_gnext_comp(std::span<const uint8_t> in) {
   } else {
     write16(ret.out, 0, (in.size() - 1) | 0x0000);
     ret.out.resize(in.size() + 2);
-    std::copy(in.begin(), in.end(), ret.out.begin() + 2);
+    std::ranges::copy(in, ret.out.begin() + 2);
   }
   return ret.out;
 }

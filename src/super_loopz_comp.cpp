@@ -41,7 +41,7 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
     const auto u2 = u_helper.find(i + 1, 0x0f, 0x0f + 0x3fff);
     dp.update_u(i + 1, u2.len, {uncomp, 0, 2}, u2.cost + 23);
     dp.update_lz_matrix(i, ofs_tab, len_tab,
-      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       1
     );
@@ -90,7 +90,7 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   write32b(ret.out, 6, input.size());
   write32b(ret.out, 10, ret.size() - 14);
   assert(adr == input.size());
-  assert(dp.total_cost() + (input.size() > 0 ? 1 : 0) + (14 + 2) * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + (input.size() > 0 ? 1 : 0) + (14 + 2) * 8 == ret.bit_length());
 
   return ret.out;
 }

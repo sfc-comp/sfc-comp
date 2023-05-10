@@ -33,7 +33,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
     dp.update_lz_matrix(i, ofs_tab, len_tab,
-      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       1
     );
@@ -71,7 +71,7 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   ret.write<b1>(true);
   ret.write<bnh>({15, 1 << 14});
   assert(adr == input.size());
-  assert(dp.total_cost() + 1 + 15 + (mixed ? 0 : 2) * 8 == 8 * raw.size() + ret.bit_length());
+  assert(dp.optimal_cost() + 1 + 15 + (mixed ? 0 : 2) * 8 == 8 * raw.size() + ret.bit_length());
 
   if (!mixed) {
     if (ret.size() >= 0x10000) throw std::runtime_error("This algorithm cannot compress the given data.");

@@ -7,9 +7,7 @@ namespace sfc_comp {
 
 std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x10000);
-  enum CompType {
-    rle, uncomp, lz, lzl, pre16
-  };
+  enum tag { rle, uncomp, lz, lzl, pre16 };
 
   static constexpr auto num_candidates = std::to_array<size_t>({
     2048, 512, 256, 128, 96, 80, 72, 68, 64
@@ -22,14 +20,14 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
   lz_helper lz_helper(input);
   std::vector<encode::lz_data> lz_memo(input.size());
   for (size_t i = 0; i < input.size(); ++i) {
-    lz_memo[i] = lz_helper.find_best(i, 0xffff);
+    lz_memo[i] = lz_helper.find(i, 0xffff, 3);
     lz_helper.add_element(i);
   }
 
   for (size_t phase = 0; phase < phase_total; ++phase) {
     for (size_t i = 0; i < candidate.size(); ++i) pre[candidate[i]] = i;
 
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<tag> dp(input.size());
 
     size_t rlen = 0;
     for (size_t i = 0; i < input.size(); ++i) {
@@ -41,7 +39,7 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
       dp.update_lz(i, 0x100, 0x100, res_lz, Constant<3>(), lzl);
       if (i + 1 < input.size()) {
         int16_t ind = pre[read16(input, i)];
-        if (ind >= 0) dp.update_lz(i, 2, 2, {ind, 2}, Constant<1>(), pre16);
+        if (ind >= 0) dp.update_lz(i, 2, 2, {size_t(ind), 2}, Constant<1>(), pre16);
       }
     }
     if (phase + 1 < phase_total) {
@@ -73,7 +71,7 @@ std::vector<uint8_t> super_donkey_kong_comp(std::span<const uint8_t> input) {
         adr += cmd.len;
       }
       for (size_t i = 0; i < 64; ++i) write16(ret.out, 2 * i, candidate[i]);
-      assert(dp.total_cost() + 0x80 == ret.size());
+      assert(dp.optimal_cost() + 0x80 == ret.size());
       assert(adr == input.size());
       ret.write<d8>(0);
       return ret.out;

@@ -15,9 +15,9 @@ std::vector<uint8_t> sansara_naga2_comp(std::span<const uint8_t> input) {
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 0x3f, Linear<1, 1>(), uncomp);
-    auto res_lzs = lz_helper.find_best(i, 0x10);
+    auto res_lzs = lz_helper.find(i, 0x10, 2);
     dp.update_lz(i, 2, 5, res_lzs, Constant<1>(), lzs);
-    auto res_lzl = lz_helper.find_best(i, 0x400);
+    auto res_lzl = lz_helper.find(i, 0x400, 2);
     dp.update_lz(i, 1, 0x20, res_lzl, Constant<2>(), lzl);
     dp.update_lz(i, 1, 0x4000, res_lzl, Constant<4>(), lzll);
     lz_helper.add_element(i);
@@ -41,7 +41,7 @@ std::vector<uint8_t> sansara_naga2_comp(std::span<const uint8_t> input) {
   ret[1] = '2';
   write16(ret.out, 2, input.size());
   write16(ret.out, 4, ret.out.size() - 6);
-  assert(dp.total_cost() + 6 == ret.size());
+  assert(dp.optimal_cost() + 6 == ret.size());
   assert(adr == input.size());
   return ret.out;
 }

@@ -107,7 +107,7 @@ std::vector<uint8_t> doraemon_comp_core(
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       encode::lz::find_all(i, lz_ofs, lz_min_len, ret[i], [&](size_t max_ofs) {
-        return lz_helper.find_best_closest(i, max_ofs, lz_max_len);
+        return lz_helper.find_closest(i, max_ofs, lz_min_len, lz_max_len);
       });
       lz_helper.add_element(i);
     }
@@ -140,7 +140,7 @@ std::vector<uint8_t> doraemon_comp_core(
       sssp_solver<tag> dp(size);
 
       const auto shift_lz = [&](const encode::lz_data& p) -> encode::lz_data {
-        return {ptrdiff_t(p.ofs - begin), p.len};
+        return {p.ofs - begin, p.len}; // Note: can be negative
       };
 
       for (size_t i = 0; i < size; ++i) {

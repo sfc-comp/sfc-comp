@@ -14,7 +14,7 @@ std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x1000);
+    auto res_lz = lz_helper.find(i, 0x1000, 2);
     dp.update_lz(i, 2, 2, res_lz, Constant<14>(), lz2);
     dp.update_lz(i, 3, 10, res_lz, Constant<18>(), lzs);
     dp.update_lz(i, 11, 18, res_lz, Constant<19>(), lzm);
@@ -57,7 +57,7 @@ std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
     adr += cmd.len;
   }
   assert(adr == input.size());
-  assert(dp.total_cost() + 8 * 8 == ret.size() * 8 + flags.bit_length());
+  assert(dp.optimal_cost() + 8 * 8 == ret.size() * 8 + flags.bit_length());
   write32b(ret.out, 0, input.size());
   write32b(ret.out, 4, ret.size() - 8);
   ret.extend(flags);

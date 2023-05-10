@@ -7,7 +7,7 @@ namespace sfc_comp {
 
 std::vector<uint8_t> madara2_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x10000);
-  enum CompType {
+  enum tag {
     uncomp,
     rle0, rle0l,
     rle1,
@@ -19,7 +19,7 @@ std::vector<uint8_t> madara2_comp(std::span<const uint8_t> input) {
   };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0;
   for (size_t i = 0; i < input.size(); ++i) {
@@ -58,7 +58,7 @@ std::vector<uint8_t> madara2_comp(std::span<const uint8_t> input) {
       dp.update_k<2>(i, 2, 0x20, common_lo8_res.len,
         LinearQ<1, 2, 2>(), common_lo8_f);
     }
-    auto res_lz = lz_helper.find_best_closest(i, 0x400, 0x11);
+    auto res_lz = lz_helper.find_closest(i, 0x400, 2, 0x11); // [TODO] no need to be closest.
     dp.update_lz(i, 2, 0x11, res_lz, Constant<2>(), lz);
     lz_helper.add_element(i);
   }
@@ -111,7 +111,7 @@ std::vector<uint8_t> madara2_comp(std::span<const uint8_t> input) {
     adr += cmd.len;
   }
   write16(ret.out, 0, ret.size());
-  assert(dp.total_cost() + 2 == ret.size());
+  assert(dp.optimal_cost() + 2 == ret.size());
   assert(adr == input.size());
   return ret.out;
 }

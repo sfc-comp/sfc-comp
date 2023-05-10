@@ -8,13 +8,11 @@ namespace sfc_comp {
 std::vector<uint8_t> popful_mail_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x10000);
 
-  enum CompType {
-    uncomp, uncompl, rle, rlel, lz
-  };
+  enum tag { uncomp, uncompl, rle, rlel, lz };
 
   lz_helper lz_helper(input);
   uncomp_helper u_helper(input.size(), 1);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0;
   for (size_t i = 0; i < input.size(); ++i) {
@@ -26,7 +24,7 @@ std::vector<uint8_t> popful_mail_comp(std::span<const uint8_t> input) {
     rlen = encode::run_length(input, i, rlen);
     dp.update(i, 4, 0x13, rlen, Constant<2>(), rle);
     dp.update(i, 4, 0x1003, rlen, Constant<3>(), rlel);
-    auto res_lz = lz_helper.find_best(i, 0x1fff);
+    auto res_lz = lz_helper.find(i, 0x1fff, 4);
     for (size_t j = 0; j < 31; ++j) {
       if (j > res_lz.len) break;
       size_t beg = (j < 4) ? j + 31 : j;
@@ -60,7 +58,7 @@ std::vector<uint8_t> popful_mail_comp(std::span<const uint8_t> input) {
   }
   ret.write<d8>(0);
   write16(ret.out, 0, ret.out.size() - 2);
-  assert(dp.total_cost() + 3 == ret.size());
+  assert(dp.optimal_cost() + 3 == ret.size());
   assert(adr == input.size());
   return ret.out;
 }

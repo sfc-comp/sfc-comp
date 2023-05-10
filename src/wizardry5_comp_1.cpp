@@ -19,7 +19,7 @@ std::vector<uint8_t> wizardry5_comp_1(std::span<const uint8_t> input) {
   for (size_t i = 0; i < input.size(); ++i) {
     if (input[i] == 0) dp.update(i, 1, 1, Constant<5>(), uncomp0);
     else dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x200);
+    auto res_lz = lz_helper.find(i, 0x200, lz_lens.front());
     dp.update_lz_table(i, lz_lens, res_lz, Constant<14>(), lz);
     lz_helper.add_element(i);
   }
@@ -38,7 +38,7 @@ std::vector<uint8_t> wizardry5_comp_1(std::span<const uint8_t> input) {
     adr += cmd.len;
   }
   ret.write<bnh>({9, 0});
-  assert(dp.total_cost() + 9 == ret.bit_length());
+  assert(dp.optimal_cost() + 9 == ret.bit_length());
   assert(adr == input.size());
   return ret.out;
 }

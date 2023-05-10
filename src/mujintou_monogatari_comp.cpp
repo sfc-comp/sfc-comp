@@ -8,14 +8,14 @@ namespace sfc_comp {
 std::vector<uint8_t> mujintou_monogatari_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0xffff);
 
-  enum CompType { uncomp, lz, lzl };
+  enum tag { uncomp, lz, lzl };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x0fff);
+    auto res_lz = lz_helper.find(i, 0x0fff, 3);
     dp.update_lz(i, 3, 3 + 0x0e, res_lz, Constant<17>(), lz);
     dp.update_lz(i, 3 + 0x0f, 3 + 0x0f + 0xff, res_lz, Constant<25>(), lzl);
     lz_helper.add_element(i);
@@ -35,7 +35,7 @@ std::vector<uint8_t> mujintou_monogatari_comp(std::span<const uint8_t> input) {
     adr += cmd.len;
   }
   assert(adr == input.size());
-  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 2 * 8 == ret.bit_length());
   write16(ret.out, 0, input.size());
   return ret.out;
 }

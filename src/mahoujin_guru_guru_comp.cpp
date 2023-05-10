@@ -63,7 +63,7 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     adr += cmd.len;
   }
   assert(adr == input.size());
-  assert(dp.total_cost() + 10 * 8 == raw.size() * 8 + ret.bit_length());
+  assert(dp.optimal_cost() + 10 * 8 == raw.size() * 8 + ret.bit_length());
 
   write32b(ret.out, 0, 0x4e4d5030); // NMP0
   write16(ret.out, 4, raw.size());

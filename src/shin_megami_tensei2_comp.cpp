@@ -6,12 +6,10 @@
 namespace sfc_comp {
 
 std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t> input) {
-  enum CompType {
-    uncomp, rle0, rle0l, rle, lz, common16
-  };
+  enum tag { uncomp, rle0, rle0l, rle, lz, common16 };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   size_t rlen = 0;
   for (size_t i = 0; i < input.size(); ++i) {
@@ -24,7 +22,7 @@ std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t> input) {
       dp.update(i, 2, 0x21, rlen, Constant<2>(), rle);
     }
     // should be called after run length functions.
-    auto res_lz = lz_helper.find_best_closest(i, 0x400, 0x21);
+    auto res_lz = lz_helper.find_closest(i, 0x400, 2, 0x21); // [TODO] no need to be closest.
     dp.update_lz(i, 2, 0x21, res_lz, Constant<2>(), lz);
     if (input[i] == 0) {
       auto common16_len = encode::common_lo16(input, i, 0x40).len;
@@ -32,6 +30,7 @@ std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t> input) {
     }
     lz_helper.add_element(i);
   }
+
   using namespace data_type;
   writer ret;
   size_t adr = 0;
@@ -51,7 +50,7 @@ std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t> input) {
     adr += cmd.len;
   }
   ret.write<d16b>(0x7fff);
-  assert(dp.total_cost() + 2 == ret.size());
+  assert(dp.optimal_cost() + 2 == ret.size());
   assert(adr == input.size());
   return ret.out;
 }

@@ -30,7 +30,7 @@ std::vector<uint8_t> derby_stallion_2_comp(std::span<const uint8_t> input) {
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
     dp.update_lz_matrix(i, ofs_tab, len_tab,
-      [&](size_t oi) { return lz_helper.find_best(i, ofs_tab[oi].max); },
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
       [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
       1
     );
@@ -63,7 +63,7 @@ std::vector<uint8_t> derby_stallion_2_comp(std::span<const uint8_t> input) {
   flags.write<b1, b1>(false, false);
   ret.write<d8>(0);
   assert(adr == input.size());
-  assert(dp.total_cost() + 2 * 8 + 10 == flags.bit_length() + ret.size() * 8);
+  assert(dp.optimal_cost() + 2 * 8 + 10 == flags.bit_length() + ret.size() * 8);
   write16(ret.out, 0, ret.size() - 2);
   ret.extend(flags);
   return ret.out;

@@ -26,7 +26,7 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
 
   size_t longest_lz_len = 0, longest_lz_dist = 0;
   for (size_t i = 0; i < input.size(); ++i) {
-    const auto res_lz = lz_helper.find_best(i, max_dist);
+    const auto res_lz = lz_helper.find(i, max_dist, 1);
     lz_memo[i] = res_lz;
     if (res_lz.len > 0) {
       longest_lz_dist = std::max(longest_lz_dist, i - res_lz.ofs);
@@ -71,10 +71,10 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
       }
       size_t best_len = 0;
       if (dists.size() > 0) {
-        const ptrdiff_t best_k = std::max_element(res_lz.begin(), res_lz.end()) - res_lz.begin();
+        const size_t best_k = std::max_element(res_lz.begin(), res_lz.end()) - res_lz.begin();
         best_len = res_lz[best_k];
-        dp.update_lz_table(i, lens, {ptrdiff_t(best_k), best_len}, Constant<1>(), lzpp);
-        dp.update_lz(i, 2, max_len, {ptrdiff_t(best_k), best_len}, Constant<2>(), lzpo);
+        dp.update_lz_table(i, lens, {best_k, best_len}, Constant<1>(), lzpp);
+        dp.update_lz(i, 2, max_len, {best_k, best_len}, Constant<2>(), lzpo);
       }
       dp.update_lz_table(i, lens, lz_memo[i], Constant<2>(), lzpl);
       dp.update_lz(i, 3, max_len, lz_memo[i], Constant<3>(), lz);
@@ -125,7 +125,7 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
       for (size_t i = 0; i < dists.size(); ++i) ret[0x04 + i] = dists[i] - 1;
       for (size_t i = 0; i < lens.size(); ++i) ret[0x12 + i] = lens[i] & 0xff;
       assert(adr == input.size());
-      assert(dp.total_cost() + 0x21 == ret.size());
+      assert(dp.optimal_cost() + 0x21 == ret.size());
       return ret.out;
     }
   }

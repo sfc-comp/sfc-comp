@@ -13,7 +13,7 @@ std::vector<uint8_t> action_pachio_comp_core(
     },
     0x1000, 3, 0x12,
     4, true,
-    [&] (size_t, size_t o, size_t l) {
+    [&](size_t, size_t o, size_t l) {
       size_t d = (o - 0x12 - pad) & 0x0fff;
       return (d & 0x00ff) | (l - 3) << 8 | (d & 0x0f00) << 4;
     }
@@ -29,7 +29,7 @@ std::vector<uint8_t> action_pachio_comp_core(
     } else {
       if (ret.size() >= input.size()) {
         ret.resize(input.size() + 4);
-        std::copy(input.begin(), input.end(), ret.begin() + 4);
+        std::ranges::copy(input, ret.begin() + 4);
       }
     }
     write16(ret, 2, ret.size() - 4);

@@ -24,8 +24,8 @@ std::vector<uint8_t> chrono_trigger_comp_fast_core(std::span<const uint8_t> inpu
 
     for (size_t i = 0; i < input.size(); ++i) {
       dp.update(i, 1, 1, Constant<9>(), uncomp);
-      auto res_lz = lz_helper.find_best(i, lz_max_ofs);
-      dp.update_lz(i, 3, lz_max_len, res_lz, Constant<17>(), lz);
+      auto res_lz = lz_helper.find(i, lz_max_ofs, lz_min_len);
+      dp.update_lz(i, lz_min_len, lz_max_len, res_lz, Constant<17>(), lz);
       lz_helper.add_element(i);
     }
 
@@ -41,7 +41,7 @@ std::vector<uint8_t> chrono_trigger_comp_fast_core(std::span<const uint8_t> inpu
       adr += cmd.len;
     }
     assert(adr == input.size());
-    assert(dp.total_cost() + 2 * 8 == ret.bit_length());
+    assert(dp.optimal_cost() + 2 * 8 == ret.bit_length());
 
     const size_t method_bit = (len_bits == 4) ? 0x00 : 0x40;
     if (ret.bit == 0) {
@@ -84,7 +84,7 @@ std::vector<uint8_t> chrono_trigger_comp_core(
     for (size_t b = 0; b < 8; ++b) dp[b] = sssp_solver<tag>(input.size(), b == 0 ? 0 : -1);
 
     for (size_t i = 0; i < input.size(); ++i) {
-      const auto res_lz = lz_helper.find_best(i, lz_max_ofs);
+      const auto res_lz = lz_helper.find(i, lz_max_ofs, lz_min_len);
       const auto update = [&](size_t b, size_t from, auto cost) {
         dp[b].update(i, 1, 1, Constant<1>(), {uncomp, from, 0}, cost);
         dp[b].update_lz(i, lz_min_len, lz_max_len, res_lz, Constant<2>(), {lz, from, 0}, cost);
@@ -174,7 +174,7 @@ std::vector<uint8_t> chrono_trigger_comp_core(
     write16(ret.out, 0, offset);
     ret.write<d8>(method_bit);
     assert(adr == input.size());
-    assert(dp[0].total_cost() + 3 == ret.size());
+    assert(dp[0].optimal_cost() + 3 == ret.size());
 
     if (best.empty() || ret.size() < best.size()) best = std::move(ret.out);
   }

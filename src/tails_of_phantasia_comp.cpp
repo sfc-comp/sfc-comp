@@ -8,23 +8,21 @@ namespace sfc_comp {
 std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);
 
-  enum CompType {
-    uncomp, rle, rlel, lz
-  };
+  enum tag { uncomp, rle, rlel, lz };
 
   std::vector<uint8_t> best;
   for (size_t comp_type = 0x81; comp_type <= 0x83; comp_type += 2) {
     lz_helper lz_helper(input);
-    sssp_solver<CompType> dp(input.size());
+    sssp_solver<tag> dp(input.size());
 
     size_t rlen = 0;
     for (size_t i = 0; i < input.size(); ++i) {
       dp.update(i, 1, 1, Constant<9>(), uncomp);
       if (comp_type == 0x81) {
-        auto res_lz = lz_helper.find_best(i, 0x0fff);
+        auto res_lz = lz_helper.find(i, 0x0fff, 3);
         dp.update_lz(i, 3, 0x12, res_lz, Constant<17>(), lz);
       } else {
-        auto res_lz = lz_helper.find_best(i, 0x0fff);
+        auto res_lz = lz_helper.find(i, 0x0fff, 3);
         dp.update_lz(i, 3, 0x11, res_lz, Constant<17>(), lz);
         rlen = encode::run_length(input, i, rlen);
         dp.update(i, 4, 0x12, rlen, Constant<17>(), rle);
@@ -51,7 +49,7 @@ std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t> input) {
     write32(ret.out, 1, ret.out.size() - 9);
     write32(ret.out, 5, input.size());
     assert(adr == input.size());
-    assert(dp.total_cost() + 9 * 8 == ret.bit_length());
+    assert(dp.optimal_cost() + 9 * 8 == ret.bit_length());
     if (best.size() == 0 || ret.out.size() < best.size()) {
       best = std::move(ret.out);
     }
@@ -61,7 +59,7 @@ std::vector<uint8_t> tales_of_phantasia_comp(std::span<const uint8_t> input) {
     best[0] = 0x80;
     write32(best, 1, input.size());
     write32(best, 5, input.size());
-    std::copy(input.begin(), input.end(), best.begin() + 9);
+    std::ranges::copy(input, best.begin() + 9);
   }
   return best;
 }

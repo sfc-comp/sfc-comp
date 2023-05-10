@@ -8,12 +8,10 @@ namespace sfc_comp {
 std::vector<uint8_t> estpolis_biography_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
 
-  enum CompType {
-    uncomp0, uncomp1, lzs, lzl
-  };
+  enum tag { uncomp0, uncomp1, lzs, lzl };
 
   lz_helper lz_helper(input);
-  sssp_solver<CompType> dp(input.size());
+  sssp_solver<tag> dp(input.size());
 
   for (size_t i = 0; i < input.size(); ++i) {
     if (input[i] & 0x80) {
@@ -21,9 +19,9 @@ std::vector<uint8_t> estpolis_biography_comp(std::span<const uint8_t> input) {
     } else {
       dp.update(i, 1, 1, Constant<8>(), uncomp0);
     }
-    auto res_lzs = lz_helper.find_best(i, 0x800);
+    auto res_lzs = lz_helper.find(i, 0x800, 3);
     dp.update_lz(i, 3, 0x11, res_lzs, Constant<17>(), lzs);
-    auto res_lzl = lz_helper.find_best(i, 0x2000);
+    auto res_lzl = lz_helper.find(i, 0x2000, 3);
     dp.update_lz(i, 3, 0x42, res_lzl, Constant<25>(), lzl);
     lz_helper.add_element(i);
   }
@@ -44,7 +42,7 @@ std::vector<uint8_t> estpolis_biography_comp(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, input.size());
   assert(adr == input.size());
-  assert(dp.total_cost() + 2 * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + 2 * 8 == ret.bit_length());
   return ret.out;
 }
 

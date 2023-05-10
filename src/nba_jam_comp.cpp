@@ -52,10 +52,10 @@ std::vector<uint8_t> nba_jam_comp(std::span<const uint8_t> in) {
   std::array<std::array<size_t, (lz3_max_len - lz3_min_len)>, ofs_tab.size()> res_lz_d = {};
 
   for (size_t i = 0; i < input.size(); ++i) {
-    const auto cost0 = dp0[i].cost;
-    u_helper.update(i, cost0);
-
-    dp1.update(i, 0, 0, Constant<1>(), {none, 0, 0}, cost0);
+    if (const auto cost0 = dp0[i].cost; cost0 < dp0.infinite_cost) {
+      u_helper.update(i, cost0);
+      dp1.update(i, 0, 0, Constant<1>(), {none, 0, 0}, cost0);
+    }
     for (size_t k = 0; k < ulen_tab.size(); ++k) {
       const auto u = u_helper.find(i + 1, ulen_tab[k].min, ulen_tab[k].max);
       if (u.len == u_helper.nlen) continue;
@@ -102,8 +102,8 @@ std::vector<uint8_t> nba_jam_comp(std::span<const uint8_t> in) {
     using command_type = decltype(dp0)::vertex_type;
     std::vector<command_type> ret;
     size_t adr = input.size();
-    const auto min_cost = std::min(dp0.total_cost(), dp1.total_cost());
-    size_t curr = (dp0.total_cost() == min_cost) ? 0 : 1;
+    const auto min_cost = std::min(dp0.optimal_cost(), dp1.optimal_cost());
+    size_t curr = (dp0.optimal_cost() == min_cost) ? 0 : 1;
     while (adr > 0) {
       command_type cmd;
       if (curr == 0) cmd = dp0[adr], curr = 1, assert(cmd.len > 0);

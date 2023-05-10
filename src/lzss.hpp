@@ -30,7 +30,7 @@ std::vector<uint8_t> lzss(
   for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
   for (size_t i = pad; i < input.size(); ++i) {
     dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, lz_max_ofs);
+    auto res_lz = lz_helper.find(i, lz_max_ofs, lz_min_len);
     dp.update_lz(i, lz_min_len, lz_max_len, res_lz, Constant<17>(), lz);
     lz_helper.add_element(i);
   }
@@ -47,7 +47,7 @@ std::vector<uint8_t> lzss(
     }
     adr += cmd.len;
   }
-  assert(dp.total_cost() + header_size * 8 == ret.bit_length());
+  assert(dp.optimal_cost() + header_size * 8 == ret.bit_length());
   assert(adr - pad == in.size());
   return ret.out;
 }

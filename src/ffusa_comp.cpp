@@ -16,7 +16,7 @@ std::vector<uint8_t> ffusa_comp(std::span<const uint8_t> input) {
 
   for (size_t i = 0; i < input.size(); ++i) {
     dp.update<std::greater<cost_type>>(i, 1, 0x0f, Linear<1, 1>(), uncomp);
-    auto res_lz = lz_helper.find_best(i, 0x0100);
+    auto res_lz = lz_helper.find(i, 0x0100, 3);
     if (i > 0) {
       if (dp[i].type == uncomp) {
         dp.update_lz(i, 3, 0x11, res_lz, Constant<1>(), lz);
@@ -56,7 +56,7 @@ std::vector<uint8_t> ffusa_comp(std::span<const uint8_t> input) {
   write16(ret.out, 0, ret.size() - 2);
   ret.extend(raw);
 
-  assert(dp.total_cost() + 3 == ret.size());
+  assert(dp.optimal_cost() + 3 == ret.size());
   assert(adr == input.size());
 
   return ret.out;
