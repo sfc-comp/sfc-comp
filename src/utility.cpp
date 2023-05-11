@@ -18,6 +18,7 @@ void check_divisibility(size_t input_size, size_t divisor) {
                                 input_size, divisor));
   }
 }
+
 namespace utility {
 
 uint16_t crc16(std::span<const uint8_t> input) {

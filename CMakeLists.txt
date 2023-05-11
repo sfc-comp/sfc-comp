@@ -48,6 +48,7 @@ set(sfc_comp_src
   src/asameshimae_nyanko_comp.cpp
   src/bokujou_monogatari_comp.cpp
   src/burai_comp.cpp
+  src/cannon_fodder_comp.cpp
   src/cb_chara_wars_comp.cpp
   src/chrono_trigger_comp.cpp
   src/danzarb_comp.cpp
@@ -158,6 +159,7 @@ set(comp_ext_list
   bounty_sword_comp comp
   brandish_comp comp
   burai_comp comp
+  cannon_fodder_comp comp
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
   chrono_trigger_comp_fast comp

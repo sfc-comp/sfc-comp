@@ -36,6 +36,7 @@ void benchmark(const std::string& path) {
     P(bounty_sword_comp),
     P(brandish_comp),
     P(burai_comp),
+    P(cannon_fodder_comp),
     P(cb_chara_wars_comp),
     P(chrono_trigger_comp),
     P(chrono_trigger_comp_fast),

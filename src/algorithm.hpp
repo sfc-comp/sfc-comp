@@ -48,13 +48,11 @@ struct lz_data {
 
 namespace lz {
 
-constexpr encode::lz_data empty = encode::lz_data();
-
 template <typename U, typename S = std::make_signed_t<U>>
 requires std::integral<U>
 encode::lz_data find_left(size_t adr, size_t i, size_t d, size_t min_len,
     std::span<const U> lcp_node, std::span<const S> ofs_node) {
-  if (i == 0) return empty;
+  if (i == 0) return {};
   const size_t width = lcp_node.size() / 2;
   const auto found = [&](size_t k) { return ofs_node[k] + ptrdiff_t(d) >= ptrdiff_t(adr); };
   U lcp = std::numeric_limits<U>::max();
@@ -62,21 +60,21 @@ encode::lz_data find_left(size_t adr, size_t i, size_t d, size_t min_len,
 
   size_t lo = i - 1, hi = i, k = lo + width;
   while (lo > 0 && !found(k)) {
-    if (quit(k)) return empty;
+    if (quit(k)) return {};
     size_t diff = hi - lo;
     if (!(k & 1)) hi = lo, lo -= 2 * diff, k = (k >> 1) - 1;
     else lo -= diff, hi -= diff, --k;
   }
-  if (lo == 0 && !found(k)) return empty;
+  if (lo == 0 && !found(k)) return {};
   while (k < width) {
     size_t mi = (lo + hi) >> 1;
     if (found(2 * k + 1)) lo = mi, k = 2 * k + 1;
     else {
-      if (quit(2 * k + 1)) return empty;
+      if (quit(2 * k + 1)) return {};
       hi = mi, k = k * 2;
     }
   }
-  if (quit(k)) return empty;
+  if (quit(k)) return {};
   return {size_t(ofs_node[lo + width]), lcp};
 }
 
@@ -91,17 +89,17 @@ encode::lz_data find_right(size_t adr, size_t i, size_t d, size_t min_len,
 
   size_t lo = i, hi = i + 1, k = lo + width;
   while (hi < width && !found(k)) {
-    if (quit(k)) return empty;
+    if (quit(k)) return {};
     size_t diff = hi - lo;
     if (k & 1) lo = hi, hi += 2 * diff, k = (k + 1) >> 1;
     else hi += diff, lo += diff, ++k;
   }
-  if (hi == width && !found(k)) return empty;
+  if (hi == width && !found(k)) return {};
   while (k < width) {
     size_t mi = (lo + hi) >> 1;
     if (found(2 * k)) hi = mi, k = 2 * k;
     else {
-      if (quit(2 * k)) return empty;
+      if (quit(2 * k)) return {};
       lo = mi, k = 2 * k + 1;
     }
   }
@@ -135,7 +133,7 @@ requires std::integral<U>
 encode::lz_data find(size_t i, size_t j, size_t rank, const wavelet_matrix<U>& wm,
     const segment_tree<range_min<U>>& lcp, const suffix_array<Elem, U>& sa) {
   const auto k = wm.count_lt(i, j, rank);
-  auto ret = empty;
+  encode::lz_data ret = {};
   if (k > 0) {
     const auto rank_l = wm.kth(i, j, k - 1);
     const auto len_l = lcp.fold(rank_l, rank);

@@ -77,6 +77,7 @@ $ ./bench <input-dir>
 | bounty_sword_comp                        |   17 | 5D71 | 3B53 | 7200 | 3877 | 3C03 | 5D49 | 2CBE |  2095C | 0.0053 | EEEA45E8 |
 | brandish_comp                            |    5 | 5C72 | 32E5 | 727E | 1FEE | 35C9 | 569E | 1863 |  1C692 | 0.1153 | 32710632 |
 | burai_comp                               |    3 | 5C82 | 38D2 | 7DB6 | 2EF2 | 33A2 | 657A | 2D08 |  20823 | 0.0748 | FEF1E5C2 |
+| cannon_fodder_comp                       |    7 | 5CC5 | 333B | 7E42 | 2291 | 36BF | 67D2 | 1575 |  1E4E0 | 0.4630 | 3154F42C |
 | cb_chara_wars_comp                       |    6 | 5DE9 | 339B | 7E17 | 21AA | 3746 | 6842 | 186C |  1E93F | 0.0794 | 8947D6F0 |
 | chrono_trigger_comp                      |    9 | 5EB8 | 36BC | 7D06 | 24F2 | 37E1 | 688F | 19F5 |  1F1DA | 0.3069 | 1CA8255C |
 | chrono_trigger_comp_fast                 |    9 | 5F6E | 36E8 | 7FCE | 24F2 | 385E | 6A1B | 19F8 |  1F790 | 0.0822 | BDC37442 |
@@ -120,7 +121,7 @@ $ ./bench <input-dir>
 | lennus_2_comp                            |    B | 5D17 | 33D6 | 7E9A | 2216 | 34C6 | 67CD | 18BA |  1E6F5 | 0.1251 | 2EF5A986 |
 | live_a_live_comp_1                       |    5 | 60F7 | 3AB3 | 77FC | 2DA5 | 3737 | 6787 | 1E1B |  1FE29 | 0.0987 | BA6526A6 |
 | love_quest_comp                          |    6 | 5F6D | 375D | 7FC8 | 25DF | 385C | 6A14 | 19F6 |  1F8DD | 0.0403 | BA9FDAE8 |
-| madara2_comp                             |    4 | 58B4 | 34CD | 7448 | 2962 | 381C | 6113 | 1DA9 |  1E207 | 0.0807 | 3381A7EF |
+| madara2_comp                             |    4 | 58B4 | 34CD | 7448 | 2962 | 381C | 6113 | 1DA9 |  1E207 | 0.0627 | 68873E6A |
 | mahoujin_guru_guru_comp                  |    C | 6104 | 44A0 | 7ACB | 5582 | 45EE | 66F3 | 2E81 |  2515F | 0.0049 | 4AD757B1 |
 | maka_maka_comp                           |    5 | 5F6A | 3759 | 7FC9 | 25DD | 3858 | 6A16 | 19F3 |  1F8CF | 0.0438 | 9725EE93 |
 | marios_super_picross_comp                |    5 | 5F67 | 3759 | 7FC6 | 25DD | 3858 | 6A11 | 19F3 |  1F8C4 | 0.0403 | 43D4AA0A |
@@ -151,7 +152,7 @@ $ ./bench <input-dir>
 | seiken_densetsu_2_comp                   |    7 | 5FCD | 39DC | 77F0 | 2980 | 380F | 65FF | 1EA6 |  1F7D4 | 0.3045 | 3F9A5966 |
 | shadowrun_comp                           |    7 | 5841 | 3137 | 750F | 2031 | 33E3 | 61A5 | 1632 |  1CA79 | 0.1531 | D4043BA3 |
 | shima_kousaku_comp                       |    A | 500E | 2B2D | 6EF9 | 1CD6 | 2E4C | 5A53 | 12A4 |  1A257 | 0.1826 | C6B8D8D8 |
-| shin_megami_tensei2_comp                 |    4 | 5D47 | 371E | 76EC | 28D3 | 3942 | 64F0 | 1DB1 |  1F00B | 0.0694 | 82F04553 |
+| shin_megami_tensei2_comp                 |    4 | 5D47 | 371E | 76EC | 28D3 | 3942 | 64F0 | 1DB1 |  1F00B | 0.0539 | DCAFD339 |
 | sky_mission_comp                         |    5 | 5767 | 30AE | 7953 | 2166 | 31CC | 61D8 | 1DD0 |  1D447 | 0.0779 | A87A5246 |
 | slap_stick_comp                          |    5 | 622E | 39B5 | 81B7 | 2CA8 | 389F | 6C17 | 2BDE |  21ADB | 0.0536 | F4566128 |
 | slayers_comp                             |    C | 52BE | 2D4A | 7048 | 1DD2 | 2FC4 | 5C40 | 146E |  1AEA0 | 0.1342 | EA68BBA3 |

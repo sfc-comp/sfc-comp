@@ -29,6 +29,7 @@ std::vector<uint8_t> brandish_comp(std::span<const uint8_t>);
 std::vector<uint8_t> bokujou_monogatari_comp(std::span<const uint8_t>);
 std::vector<uint8_t> bounty_sword_comp(std::span<const uint8_t>);
 std::vector<uint8_t> burai_comp(std::span<const uint8_t>);
+std::vector<uint8_t> cannon_fodder_comp(std::span<const uint8_t>);
 std::vector<uint8_t> cb_chara_wars_comp(std::span<const uint8_t>);
 std::vector<uint8_t> chrono_trigger_comp(std::span<const uint8_t>);
 std::vector<uint8_t> chrono_trigger_comp_fast(std::span<const uint8_t>);

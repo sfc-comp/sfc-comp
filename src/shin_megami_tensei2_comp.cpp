@@ -21,9 +21,10 @@ std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t> input) {
     } else {
       dp.update(i, 2, 0x21, rlen, Constant<2>(), rle);
     }
-    // should be called after run length functions.
-    auto res_lz = lz_helper.find_closest(i, 0x400, 2, 0x21); // [TODO] no need to be closest.
-    dp.update_lz(i, 2, 0x21, res_lz, Constant<2>(), lz);
+    auto res_lz = lz_helper.find(i, 0x400, 2);
+    if (res_lz.len > 0 && (i - res_lz.ofs) >= 2) {
+      dp.update_lz(i, 2, 0x21, res_lz, Constant<2>(), lz);
+    }
     if (input[i] == 0) {
       auto common16_len = encode::common_lo16(input, i, 0x40).len;
       dp.update_k<2>(i, 2, 0x40, common16_len, LinearQ<1, 2, 2>(), common16);
@@ -37,14 +38,12 @@ std::vector<uint8_t> shin_megami_tensei2_comp(std::span<const uint8_t> input) {
   for (const auto cmd : dp.commands()) {
     size_t d = adr - cmd.lz_ofs;
     switch (cmd.type) {
+    case lz: ret.write<d16b>((cmd.len - 2) << 10 | (0x400 - d)); break;
     case uncomp: ret.write<d8, d8n>(0x80 + cmd.len - 1, {cmd.len, &input[adr]}); break;
+    case common16: ret.write<d8, d8nk>(0xa0 + ((cmd.len - 2) >> 1), {cmd.len, &input[adr + 1], 2}); break;
+    case rle: ret.write<d8, d8>(0xc0 + cmd.len - 2, input[adr]); break;
     case rle0: ret.write<d8>(0xe0 + cmd.len - 1); break;
     case rle0l: ret.write<d8, d8>(0xff, cmd.len - 0x20); break;
-    case rle: ret.write<d8, d8>(0xc0 + cmd.len - 2, input[adr]); break;
-    case lz: ret.write<d16b>((cmd.len - 2) << 10 | (0x400 - d)); break;
-    case common16: ret.write<d8, d8nk>(
-      0xa0 + ((cmd.len - 2) >> 1), {cmd.len, &input[adr + 1], 2}
-    ); break;
     default: assert(0);
     }
     adr += cmd.len;

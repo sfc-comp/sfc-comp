@@ -57,12 +57,10 @@ public:
   }
 
   std::pair<std::vector<index_type>, std::vector<index_type>> lcp_rank() const {
-    size_t n = sa.size();
+    const size_t n = sa.size();
     std::vector<index_type> lcp(n, 0);
     std::vector<index_type> isa(n);
-    for (size_t i = 0; i < n; ++i) {
-      isa[sa[i]] = i;
-    }
+    for (size_t i = 0; i < n; ++i) isa[sa[i]] = i;
     size_t h = 0;
     for (size_t i = 0; i < n; ++i) {
       size_t r = isa[i];
@@ -72,7 +70,7 @@ public:
       lcp[r] = h;
       if (h > 0) --h;
     }
-    return std::make_pair(lcp, isa);
+    return std::make_pair(std::move(lcp), std::move(isa));
   }
 
   index_type operator [] (size_t i) const {
