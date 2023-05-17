@@ -28,24 +28,21 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
 
   std::vector<uint8_t> input(in.rbegin(), in.rend());
 
-  lz_helper lz_helper(input);
-  uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(len_tab.back().max);
+  auto c8 = dp.c<8>(0x0f + 0x3fff);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    u_helper.update(i, dp[i].cost);
-    const auto u0 = u_helper.find(i + 1, 1, 1);
-    dp.update_u(i + 1, u0.len, {uncomp, 0, 0}, u0.cost + 1);
-    const auto u1 = u_helper.find(i + 1, 0x0f, 0x0f + 0x001f);
-    dp.update_u(i + 1, u1.len, {uncomp, 0, 1}, u1.cost + 14);
-    const auto u2 = u_helper.find(i + 1, 0x0f, 0x0f + 0x3fff);
-    dp.update_u(i + 1, u2.len, {uncomp, 0, 2}, u2.cost + 23);
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 1, c8, 1, {uncomp, 0, 0});
+    dp.update(i, 0x0f, 0x0f + 0x001f, c8, 14, {uncomp, 0, 1});
+    dp.update(i, 0x0f, 0x0f + 0x3fff, c8, 23, {uncomp, 0, 2});
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 1,
       [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      1
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    lz_helper.add_element(i);
+    c0.update(i); c8.update(i);
   }
 
   using namespace data_type;
@@ -53,14 +50,15 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
   if (input.size() > 0) ret.write<b1>(false);
 
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
-      if (cmd.type.li == 0) {
+      if (li == 0) {
         ret.write<b1>(true);
       } else {
         ret.write<bnh, bnl>({4, 6}, {4, 0x0f});
-        if (cmd.type.li == 1) {
+        if (li == 1) {
           ret.write<b1, bnl>(true, {5, cmd.len - 0x0f});
         } else {
           ret.write<b1, bnl>(false, {14, cmd.len - 0x0f});
@@ -75,8 +73,8 @@ std::vector<uint8_t> super_loopz_comp(std::span<const uint8_t> in) {
         ret.write<bnl>({tp.bitlen - prefix_bits, x});
       };
       ret.write<b1>(false);
-      wr(len_tab[cmd.type.li], len_prefix[cmd.type.li], cmd.len);
-      wr(ofs_tab[cmd.type.oi], ofs_prefix[cmd.type.oi], adr - cmd.lz_ofs);
+      wr(len_tab[li], len_prefix[li], cmd.len);
+      wr(ofs_tab[oi], ofs_prefix[oi], adr - cmd.lz_ofs());
     } break;
     default: assert(0);
     }

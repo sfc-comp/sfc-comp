@@ -43,7 +43,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
   static constexpr auto num_candidates = std::to_array<size_t>({
     1024, 512, 256, 128, 96, 64, 48, 32, 25, 20, 17
   });
-  const size_t phase_total = num_candidates.size();
+  const size_t iter_total = num_candidates.size();
 
   std::vector<encode::lz_data> lzl_memo(input.size());
   std::vector<encode::lz_data> lzm_memo(input.size());
@@ -68,64 +68,67 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
   std::vector<int64_t> pre16(0x10000, -1);
   pre_table pre(input);
 
-  for (size_t phase = 0; phase < phase_total; ++phase) {
+  for (size_t iter = 0; iter < iter_total; ++iter) {
     for (size_t i = 0; i < candidate.size(); ++i) pre16[candidate[i]] = i;
 
-    sssp_solver<tag> dp(input.size());
+    solver<tag> dp(input.size());
 
     size_t rlen = 0;
-    for (size_t i = 0; i < input.size(); ++i) {
-      dp.update(i, 1, 1, Constant<3>(), uncomp1);
-      dp.update(i, 2, 2, Constant<5>(), uncomp2);
-      dp.update(i, 3, 0x0f, Linear<2, 2>(), uncomp);
+    for (size_t i = input.size(); i-- > 0; ) {
+      dp.update_b(i, 3, 0x0f, linear<2, 2>(), uncomp);
+      dp.update(i, 2, 5, uncomp2);
+      dp.update(i, 1, 3, uncomp1);
 
-      rlen = encode::run_length(input, i, rlen);
-      if (input[i] == pre.rle_b8[0]) {
-        dp.update(i, 3, 0x12, rlen, Constant<2>(), pre_rle8_1);
-      } else if (input[i] == pre.rle_b8[1]) {
-        dp.update(i, 3, 0x12, rlen, Constant<2>(), pre_rle8_2);
-      } else {
-        dp.update(i, 3, 0x12, rlen, Constant<4>(), rle);
+      dp.update_b(i, 3, 0x12, lzl_memo[i], constant<6>(), lzl);
+      dp.update_b(i, 3, 0x12, lzm_memo[i], constant<5>(), lzm);
+      for (size_t l = 3; l <= 0x12; ++l) {
+        dp.update_b(i, l, l, lz_memo[i][l - 3], constant<4>(), lzs);
       }
 
-      if (input[i] == pre.b8[0]) {
-        dp.update(i, 1, 1, Constant<1>(), pre8_1);
-      } else if (input[i] == pre.b8[1]) {
-        dp.update(i, 1, 1, Constant<1>(), pre8_2);
+      rlen = encode::run_length_r(input, i, rlen);
+      if (input[i] == pre.rle_b8[0]) {
+        dp.update_b(i, 3, 0x12, rlen, constant<2>(), pre_rle8_1);
+      } else if (input[i] == pre.rle_b8[1]) {
+        dp.update_b(i, 3, 0x12, rlen, constant<2>(), pre_rle8_2);
+      } else {
+        dp.update_b(i, 3, 0x12, rlen, constant<4>(), rle);
       }
 
       if (i >= 1 && input[i] == input[i - 1]) {
-        dp.update(i, 1, 1, Constant<1>(), prev8);
+        dp.update(i, 1, 1, prev8);
       }
+
       if (i + 1 < input.size()) {
         const uint16_t v16 = read16(input, i);
         if (i >= 2 && read16(input, i - 2) == v16) {
-          dp.update(i, 2, 2, Constant<1>(), prev16);
+          dp.update(i, 2, 1, prev16);
         }
         for (size_t ofs = 2; ofs <= std::min<size_t>(i, 0x11); ++ofs) {
           if (read16(input, i - ofs) == v16) {
-            dp.update_lz(i, 2, 2, encode::lz_data(i - ofs, 2), Constant<2>(), lzvs);
+            dp.update(i, 2, 2, lzvs, i - ofs);
             break;
           }
         }
+
         const int16_t ind = pre16[v16];
-        if (ind == 0) dp.update(i, 2, 2, Constant<1>(), pre16_1);
-        else if (ind > 0) dp.update_lz(i, 2, 2, {size_t(ind), 2}, Constant<2>(), pre16s);
+        if (ind == 0) dp.update(i, 2, 1, pre16_1);
+        else if (ind > 0) dp.update(i, 2, 2, pre16s, ind);
       }
-      for (size_t l = 3; l <= 0x12; ++l) {
-        dp.update_lz(i, l, l, lz_memo[i][l - 3], Constant<4>(), lzs);
+
+      if (input[i] == pre.b8[0]) {
+        dp.update(i, 1, 1, pre8_1);
+      } else if (input[i] == pre.b8[1]) {
+        dp.update(i, 1, 1, pre8_2);
       }
-      dp.update_lz(i, 3, 0x12, lzm_memo[i], Constant<5>(), lzm);
-      dp.update_lz(i, 3, 0x12, lzl_memo[i], Constant<6>(), lzl);
     }
 
-    if (phase + 1 < phase_total) {
+    if (iter + 1 < iter_total) {
       for (size_t i = 0; i < candidate.size(); ++i) pre16[candidate[i]] = 0;
-      for (const auto cmd : dp.commands()) {
+      for (const auto& cmd : dp.optimal_path()) {
         if (cmd.type == pre16_1) pre16[candidate[0]] += 1;
-        else if (cmd.type == pre16s) pre16[candidate[cmd.val()]] += 2;
+        else if (cmd.type == pre16s) pre16[candidate[cmd.arg]] += 2;
       }
-      const size_t next_k = num_candidates[phase + 1];
+      const size_t next_k = num_candidates[iter + 1];
       std::partial_sort(
         candidate.begin(), candidate.begin() + next_k, candidate.end(),
         [&](const uint16_t a, const uint16_t b) { return pre16[a] > pre16[b]; });
@@ -135,8 +138,8 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
       using namespace data_type;
       writer_b4_h ret(0x27);
       size_t adr = 0;
-      for (const auto cmd : dp.commands()) {
-        size_t d = adr - cmd.lz_ofs;
+      for (const auto& cmd : dp.optimal_path()) {
+        size_t d = adr - cmd.lz_ofs();
         switch (cmd.type) {
         case uncomp: {
           ret.write<d8, d8n>(cmd.len, {cmd.len, &input[adr]});
@@ -187,7 +190,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
           ret.write<b4>(14);
         } break;
         case pre16s: {
-          ret.write<b4, b4>(15, cmd.val() - 1);
+          ret.write<b4, b4>(15, cmd.arg - 1);
         } break;
         }
         adr += cmd.len;
@@ -202,7 +205,7 @@ std::vector<uint8_t> rareware_comp(std::span<const uint8_t> input) {
     }
   }
 
-  throw std::logic_error("phase_total == 0");
+  throw std::logic_error("iter_total == 0");
 }
 
 } // namespace sfc_comp

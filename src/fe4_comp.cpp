@@ -225,85 +225,104 @@ std::vector<uint8_t> recomp(std::span<const uint8_t> input) {
 
 std::vector<uint8_t> fe4_comp(std::span<const uint8_t> input) {
   enum tag {
-    uncomp, coupled,
-    common_lo16, common_hi16,
-    common_lo8_0, common_lo8_f, common_lo8,
-    common_hi8_0, common_hi8_f, common_hi8,
+    uncomp, paired,
+    lo16, hi16,
+    lo8_0, lo8_f, lo8,
+    hi8_0, hi8_f, hi8,
     lzl, lzs,
     rle, rlel,
   };
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
-  using cost_type = typename sssp_solver<tag>::cost_type;
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+
+  using L = std::less<size_t>;
+  using G = std::greater<size_t>;
+
+  // choose shortest edges
+  auto c0_l = dp.c<0, 1, L>(0x1002);
+  auto c1_l = dp.c<1, 1, L>(0x40);
+  auto c1_2_l = dp.c<1, 2, L>(0x22);
+
+  // choose longest edges
+  auto c0_g = dp.c<0, 1, G>(0x41);
 
   size_t rlen = 0;
-  for (size_t i = 0; i < input.size(); ++i) {
-    auto res_lz = lz_helper.find_closest(i, 0x3ff, 2, 0x11);
-    dp.update_lz<std::greater<cost_type>>(i, 2, 0x11, res_lz, Constant<2>(), lzs);
+  std::array<size_t, 2> paired_len = {}, lo16_len = {}, hi16_len = {};
+  size_t lo8_len = 0, hi8_len = 0;
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
 
-    auto res_lzl = lz_helper.find_closest(i, 0x7fff, 2, 0x41);
-    dp.update_lz<std::greater<cost_type>>(i, 0x2, 0x41, res_lzl, Constant<3>(), lzl);
+    const auto res_lz = lz_helper.find_closest(i, 0x3ff, 2, 0x11);
+    dp.update(i, 2, 0x11, res_lz, c0_l, 2, lzs);
 
-    dp.update<std::greater<cost_type>>(i, 1, 0x40, Linear<1, 1>(), uncomp);
+    lo16_len[i & 1] = encode::common_lo16_r(input, i, lo16_len[i & 1]);
+    dp.update(i, 4, 0x22, lo16_len[i & 1], c1_2_l, 2, lo16);
 
-    rlen = encode::run_length(input, i, rlen);
-    dp.update<std::greater<cost_type>>(i, 3, 10, rlen, Constant<2>(), rle);
-    dp.update(i, 11, 0x1002, rlen, Constant<3>(), rlel);
+    hi16_len[i & 1] = encode::common_hi16_r(input, i, hi16_len[i & 1]);
+    dp.update(i, 4, 0x22, hi16_len[i & 1], c1_2_l, 2, hi16);
 
-    auto coupled8_len = encode::coupled8(input, i, 0x20);
-    dp.update_k<2>(i, 2, 0x20, coupled8_len, LinearQ<1, 2, 2>(), coupled);
-    auto common_lo16_len = encode::common_lo16(input, i, 0x22).len;
-    dp.update_k<2>(i, 4, 0x22, common_lo16_len, LinearQ<1, 4, 2>(), common_lo16);
-    auto common_hi16_len = encode::common_hi16(input, i, 0x22).len;
-    dp.update_k<2>(i, 4, 0x22, common_hi16_len, LinearQ<1, 4, 2>(), common_hi16);
-    auto common_hi8_res = encode::common_hi8(input, i, 0x12);
-    if (((common_hi8_res.v + 0x10) & 0xf0) < 0x20) {
-      dp.update(i, 3, 0x12, common_hi8_res.len, LinearQ<1, 4, 2>(),
-        common_hi8_res.v == 0 ? common_hi8_0 : common_hi8_f);
+    rlen = encode::run_length_r(input, i, rlen);
+    dp.update(i, 3, 10, rlen, c0_l, 2, rle);
+    dp.update(i, 11, 0x1002, rlen, c0_l, 3, rlel);
+
+    dp.update(i, 1, 0x40, c1_l, 1, uncomp);
+
+    lo8_len = encode::common_lo8_r(input, i, lo8_len);
+    if (const auto v = input[i] & 0x0f; v == 0x00 || v == 0x0f) {
+      dp.update_b(i, 3, 0x12, lo8_len, linear<1, 4, 2>(), (v == 0x00) ? lo8_0 : lo8_f);
     } else {
-      dp.update(i, 2, 0x11, common_hi8_res.len, LinearQ<1, 5, 2>(), common_hi8);
+      dp.update_b(i, 2, 0x11, lo8_len, linear<1, 5, 2>(), lo8);
     }
-    auto common_lo8_res = encode::common_lo8(input, i, 0x12);
-    if (((common_lo8_res.v + 1) & 0xf) < 2) {
-      dp.update(i, 3, 0x12, common_lo8_res.len, LinearQ<1, 4, 2>(),
-        common_lo8_res.v == 0 ? common_lo8_0 : common_lo8_f);
+
+    hi8_len = encode::common_hi8_r(input, i, hi8_len);
+    if (const auto v = input[i] & 0xf0; v == 0x00 || v == 0xf0) {
+      dp.update_b(i, 3, 0x12, hi8_len, linear<1, 4, 2>(), (v == 0x00) ? hi8_0 : hi8_f);
     } else {
-      dp.update(i, 2, 0x11, common_lo8_res.len, LinearQ<1, 5, 2>(), common_lo8);
+      dp.update_b(i, 2, 0x11, hi8_len, linear<1, 5, 2>(), hi8);
     }
-    lz_helper.add_element(i);
+
+    paired_len[i & 1] = encode::paired_r(input, i, paired_len[i & 1]);
+    dp.update(i, 2, 0x20, paired_len[i & 1], c1_2_l, 1, paired);
+
+    const auto res_lzl = lz_helper.find_closest(i, 0x7fff, 2, 0x41);
+    dp.update(i, 2, 0x41, res_lzl, c0_g, 3, lzl);
+
+    c0_l.update(i); c1_l.update(i); c1_2_l.update(i);
+    c0_g.update(i);
   }
+
   using namespace data_type;
   writer ret;
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
+  for (const auto& cmd : dp.optimal_path()) {
     switch (cmd.type) {
     case uncomp: ret.write<d8, d8n>(0x00 + cmd.len - 1, {cmd.len, &input[adr]}); break;
-    case common_hi8: {
+    case hi8: {
       ret.write<d8, d8, d8n_lb>(0x40 + cmd.len - 2, 0x00 | (input[adr] >> 4), {cmd.len, &input[adr]});
     } break;
-    case common_hi8_0: {
+    case hi8_0: {
       ret.write<d8, d8, d8n_lb>(0x40 + cmd.len - 3, 0x80 | (input[adr] & 0x0f), {cmd.len - 1, &input[adr + 1]});
     } break;
-    case common_hi8_f: {
+    case hi8_f: {
       ret.write<d8, d8, d8n_lb>(0x40 + cmd.len - 3, 0xc0 | (input[adr] & 0x0f), {cmd.len - 1, &input[adr + 1]});
     } break;
-    case common_lo8: {
+    case lo8: {
       ret.write<d8, d8, d8n_hb>(0x40 + cmd.len - 2, 0x10 | (input[adr] & 0x0f), {cmd.len, &input[adr]});
     } break;
-    case common_lo8_0: {
+    case lo8_0: {
       ret.write<d8, d8, d8n_hb>(0x40 + cmd.len - 3, 0x90 | (input[adr] >> 4), {cmd.len - 1, &input[adr + 1]});
     } break;
-    case common_lo8_f: {
+    case lo8_f: {
       ret.write<d8, d8, d8n_hb>(0x40 + cmd.len - 3, 0xd0 | (input[adr] >> 4), {cmd.len - 1, &input[adr + 1]});
     } break;
-    case coupled: ret.write<d8, d8nk>(0x50 + ((cmd.len - 2) >> 1), {cmd.len, &input[adr], 2}); break;
-    case common_lo16:
+    case paired: ret.write<d8, d8nk>(0x50 + ((cmd.len - 2) >> 1), {cmd.len, &input[adr], 2}); break;
+    case lo16:
       ret.write<d8, d8, d8nk>(0x60 + ((cmd.len - 4) >> 1), input[adr], {cmd.len, &input[adr + 1], 2}); break;
-    case common_hi16:
+    case hi16:
       ret.write<d8, d8, d8nk>(0x70 + ((cmd.len - 4) >> 1), input[adr + 1], {cmd.len, &input[adr], 2}); break;
-    case lzs: ret.write<d16b>(0x8000 | ((cmd.len - 2) << 10) | (adr - cmd.lz_ofs)); break;
-    case lzl: ret.write<d24b>(0xc00000 | ((cmd.len - 2) << 15) | (adr - cmd.lz_ofs)); break;
+    case lzs: ret.write<d16b>(0x8000 | ((cmd.len - 2) << 10) | (adr - cmd.lz_ofs())); break;
+    case lzl: ret.write<d24b>(0xc00000 | ((cmd.len - 2) << 15) | (adr - cmd.lz_ofs())); break;
     case rlel: ret.write<d16b, d8>(0xe000 + cmd.len - 3, input[adr]); break;
     case rle: ret.write<d8, d8>(0xf0 + cmd.len - 3, input[adr]); break;
     default: assert(0);

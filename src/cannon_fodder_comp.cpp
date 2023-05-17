@@ -9,7 +9,7 @@ std::vector<uint8_t> cannon_fodder_comp(std::span<const uint8_t> input) {
   static constexpr size_t shift = 16;
   check_size(input.size(), 1, (1 << shift) + 1);
 
-  enum method { none, uncomp, lzs, lzm, lzl };
+  enum method { uncomp, lz };
   using tag = tag_ol<method>;
 
   static constexpr size_t min_oi = 1, max_oi = 14;
@@ -61,7 +61,6 @@ std::vector<uint8_t> cannon_fodder_comp(std::span<const uint8_t> input) {
       encode::lz::find_all(i, max_offsets, lz_min_len, ret[i], [&](size_t max_ofs) {
         return lz_helper.find_closest(i, max_ofs, lz_min_len, input.size());
       });
-      for (auto& lz : ret[i]) lz.ofs = lz.ofs << shift | i;
       if (const auto lz = ret[i].back(); lz.len >= lz_min_len) {
         longest_lz_len = std::max(longest_lz_len, lz.len);
       }
@@ -79,108 +78,89 @@ std::vector<uint8_t> cannon_fodder_comp(std::span<const uint8_t> input) {
   }();
   const size_t oi_limit = std::min(max_oi, std::bit_width(input.size()));
 
-  using solver_type = sssp_solver<tag>;
-  std::array<std::array<std::array<solver_type, 2>, max_oi + 1>, max_li + 1> dp;
+  using solver_type = solver<tag>;
+  std::array<std::array<solver_type, max_oi + 1>, max_li + 1> dp;
+  std::array<std::array<std::array<cost_window<0>, 2>, max_oi + 1>, max_li + 1> c0;
+
   for (size_t li = min_li; li <= li_limit; ++li) {
     for (size_t oi = min_oi; oi <= oi_limit; ++oi) {
+      dp[li][oi] = solver_type(input.size());
       const auto [bit, size] = split(oi, input.size());
-      dp[li][oi][bit] = solver_type(size, -1);
-      dp[li][oi][1 - bit] = solver_type(input.size() - size, -1);
+      c0[li][oi][bit] = cost_window<0>(size, len_vals[li].back() - 1);
+      c0[li][oi][1 - bit] = cost_window<0>(input.size() - size, len_vals[li].back() - 1, -1);
     }
   }
-  dp[min_li][min_oi][0][0].cost = 0;
 
-  // [TODO] Too slow for *simple* inputs.
-  const auto infinite_cost = solver_type::infinite_cost;
-  const auto tags = std::to_array<method>({lzs, lzm, lzl});
-  for (size_t i = 0; i < input.size(); ++i) {
+  for (size_t i = input.size(); i-- > 0; ) {
     for (size_t li = min_li; li <= li_limit; ++li) {
       const auto nlis = std::to_array({std::max(min_li, li - 1), li, std::min(max_li, li + 1)});
       for (size_t oi = min_oi; oi <= oi_limit; ++oi) {
+        const bool reachable = (oi == max_oi) || !((i >> oi) & 1) || (oi > min_oi && ((i >> (oi - 1)) & 1));
         const auto [b, adr] = split(oi, i);
-        const auto cost = dp[li][oi][b][adr].cost;
-        if (cost == infinite_cost) continue;
-        size_t coi = oi + (b > 0); assert(coi <= max_oi);
-        const auto [nb, nadr] = split(coi, i + 1);
-        dp[li][coi][nb].update(0, nadr, nadr, Constant<9>(), {uncomp, oi, li}, cost, i);
-
-        const auto lz = lz_memo[i][coi];
-        if (lz.len < lz_min_len) continue;
-        const auto [len0, len1] = uppers(coi, i + lz.len);
-        const encode::lz_data lz0 = {lz.ofs, len0};
-        const encode::lz_data lz1 = {lz.ofs, len1};
-        for (size_t k = 0; k < 3; ++k) {
-          const auto [fr0, fr1] = lowers(coi, i + len_vals[li][k]);
-          const auto [to0, to1] = uppers(coi, i + len_vals[li][k + 1] - 1);
-          if (~to0 && fr0 <= lz0.len) {
-            dp[nlis[k]][coi][0].update_lz(0, fr0, to0, lz0, Constant<0>(), {tags[k], oi, li}, cost + coi + li + 1);
+        if (reachable) {
+          const auto [nb, nadr] = split(oi, i + 1);
+          dp[li][oi].update_c(i, 1, c0[li][oi][nb][nadr] + 9, {uncomp, std::min(oi + nb, max_oi), li});
+          const auto res_lz = lz_memo[i][oi];
+          if (res_lz.len >= lz_min_len) {
+            const auto [len0, len1] = uppers(oi, i + res_lz.len);
+            for (size_t k = 0; k < 3; ++k) {
+              const auto [fr0, fr1] = lowers(oi, i + len_vals[li][k]);
+              const auto [to0, to1] = uppers(oi, i + len_vals[li][k + 1] - 1);
+              const size_t nli = nlis[k];
+              if (~to0 && fr0 <= len0) {
+                const auto e = c0[nli][oi][0].find(0, fr0, std::min(len0, to0));
+                const auto l = merge(oi, 0, e.len) - i;
+                dp[li][oi].update_c(i, l, e.cost + oi + li + 1, {lz, oi, nli}, res_lz.ofs);
+              }
+              if (~to1 && ~len1 && fr1 <= len1) {
+                const size_t noi = std::min(oi + 1, max_oi); assert(noi <= oi_limit);
+                const auto e = c0[nli][oi][1].find(0, fr1, std::min(len1, to1));
+                const auto l = merge(oi, 1, e.len) - i;
+                dp[li][oi].update_c(i, l, e.cost + oi + li + 1, {lz, noi, nli}, res_lz.ofs);
+              }
+            }
           }
-          if (~to1 && ~lz1.len && fr1 <= lz1.len) {
-            dp[nlis[k]][coi][1].update_lz(0, fr1, to1, lz1, Constant<0>(), {tags[k], oi, li}, cost + coi + li + 1);
+          c0[li][oi][b].update(adr, dp[li][oi][i].cost);
+          if (oi > min_oi && ((i >> (oi - 1)) & 1)) {
+            const auto [lb, ladr] = split(oi - 1, i);
+            c0[li][oi - 1][lb].update(ladr, dp[li][oi][i].cost);
           }
+        } else {
+          c0[li][oi][b].update(adr, solver<tag>::infinite_cost);
         }
       }
     }
   }
-
-  const auto [commands, min_cost] = [&] {
-    using command_type = solver_type::vertex_type;
-    size_t best_cost = infinite_cost;
-    size_t best_li = 0, best_oi = 0;
-    for (size_t li = min_li; li <= li_limit; ++li) {
-      for (size_t oi = min_oi; oi <= oi_limit; ++oi) {
-        const auto [b, adr] = split(oi, input.size());
-        if (dp[li][oi][b][adr].cost < best_cost) {
-          best_cost = dp[li][oi][b][adr].cost;
-          best_li = li, best_oi = oi;
-        }
-      }
-    }
-    std::vector<command_type> ret;
-    size_t li = best_li, oi = best_oi;
-    auto [b, adr] = split(oi, input.size());
-    while (!(b == 0 && adr == 0)) {
-      auto cmd = dp[li][oi][b][adr];
-      size_t poi = cmd.type.oi;
-      size_t nadr = cmd.val() & low_bits_mask(shift);
-      cmd.lz_ofs = cmd.val() >> shift;
-      cmd.len = merge(oi, b, adr) - nadr;
-      std::tie(b, adr) = split(poi, nadr);
-      li = cmd.type.li; oi = poi;
-      ret.emplace_back(cmd);
-    }
-    assert(li == min_li && oi == min_oi && b == 0 && adr == 0);
-    std::ranges::reverse(ret);
-    return std::make_pair(std::move(ret), best_cost);
-  }();
 
   using namespace data_type;
   writer_b8_h ret(4);
   size_t adr = 0;
-  size_t curr_li = min_li, curr_oi = min_oi;
-  for (const auto& cmd : commands) {
+  for (size_t li = min_li, oi = min_oi; adr < input.size(); ) {
+    const auto& cmd = dp[li][oi][adr];
+    const auto [tag, noi, nli] = cmd.type;
+    assert(cmd.len > 0);
     switch (cmd.type.tag) {
-    case none: break;
     case uncomp: {
       ret.write<b1, bnh>(false, {8, input[adr]});
     } break;
-    case lzs: case lzm: case lzl: {
-      ret.write<b1, bnh, bnh>(true, {curr_li, cmd.len - 1}, {curr_oi, (adr - cmd.lz_ofs) - 1});
-      const size_t mask = len_masks[curr_li];
-      const size_t l = cmd.len - 1;
+    case lz: {
+      ret.write<b1, bnh, bnh>(true, {li, cmd.len - lz_min_len}, {oi, (adr - cmd.lz_ofs()) - 1});
+      const size_t mask = len_masks[li];
+      const size_t l = cmd.len - lz_min_len;
       if (l & mask) {
-        if ((l & mask) == mask && curr_li < max_li) ++curr_li;
-      } else if (curr_li > min_li) --curr_li;
+        if ((l & mask) == mask && li < max_li) ++li;
+      } else if (li > min_li) --li;
     } break;
     default: assert(0);
     }
     adr += cmd.len;
     // This strange behavior complicates the algorithm.
-    if (curr_oi < max_oi && adr & (1 << curr_oi)) curr_oi += 1;
+    if (oi < max_oi && adr & (1 << oi)) oi += 1;
+    assert(oi == noi && li == nli);
   }
   write32b(ret.out, 0, input.size());
   assert(adr == input.size());
-  assert(min_cost + 8 * 4 == ret.bit_length());
+  assert(dp[min_li][min_oi].optimal_cost() + 8 * 4 == ret.bit_length());
   return ret.out;
 }
 

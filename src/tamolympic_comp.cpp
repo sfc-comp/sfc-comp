@@ -18,7 +18,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     {0x0006,  4, 0b0001},
     {0x0007,  6, 0b00001'0},
     {0x0009,  9, 0b000000'000},
-    {0x0011, 14, 0b000001}         // 000001[]
+    {0x0011, 14, 0b000001'00000000}
   }, 0x0110);
 
   const auto ofs_tab = to_vranges({
@@ -31,42 +31,40 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
     {0x3f00, 21, 0b1010101010100, 0b0101010101011}
   }, 0xbeff);
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(len_tab.back().max);
+  auto c8 = dp.c<8>(0x14 + 0xff);
 
   size_t rlen = 0;
-  for (size_t i = 0; i < input.size(); ++i) {
-    const auto cost = dp[i].cost;
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
 
-    dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    dp.update(i, 0x14, 0x14 + 0xff, Linear<8, 20>(), {uncompl, 0, 0});
+    dp.update(i, 1, 9, {uncomp, 0, 0});
+    dp.update(i, 0x14, 0x14 + 0xff, c8, 20, {uncompl, 0, 0});
 
-    rlen = encode::run_length(input, i, rlen);
-    for (size_t li = 0; li < len_tab.size(); ++li) {
-      const auto& l = len_tab[li];
-      if (rlen < l.min) break;
-      if (input[i] != 0) {
-        dp.update(i, l.min, l.max, rlen, Constant<20>(), {rle, 0, li}, cost + l.bitlen);
-      } else {
-        dp.update(i, l.min, l.max, rlen, Constant<11>(), {rle0, 0, li}, cost + l.bitlen);
-      }
+    rlen = encode::run_length_r(input, i, rlen);
+    if (input[i] != 0) {
+      dp.update(i, len_tab, rlen, c0, 20, [&](size_t li) -> tag { return {rle, 0, li}; });
+    } else {
+      dp.update(i, len_tab, rlen, c0, 11, [&](size_t li) -> tag { return {rle0, 0, li}; });
     }
 
     const auto res_lz2 = lz_helper.find_closest(i, 0x8ff, 2, 2);
     if (res_lz2.len == 2) {
       if ((i - res_lz2.ofs) < 0x100) {
-        dp.update_lz(i, 2, 2, res_lz2, Constant<11>(), {lz2, 0, 0});
+        dp.update(i, 2, 11, {lz2, 0, 0}, res_lz2.ofs);
       } else {
-        dp.update_lz(i, 2, 2, res_lz2, Constant<14>(), {lz2, 1, 0});
+        dp.update(i, 2, 14, {lz2, 1, 0}, res_lz2.ofs);
       }
     }
 
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 2,
       [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      2
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    lz_helper.add_element(i);
+
+    c0.update(i); c8.update(i);
   }
 
   using namespace data_type;
@@ -74,24 +72,22 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
   ret.write<none>(none());
 
   const auto write_len = [&](const size_t li, const size_t len) -> void {
-    const size_t min_len = len_tab[li].min;
-    const size_t b = len_tab[li].bitlen;
-    const size_t v = len_tab[li].val;
-    assert(len >= min_len);
-    if (b <= 9) ret.write<bnh>({b, v + (len - min_len)});
+    const auto& l = len_tab[li];
+    assert(len >= l.min);
+    const size_t v = len_tab[li].val + (len - l.min);
+    if (l.bitlen <= 9) ret.write<bnh>({l.bitlen, v});
     else {
-      ret.write<bnh>({b - 8, v}); ret.trim();
-      ret.write<d8, none>(len - min_len, none());
+      ret.write<bnh>({l.bitlen - 8, v >> 8}); ret.trim();
+      ret.write<d8, none>(v & 0xff, none());
     }
   };
 
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
-    const size_t li = cmd.type.li;
-    const size_t oi = cmd.type.oi;
-    const size_t d = adr - cmd.lz_ofs;
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    const size_t d = adr - cmd.lz_ofs();
 
-    switch (cmd.type.tag) {
+    switch (tag) {
     case uncomp: {
       ret.write<b1>(true); ret.trim();
       ret.write<d8, none>(input[adr], none());
@@ -110,7 +106,7 @@ std::vector<uint8_t> tamolympic_comp(std::span<const uint8_t> input) {
 
     case rle:
     case rle0: {
-      if (cmd.type.tag == rle0) ret.write<b1, d8, b1, b1>(false, 0, false, false);
+      if (tag == rle0) ret.write<b1, d8, b1, b1>(false, 0, false, false);
       else ret.write<b1, d8, bnh, d8, b1>(false, 0, {2, 2}, input[adr], false);
       write_len(li, cmd.len);
     } break;

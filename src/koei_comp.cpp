@@ -42,34 +42,36 @@ void koei_comp_core(std::span<const uint8_t> input,
     {0x0081, 14, 0b0000000'0000000}
   }, 0x00ff);
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.template c<0>(len_tab.back().max);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+  for (size_t i = input.size(); i--; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, {uncomp, 0, 0});
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 1,
       [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      1
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    lz_helper.add_element(i);
+    c0.update(i);
   }
 
   using namespace data_type;
 
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
       writer8.template write<b1>(true);
       writer_raw.template write<d8>(input[adr]);
     } break;
     case lz: {
-      const auto& l = len_tab[cmd.type.li];
-      const auto& o = ofs_tab[cmd.type.oi];
+      const auto& l = len_tab[li];
+      const auto& o = ofs_tab[oi];
       writer8.template write<b1>(false);
       writer16.template write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
-      writer16.template write<bnh>({o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min)});
+      writer16.template write<bnh>({o.bitlen, o.val + ((adr - cmd.lz_ofs()) - o.min)});
     } break;
     default: assert(0);
     }

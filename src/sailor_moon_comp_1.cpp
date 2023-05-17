@@ -9,17 +9,17 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x800000);
 
   enum tag { uncomp, lzs, lzls, lzll };
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size()); auto c0 = dp.c<0>(256);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lzs = lz_helper.find(i, 0x100, 2);
-    dp.update_lz(i, 2, 5, res_lzs, Constant<12>(), lzs);
-    auto res_lzl = lz_helper.find(i, 0x2000, 3);
-    dp.update_lz(i, 3, 9, res_lzl, Constant<18>(), lzls);
-    dp.update_lz(i, 10, 256, res_lzl, Constant<26>(), lzll);
-    lz_helper.add_element(i);
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, uncomp);
+    dp.update(i, 2, 5, lz_helper.find(i, 0x100, 2), c0, 12, lzs);
+    const auto res_lzl = lz_helper.find(i, 0x2000, 3);
+    dp.update(i, 3, 9, res_lzl, c0, 18, lzls);
+    dp.update(i, 10, 256, res_lzl, c0, 26, lzll);
+    c0.update(i);
   }
 
   using namespace data_type;
@@ -27,8 +27,8 @@ std::vector<uint8_t> sailor_moon_comp_1(std::span<const uint8_t> input) {
   ret.write<none>(none());
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
-    const size_t d = adr - cmd.lz_ofs;
+  for (const auto& cmd : dp.optimal_path()) {
+    const size_t d = adr - cmd.lz_ofs();
     switch (cmd.type) {
     case uncomp: {
       ret.write<bnh, d8>({1, 1}, input[adr]);

@@ -23,7 +23,7 @@ struct node {
 
 struct huffman_t {
   std::vector<size_t> words;
-  std::vector<codeword> codewords;
+  std::vector<codeword> code;
 };
 
 huffman_t huffman(std::span<const size_t> counts, bool zero_to_one);

@@ -8,18 +8,26 @@ namespace sfc_comp {
 std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
 
-  enum tag { uncomp, lz2, lzs, lzm, lzl };
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  enum method { uncomp, lz };
+  using tag = tag_l<method>;
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lz = lz_helper.find(i, 0x1000, 2);
-    dp.update_lz(i, 2, 2, res_lz, Constant<14>(), lz2);
-    dp.update_lz(i, 3, 10, res_lz, Constant<18>(), lzs);
-    dp.update_lz(i, 11, 18, res_lz, Constant<19>(), lzm);
-    dp.update_lz(i, 19, 274, res_lz, Constant<24>(), lzl);
-    lz_helper.add_element(i);
+  static constexpr auto lens = to_vranges({
+    {0x002,  1, 0b1},
+    {0x003,  5, 0b01'000},
+    {0x00b,  6, 0b001'000},
+    {0x013, 11, 0b000'00000000}
+  }, 0x100); // cf. $82:8868
+
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(lens.back().max);
+
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, {uncomp, 0});
+    const auto res_lz = lz_helper.find(i, 0x1000, 2);
+    dp.update(i, lens, res_lz, c0, 13, [&](size_t li) -> tag { return {lz, li}; });
+    c0.update(i);
   }
 
   using namespace data_type;
@@ -27,28 +35,24 @@ std::vector<uint8_t> legend_comp(std::span<const uint8_t> input) {
   writer_b8_h flags;
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
-    switch (cmd.type) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
       flags.write<b1>(false);
       ret.write<d8>(input[adr]);
     } break;
-    case lz2:
-    case lzs:
-    case lzm:
-    case lzl: {
+    case lz: {
+      const auto& l = lens[li];
+      const size_t v = l.val + (cmd.len - l.min);
       flags.write<b1>(true);
-      if (cmd.type == lz2) {
-        flags.write<bnh>({1, 1});
-      } else if (cmd.type == lzs) {
-        flags.write<bnh>({5, 8 | (cmd.len - 3)});
-      } else if (cmd.type == lzm) {
-        flags.write<bnh>({6, 8 | (cmd.len - 11)});
+      if (l.bitlen < 8) {
+        flags.write<bnh>({l.bitlen, v});
       } else {
-        flags.write<bnh>({3, 0});
-        ret.write<d8>(cmd.len - 19);
+        flags.write<bnh>({l.bitlen - 8, v >> 8});
+        ret.write<d8>(v & 0xff);
       }
-      const size_t d = adr - cmd.lz_ofs;
+      const size_t d = adr - cmd.lz_ofs();
       ret.write<d8>((d - 1) >> 4);
       flags.write<bnh>({4, (d - 1) & 0x0f});
     } break;

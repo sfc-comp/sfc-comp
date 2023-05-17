@@ -23,25 +23,20 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   static constexpr auto lz_lens = create_array<vrange, lz_len_max_bits + 1>([](size_t i) {
     return vrange((1 << i) + lz_min_len - 1, (2 << i) + lz_min_len - 2, 2 * i + 1, 0);
   });
-  const std::array<vrange, 1> lz_offsets = {vrange(1, input.size(), 0, 0)};
 
-  lz_helper lz_helper(input);
-  uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(lz_lens.back().max);
+  auto c8 = dp.c<8>(uncomp_lens.back().max);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    const auto cost = dp[i].cost;
-    u_helper.update(i, cost);
-    for (size_t k = 0; k < uncomp_lens.size(); ++k) {
-      const auto res_u = u_helper.find(i + 1, uncomp_lens[k].min, uncomp_lens[k].max);
-      dp.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + uncomp_lens[k].bitlen);
-    }
-    dp.update_lz_matrix(i, lz_offsets, lz_lens,
-      [&](size_t oi) { return lz_helper.find(i, lz_offsets[oi].max, lz_lens.front().min); },
-      [&](size_t, size_t li) -> tag { return {lz, li}; },
-      1 + ilog2(2 * i + 1)
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, uncomp_lens, c8, 1, [&](size_t li) -> tag { return {uncomp, li}; });
+    const auto res_lz = lz_helper.find(i, input.size(), lz_lens.front().min);
+    dp.update(i, lz_lens, res_lz, c0, 1 + ilog2(2 * i + 1),
+      [&](size_t li) -> tag { return {lz, li}; }
     );
-    lz_helper.add_element(i);
+    c0.update(i); c8.update(i);
   }
 
   using namespace data_type;
@@ -55,7 +50,7 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
   };
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
+  for (const auto& cmd : dp.optimal_path()) {
     switch (cmd.type.tag) {
     case uncomp: {
       flags.write<b1>(false);
@@ -65,7 +60,7 @@ std::vector<uint8_t> smash_tv_comp_core(std::span<const uint8_t> input) {
     case lz: {
       assert(adr > 0);
       flags.write<b1>(true);
-      flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
+      flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs()});
       write_len(cmd.len - (lz_min_len - 1));
     } break;
     default: assert(0);

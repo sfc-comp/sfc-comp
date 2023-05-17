@@ -33,31 +33,23 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
     {0x0011, 14, 0b000001}      // 000001<1B>
   }, 0x0110);
 
-  sssp_solver<tag> dp(input.size());
+  solver<tag> dp(input.size());
+  auto c0 = dp.template c<0>(len_tab.back().max);
 
-  encode::lz_data res_lz2 = {}, res_lz2s = {};
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    if (res_lz2.len >= 2) {
-      if (res_lz2s.len >= 2) {
-        dp.update_lz(i, 2, 2, res_lz2s, Constant<11>(), {lz2, 0, 0});
-      } else {
-        dp.update_lz(i, 2, 2, res_lz2, Constant<14>(), {lz2, 1, 0});
-      }
-    }
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+  if (input.size() > 0) lz_helper_update(input.size() - 1);
+  for (size_t i = input.size(); i-- > 0; ) {
+    dp.update(i, 1, 9, {uncomp, 0, 0});
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 2,
       [&](size_t oi) { return find_lz(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      2
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    // dist should be >= 2.
-    if (i + 1 < input.size()) {
-      res_lz2 = find_lz(i + 1, 0x900, 2);
-      if (res_lz2.len >= 2) {
-        res_lz2s = find_lz(i + 1, 0x100, 2);
-      }
+    if (i > 0) lz_helper_update(i - 1);
+    const auto res_lz2 = find_lz(i, 0x900, 2);
+    if (res_lz2.len >= 2) {
+      dp.update(i, 2, 2, find_lz(i, 0x100, 2), c0, 11, {lz2, 0, 0});
+      dp.update(i, 2, 2, res_lz2, c0, 14, {lz2, 1, 0});
     }
-    lz_helper_update(i);
+    c0.update(i);
   }
 
   using namespace data_type;
@@ -65,26 +57,27 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
   ret.write<none>(none());
 
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
       ret.write<b1, d8>(true, input[adr]);
     } break;
     case lz2: {
-      const size_t d = adr - cmd.lz_ofs; assert(d >= 2);
+      const size_t d = adr - cmd.lz_ofs(); assert(d >= 2);
       ret.write<bnh, d8>({2, 0}, (0x900 - d) & 0xff);
-      if (cmd.type.oi == 0) {
+      if (oi == 0) {
         ret.write<bnh>({1, 0});
       } else {
         ret.write<bnh>({4, 0x08 | (0x900 - d) >> 8});
       }
     } break;
     case lz: {
-      const auto& o = ofs_tab[cmd.type.oi];
-      const size_t ov = (o.max - (adr - cmd.lz_ofs));
+      const auto& o = ofs_tab[oi];
+      const size_t ov = (o.max - (adr - cmd.lz_ofs()));
       ret.write<bnh, d8>({2, 1}, ov & 0xff);
       ret.write<bnh>({o.bitlen - 8, masked_add(o.val, ov >> 8, o.mask)});
-      const auto& l = len_tab[cmd.type.li];
+      const auto& l = len_tab[li];
       const size_t ld = cmd.len - l.min;
       if (l.bitlen <= 9) {
         ret.write<bnh>({l.bitlen, l.val | ld});
@@ -110,10 +103,10 @@ std::vector<uint8_t> diet_comp_core(std::span<const uint8_t> input, const size_t
 std::vector<uint8_t> diet_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0xffff);
 
-  lz_helper lz_helper(input);
+  lz_helper lz_helper(input, true);
   auto ret = diet_comp_core(input, 0x11,
     [&](size_t i, size_t max_dist, size_t min_len) { return lz_helper.find(i, max_dist, min_len); },
-    [&](size_t i) { lz_helper.add_element(i); }
+    [&](size_t i) { lz_helper.reset(i); }
   );
   static constexpr auto header = std::to_array<uint8_t>({
     0xb4, 0x4c, 0xcd, 0x21, 0x9d, 0x89, 0x64, 0x6c, 0x7a
@@ -175,45 +168,50 @@ std::vector<uint8_t> pac_in_time_comp_a44a(std::span<const uint8_t> input) {
     lz_helper even(input); lz_helper odd(even);
     return std::to_array({std::move(even), std::move(odd)});
   }();
-  sssp_solver<tag> dp(input.size());
-
-  const size_t memo_size = std::bit_ceil(ofs_tab_b.front().min);
-  std::array<std::array<encode::lz_data, ofs_tab_b.size()>, memo_size> lz_memo = {};
-
+  std::vector<std::array<encode::lz_data, ofs_tab.size()>> lz_memo(input.size(), {{}});
   for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<10>(), {uncomp, 0, 0});
-    dp.update_lz_matrix(i, ofs_tab_a, len_tab,
-      [&](size_t oi) { return lz_helpers[i & 1].find(i, ofs_tab_a[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      0
-    );
-    dp.update_lz_matrix(i, ofs_tab_b, len_tab,
-      [&](size_t oi) { return lz_memo[i % memo_size][oi]; },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi + ofs_tab_a.size(), li}; },
-      0
-    );
+    const auto f = [&](std::span<const vrange> o_tab, size_t beg) {
+      if (size_t j = i + o_tab.front().min; j < input.size()) {
+        encode::lz::find_all(j, o_tab, lz_min_len, std::span(lz_memo[j].data() + beg, o_tab.size()),
+          [&](size_t max_ofs) { return lz_helpers[j & 1].find(j, max_ofs, lz_min_len); }
+        );
+      }
+    };
     lz_helpers[i & 1].add_element(i);
-    if (size_t j = i + ofs_tab_b.front().min; j < input.size()) {
-      encode::lz::find_all(j, ofs_tab_b, lz_min_len, lz_memo[j % memo_size],
-        [&](size_t max_ofs) { return lz_helpers[j & 1].find(j, max_ofs, lz_min_len); }
+    f(ofs_tab_a, 0);
+    f(ofs_tab_b, ofs_tab_a.size());
+  }
+
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(len_tab.back().max);
+  for (size_t i = input.size(); i-- > 0; ) {
+    dp.update(i, 1, 10, {uncomp, 0, 0});
+    const auto f = [&](std::span<const vrange> o_tab, size_t beg) {
+      dp.update_matrix(i, o_tab, len_tab, c0, 0,
+        [&](size_t oi) { return lz_memo[i][oi + beg]; },
+        [&](size_t oi, size_t li) -> tag { return {lz, oi + beg, li}; }
       );
-    }
+    };
+    f(ofs_tab_a, 0);
+    f(ofs_tab_b, ofs_tab_a.size());
+    c0.update(i);
   }
 
   using namespace data_type;
   writer_b16_pre_l ret(2); ret.write<none>(none());
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
       ret.write<bnh, d8>({2, 0b11}, input[adr]);
     } break;
 
     case lz: {
-      const size_t d = adr - cmd.lz_ofs; assert(d % 2 == 0);
-      const auto& l = len_tab[cmd.type.li];
-      const auto& o = ofs_tab[cmd.type.oi];
+      const size_t d = adr - cmd.lz_ofs(); assert(d % 2 == 0);
+      const auto& l = len_tab[li];
+      const auto& o = ofs_tab[oi];
       assert(l.min <= cmd.len && cmd.len <= l.max);
       assert(o.min <= d && d <= o.max);
       ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
@@ -269,33 +267,35 @@ std::vector<uint8_t> pac_in_time_comp_a55a(std::span<const uint8_t> input) {
     {0x1001, 16, 0b0000000'1'111'00000},
   }, 0x2000);
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size()); auto c0 = dp.c<0>(len_tab.back().max);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+  if (input.size() > 0) lz_helper.reset(input.size() - 1);
+  for (size_t i = input.size(); i-- > 0; ) {
+    if (i > 0) lz_helper.reset(i - 1);
+    dp.update(i, 1, 9, {uncomp, 0, 0});
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 1,
       [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      1
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    if (i > 0) lz_helper.add_element(i - 1);
+    c0.update(i);
   }
 
   using namespace data_type;
   writer_b16_pre_l ret(2); ret.write<none>(none());
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
       ret.write<b1, d8>(true, input[adr]);
     } break;
 
     case lz: {
-      const size_t d = adr - cmd.lz_ofs; assert(d >= 2);
-      const auto& l = len_tab[cmd.type.li];
-      const auto& o = ofs_tab[cmd.type.oi];
+      const size_t d = adr - cmd.lz_ofs(); assert(d >= 2);
+      const auto& l = len_tab[li];
+      const auto& o = ofs_tab[oi];
       ret.write<b1, bnh>(false, {l.bitlen, l.val + (cmd.len - l.min)});
       size_t v = o.max - d;
       if (d <= ofs_tab[0].max) {

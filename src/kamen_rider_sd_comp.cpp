@@ -74,30 +74,29 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
     for (size_t k = 0; k < pre.thres; ++k) ind[0][pre[k]] = k;
     for (size_t k = pre.thres; k < pre.size(); ++k) ind[1][pre[k]] = k - pre.thres;
 
-    sssp_solver<tag> dp(input.size());
+    solver<tag> dp(input.size());
 
     size_t rlen = 0;
-    for (size_t i = 0; i < input.size(); ++i) {
-      dp.update(i, 1, 1, Constant<9>(), uncomp);
-      dp.update_lz(i, 2, 6, lzs_memo[i], Constant<9>(), lzs);
-      dp.update_lz(i, 3, 6, lz_memo[i], Constant<17>(), lz);
-      rlen = encode::run_length(input, i, rlen);
+    for (size_t i = input.size(); i-- > 0; ) {
+      dp.update(i, 1, 9, uncomp);
+      dp.update_b(i, 2, 6, lzs_memo[i], constant<9>(), lzs);
+      dp.update_b(i, 3, 6, lz_memo[i], constant<17>(), lz);
+      rlen = encode::run_length_r(input, i, rlen);
       if (rlen <= 1) continue;
       for (size_t l = 0; l < 2; ++l) {
         if (auto k = ind[l][input[i]]; k >= 0) {
-          dp.update_lz(i, 2, rle_max_lens[l], {size_t(k), rlen}, Constant<9>(), (l == 0) ? rle0 : rle1);
+          dp.update_b(i, 2, rle_max_lens[l], rlen, constant<9>(), (l == 0) ? rle0 : rle1, k);
         }
       }
     }
 
     using namespace data_type;
-    const auto commands = dp.commands();
 
     if (!output) {
       std::array<size_t, 256> gain = {};
-      for (const auto& cmd : commands) {
-        if (cmd.type == rle0) gain[pre[cmd.val()]] += cmd.len - 1;
-        else if (cmd.type == rle1) gain[pre[pre.thres + cmd.val()]] += cmd.len - 1;
+      for (const auto& cmd : dp.optimal_path()) {
+        if (cmd.type == rle0) gain[pre[cmd.arg]] += cmd.len - 1;
+        else if (cmd.type == rle1) gain[pre[pre.thres + cmd.arg]] += cmd.len - 1;
       }
       const auto pick = [](const std::span<const uint8_t> vals, const std::span<const size_t> gain, size_t nsize) {
         std::vector<uint8_t> ret;
@@ -126,13 +125,13 @@ std::vector<uint8_t> kamen_rider_sd_comp(std::span<const uint8_t> input) {
         ret.write<d8, d8n>(pre.size(), {pre.size(), pre.data()});
       }
       size_t adr = 0;
-      for (const auto& cmd : commands) {
-        const size_t d = adr - cmd.lz_ofs;
+      for (const auto& cmd : dp.optimal_path()) {
+        const size_t d = adr - cmd.lz_ofs();
         switch (cmd.type) {
         case uncomp: ret.write<b1, d8>(false, input[adr]); break;
         case lzs: ret.write<b1, d8>(true, 0x00 | (cmd.len - 2) << 5 | (d - 1)); break;
-        case rle0: ret.write<b1, d8>(true, 0xa0 | (cmd.val() << 3) | (cmd.len - 2)); break;
-        case rle1: ret.write<b1, d8>(true, 0xb0 | cmd.val()); break;
+        case rle0: ret.write<b1, d8>(true, 0xa0 | (cmd.arg << 3) | (cmd.len - 2)); break;
+        case rle1: ret.write<b1, d8>(true, 0xb0 | cmd.arg); break;
         case lz: ret.write<b1, d16b>(true, 0xc000 | (cmd.len - 3) << 12 | (d - 1)); break;
         default: break;
         }

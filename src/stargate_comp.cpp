@@ -23,53 +23,26 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   static constexpr auto lz_lens = create_array<vrange, lz_len_max_bits + 1>([](size_t i) {
     return vrange((1 << i) + lz_min_len - 1, (2 << i) + lz_min_len - 2, 2 * i + 1, 0);
   });
-  const std::array<vrange, 1> lz_offsets = {vrange(1, input.size(), 0, 0)};
 
   if (input.size() > uncomp_lens.back().max) {
     throw std::runtime_error("This algorithm may not be able to compress the given data.");
   }
 
-  lz_helper lz_helper(input);
-  uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<tag> dp0(input.size()), dp1(input.size(), -1);
+  lz_helper lz_helper(input, true);
+  solver<tag> dp0(input.size()), dp1(input.size());
+  auto c0_0 = dp0.c<0>(lz_lens.back().max);
+  auto c8_1 = dp1.c<8>(uncomp_lens.back().max);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    if (const auto cost0 = dp0[i].cost; cost0 < dp0.infinite_cost) {
-      u_helper.update(i, cost0);
-      dp1.update(i, 0, 0, Constant<1>(), {none, 0}, cost0);
-    }
-    for (size_t k = 0; k < uncomp_lens.size(); ++k) {
-      const auto res_u = u_helper.find(i + 1, uncomp_lens[k].min, uncomp_lens[k].max);
-      if (res_u.len == u_helper.nlen) continue;
-      dp1.update_u(i + 1, res_u.len, {uncomp, k}, res_u.cost + 1 + uncomp_lens[k].bitlen);
-    }
-    if (const auto cost1 = dp1[i].cost; cost1 < dp1.infinite_cost) {
-      dp0.update_lz_matrix(i, lz_offsets, lz_lens,
-        [&](size_t oi) { return lz_helper.find(i, lz_offsets[oi].max, lz_lens.front().min); },
-        [&](size_t, size_t li) -> tag { return {lz, li}; },
-        ilog2(2 * i + 1), cost1
-      );
-    }
-    lz_helper.add_element(i);
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    const auto res_lz = lz_helper.find(i, input.size(), lz_lens.front().min);
+    dp1.update(i, lz_lens, res_lz, c0_0, ilog2(2 * i + 1),
+      [&](size_t li) -> tag { return {lz, li}; }
+    );
+    dp0.update(i, uncomp_lens, c8_1, 1, [&](size_t li) -> tag {return {uncomp, li}; });
+    dp0.update_c(i, 0, dp1[i].cost + 1, {none, 0});
+    c0_0.update(i); c8_1.update(i);
   }
-
-  const auto [commands, min_cost] = [&]{
-    using command_type = decltype(dp0)::vertex_type;
-    std::vector<command_type> ret;
-    const auto min_cost = std::min(dp0.optimal_cost(), dp1.optimal_cost());
-    ptrdiff_t adr = input.size();
-    size_t curr = (dp0.optimal_cost() == min_cost) ? 0 : 1;
-    while (adr > 0 || (adr == 0 && curr > 0)) {
-      command_type cmd;
-      if (curr == 0) cmd = dp0[adr], curr = 1, assert(cmd.len > 0);
-      else cmd = dp1[adr], curr = 0;
-      adr -= cmd.len;
-      ret.emplace_back(cmd);
-    }
-    assert(adr == 0 && curr == 0);
-    std::reverse(ret.begin(), ret.end());
-    return std::make_pair(std::move(ret), min_cost);
-  }();
 
   using namespace data_type;
   writer ret(4);
@@ -82,7 +55,8 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   };
 
   size_t adr = 0;
-  for (const auto cmd : commands) {
+  for (size_t curr = 0; adr < input.size(); curr ^= 1) {
+    const auto& cmd = (curr == 0) ? dp0[adr] : dp1[adr];
     switch (cmd.type.tag) {
     case none: {
       flags.write<b1>(!uncomp_b);
@@ -94,7 +68,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
     } break;
     case lz: {
       assert(adr > 0);
-      flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs});
+      flags.write<bnh>({ilog2(2 * adr + 1), cmd.lz_ofs()});
       write_len(cmd.len - (lz_min_len - 1));
     } break;
     default: assert(0);
@@ -104,7 +78,7 @@ std::vector<uint8_t> stargate_comp_core(std::span<const uint8_t> input, const bo
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 2);
   assert(adr == input.size());
-  assert((min_cost - 1) + 32 == flags.bit_length() + 8 * ret.size());
+  assert((dp0.optimal_cost() - 1) + 32 == flags.bit_length() + 8 * ret.size());
   ret.extend(flags);
 
   return ret.out;

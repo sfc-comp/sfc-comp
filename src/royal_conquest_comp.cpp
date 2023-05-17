@@ -39,7 +39,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       encode::lz::find_all(i, lz_ofs_tab, lz_min_len, ret[i], [&](size_t max_ofs) {
-        return lz_helper.find_closest(i, max_ofs, lz_min_len, lz_max_len);
+        return lz_helper.find(i, max_ofs, lz_min_len);
       });
       lz_helper.add_element(i);
     }
@@ -54,15 +54,15 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
     // [Todo] Find a reasonable initialization.
     std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
     const auto h = encode::huffman(utility::freq_u8(in), true);
-    for (const auto w : h.words) ret[w] = h.codewords[w].bitlen;
+    for (const auto w : h.words) ret[w] = h.code[w].bitlen;
     return ret;
   }();
 
   const auto update_costs = [&](const encode::huffman_t& huff, size_t penalty = 0) {
-    const auto& codewords = huff.codewords;
+    const auto& codewords = huff.code;
     size_t longest_bit_size = 0;
     for (const auto w : huff.words) longest_bit_size = std::max<size_t>(longest_bit_size, codewords[w].bitlen);
-    huff_bitlens.assign(huff_bitlens.size(), std::max(penalty, longest_bit_size + 9));
+    huff_bitlens.assign(huff_bitlens.size(), longest_bit_size + penalty);
     for (const auto w : huff.words) huff_bitlens[w] = codewords[w].bitlen;
   };
 
@@ -70,23 +70,21 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
 
   size_t penalty = ilog2(2 * input.size() + 1) + 9;
   while (true) {
-    sssp_solver<tag> dp(input.size(), pad);
+    solver<tag> dp(input.size());
 
-    for (size_t i = pad; i < input.size(); ++i) {
-      dp.update(i, 1, 1, [&](size_t) { return huff_bitlens[input[i]]; }, {uncomp, 0});
-      dp.update_lz_matrix(i, lz_ofs_tab, lz_lens,
-        [&](size_t oi) { return lz_memo[i][oi]; },
+    for (size_t i = input.size(); i-- > pad; ) {
+      dp.update_matrix(i, lz_ofs_tab, lz_lens,
         [&](size_t li) { return huff_bitlens[lz_lens[li] + lz_huff_offset]; },
+        [&](size_t oi) { return lz_memo[i][oi]; },
         [&](size_t oi, size_t) -> tag { return {lz, oi}; }
       );
+      dp.update(i, 1, huff_bitlens[input[i]], {uncomp, 0});
     }
-
-    const auto commands = dp.commands(pad);
 
     std::array<size_t, 0x100 + lz_lens.size()> code_counts = {};
     {
       size_t adr = pad;
-      for (const auto& cmd : commands) {
+      for (const auto& cmd : dp.optimal_path(pad)) {
         switch (cmd.type.tag) {
         case uncomp: code_counts[input[adr]] += 1; break;
         case lz: code_counts[cmd.len + lz_huff_offset] += 1; break;
@@ -125,7 +123,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
       writer_b8_h tree;
       for (size_t i = 0; i < huff.words.size(); ++i) {
         const auto w = huff.words[i];
-        const auto c = huff.codewords[w];
+        const auto c = huff.code[w];
         const size_t r_zero = std::min<size_t>(std::countr_zero(c.val), c.bitlen);
         tree.write<bnh>({r_zero, low_bits_mask(r_zero)});
         tree.write<b1>(false);
@@ -136,15 +134,16 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
       for (size_t i = 0; i < tree.size(); ++i) ret[4 + i] = tree[i];
 
       size_t adr = pad;
-      for (const auto& cmd : commands) {
-        switch (cmd.type.tag) {
+      for (const auto& cmd : dp.optimal_path(pad)) {
+        const auto [tag, oi] = cmd.type;
+        switch (tag) {
         case uncomp: {
-          ret.write<bnh>(huff.codewords[input[adr]]);
+          ret.write<bnh>(huff.code[input[adr]]);
         } break;
         case lz: {
-          ret.write<bnh>(huff.codewords[cmd.len + lz_huff_offset]);
-          const auto o = lz_ofs_tab[cmd.type.oi];
-          ret.write<bnh>({o.bitlen, o.val + (adr - cmd.lz_ofs - o.min)});
+          ret.write<bnh>(huff.code[cmd.len + lz_huff_offset]);
+          const auto o = lz_ofs_tab[oi];
+          ret.write<bnh>({o.bitlen, o.val + (adr - cmd.lz_ofs() - o.min)});
         } break;
         default: assert(0);
         }

@@ -33,7 +33,7 @@ huffman_t create_codewords(const size_t n, std::vector<Leaf>& leaves, bool zero_
 
   huffman_t ret;
   ret.words = std::move(words);
-  ret.codewords = std::move(codewords);
+  ret.code = std::move(codewords);
 
   return ret;
 }

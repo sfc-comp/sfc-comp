@@ -26,96 +26,75 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
     {0x1000, 17, 0b0'0000000000000000 + 0x1000}
   }, 0xffff);
 
+  static constexpr auto ulen_tab = to_vranges({
+    {0x0001,  3, 0b000 + 1},
+    {0x0007,  8, 0b1110'0000},
+    {0x0017, 14, 0b1111'0000000000 + 0x17}
+  }, 0x03ff);
+
   std::vector<uint8_t> input(in.rbegin(), in.rend());
 
-  lz_helper lz_helper(input);
-  uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<tag> dp0(input.size()), dp1(input.size(), -1);
+  lz_helper lz_helper(input, true);
+  solver<tag> dp0(input.size(), -1); auto c0_0 = dp0.c<0>(len_tab.back().max);
+  solver<tag> dp1(input.size()); auto c8_1 = dp1.c<8>(ulen_tab.back().max);
 
-  for (size_t i = 0; i <= input.size(); ++i) {
-    const auto cost0 = dp0[i].cost;
-    if (cost0 < dp0.infinite_cost) {
-      dp1.update(i, 0, 0, Constant<3>(), {none, 0, 0}, cost0);
-    }
-    if (i == input.size()) break;
+  for (size_t i = input.size(); ; ) {
+    dp0.update_c(i, 0, dp1[i].cost + 3, {none, 0, 0});
+    c0_0.update(i);
 
-    if (cost0 < dp0.infinite_cost) u_helper.update(i, cost0);
-    auto u0 = u_helper.find(i + 1, 1, 6);
-    dp1.update_u(i + 1, u0.len, {uncomp, 0, 0}, u0.cost + 3);
-    auto u1 = u_helper.find(i + 1, 7, 0x16);
-    dp1.update_u(i + 1, u1.len, {uncomp, 0, 1}, u1.cost + 8);
-    auto u2 = u_helper.find(i + 1, 0x17, 0x0fff);
-    dp1.update_u(i + 1, u2.len, {uncomp, 0, 2}, u2.cost + 14);
+    if (i-- == 0) break;
+    lz_helper.reset(i);
 
-    const auto cost1 = dp1[i].cost;
-    if (cost1 < dp1.infinite_cost) {
-      auto res_lzs = lz_helper.find(i, 0xff, 2);
-      auto res_l3 = lz_helper.find(i, 0x3fff, 3);
-      dp0.update_lz(i, 2, 2, res_lzs, Constant<10>(), {lz2, 0, 0}, cost1);
-      dp0.update_lz(i, 3, 3, res_lzs, Constant<11>(), {lz3, 0, 0}, cost1);
-      dp0.update_lz(i, 3, 3, res_l3,  Constant<17>(), {lz3, 1, 0}, cost1);
-      dp0.update_lz_matrix(i, ofs_tab, len_tab,
-        [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-        [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-        0, cost1
-      );
-    }
-    lz_helper.add_element(i);
+    dp0.update(i, ulen_tab, c8_1, 0, [&](size_t li) -> tag { return {uncomp, 0, li}; });
+
+    const auto res_lzs = lz_helper.find(i, 0xff, 2);
+    dp1.update(i, 2, 2, res_lzs, c0_0, 10, {lz2, 0, 0});
+    dp1.update(i, 3, 3, res_lzs, c0_0, 11, {lz3, 0, 0});
+    dp1.update(i, 3, 3, lz_helper.find(i, 0x3fff, 3),  c0_0, 17, {lz3, 1, 0});
+    dp1.update_matrix(i, ofs_tab, len_tab, c0_0, 0,
+      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
+    );
+    c8_1.update(i);
   }
 
-  if (dp1.optimal_cost() == dp1.infinite_cost) {
+  if (dp0.optimal_cost() == dp0.infinite_cost) {
     // For example, this happens when the input is a de Bruijn sequence.
     throw std::runtime_error("This algorithm cannot compress the given data.");
   }
 
-  auto commands = [&]{
-    using command_type = sssp_solver<tag>::vertex_type;
-    std::vector<command_type> commands;
-    size_t curr = 1;
-    ptrdiff_t adr = input.size();
-    while (adr > 0 || (adr == 0 && curr == 1)) {
-      command_type cmd;
-      if (curr == 0) cmd = dp0[adr], curr = 1, assert(cmd.len > 0);
-      else cmd = dp1[adr], curr = 0;
-      adr -= cmd.len;
-      commands.emplace_back(cmd);
-    }
-    assert(adr == 0 && curr == 0);
-    std::ranges::reverse(commands);
-    return commands;
-  };
-
   using namespace data_type;
   writer_b8_l ret(4); ret.write<b1>(false);
   size_t adr = 0;
-  for (auto&& cmd : commands()) {
-    size_t d = adr - cmd.lz_ofs;
-    switch (cmd.type.tag) {
+  for (size_t curr = 0; adr <= input.size(); curr ^= 1) {
+    if (adr == input.size() && curr == 1) break;
+    const auto& cmd = (curr == 0) ? dp0[adr] : dp1[adr];
+    const auto [tag, oi, li] = cmd.type;
+    const size_t d = adr - cmd.lz_ofs();
+    switch (tag) {
       case none: {
-        ret.write<bnh>({3, 0});
+        ret.write<bnh>({3, 0b000});
       } break;
 
       case uncomp: {
-        const size_t li = cmd.type.li;
-        if (li == 0) ret.write<bnh>({3, cmd.len});
-        else if (li == 1) ret.write<bnh, bnh>({4, 0b1110}, {4, cmd.len - 7});
-        else ret.write<bnh, bnh>({4, 0b1111}, {10, cmd.len});
+        const auto& u = ulen_tab[li];
+        ret.write<bnh>({u.bitlen, u.val + (cmd.len - u.min)});
         ret.write<b8hn>({cmd.len, &input[adr]});
       } break;
 
       case lz2: {
-        ret.write<bnh, bnh>({2, 0}, {8, d});
+        ret.write<bnh, bnh>({2, 0b00}, {8, d});
       } break;
 
       case lz3: {
-        ret.write<bnh>({2, 1});
+        ret.write<bnh>({2, 0b01});
         if (d < 0x100) ret.write<bnh, bnh>({1, 0b1}, {8, d});
         else ret.write<bnh, bnh>({1, 0b0}, {14, d});
       } break;
 
       case lz: {
-        const auto l = len_tab[cmd.type.li];
-        const auto o = ofs_tab[cmd.type.oi];
+        const auto& l = len_tab[li];
+        const auto& o = ofs_tab[oi];
         ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
         ret.write<bnh>({o.bitlen, o.val + (d - o.min)});
       } break;
@@ -125,7 +104,7 @@ std::vector<uint8_t> vortex_comp(std::span<const uint8_t> in) {
     adr += cmd.len;
   }
   assert(adr == input.size());
-  assert(dp1.optimal_cost() + 33 == ret.bit_length());
+  assert(dp0.optimal_cost() + 33 == ret.bit_length());
   write32(ret.out, 0, input.size());
 
   const size_t s = std::min<size_t>(8, ret.size());

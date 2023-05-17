@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.2.5
+  VERSION 0.3.0
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -47,11 +47,11 @@ set(sfc_comp_src
   src/addams_family_comp.cpp
   src/asameshimae_nyanko_comp.cpp
   src/bokujou_monogatari_comp.cpp
-  src/burai_comp.cpp
   src/cannon_fodder_comp.cpp
   src/cb_chara_wars_comp.cpp
   src/chrono_trigger_comp.cpp
   src/danzarb_comp.cpp
+  src/der_langrisser_comp.cpp
   src/derby_stallion_2_comp.cpp
   src/dokapon_comp.cpp
   src/doom_comp.cpp
@@ -158,7 +158,6 @@ set(comp_ext_list
   bokujou_monogatari_comp comp
   bounty_sword_comp comp
   brandish_comp comp
-  burai_comp comp
   cannon_fodder_comp comp
   cb_chara_wars_comp comp
   chrono_trigger_comp comp
@@ -166,6 +165,7 @@ set(comp_ext_list
   danzarb_comp comp
   dekitate_high_school_comp_1 comp
   dekitate_high_school_comp_2 comp
+  der_langrisser_comp comp
   derby_stallion_2_comp comp
   diet_comp comp
   dokapon_comp comp

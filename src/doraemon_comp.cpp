@@ -11,12 +11,18 @@ namespace sfc_comp {
 
 namespace {
 
+enum h_tag {
+  code = 0,
+  lz_ofs = 1,
+  bits = 2
+};
+
 struct lha_config {
   bool use_old_encoding = true;
   bool allow_empty = true;
   size_t header_size = 0;
   size_t command_limit = 0x8000;
-  size_t code_max_bits = 0x10;
+  std::array<size_t, 3> max_bitlen = {0x10, 0x10, 0x10};
   size_t lz_ofs_bits = 0x0d;
 };
 
@@ -29,7 +35,7 @@ std::vector<uint8_t> doraemon_comp_core(
 
   struct encodes {
     encode::huffman_t code;
-    encode::huffman_t lz_ofs;
+    encode::huffman_t ofs;
     encode::huffman_t bits;
   };
 
@@ -43,13 +49,10 @@ std::vector<uint8_t> doraemon_comp_core(
   assert(1 <= config.command_limit && config.command_limit <= 0xffff);
   const size_t chunk_size = config.command_limit;
 
-  const auto encode_codes = [&config, &use_zero_bits](std::span<const size_t> counts, bool codes) {
-    auto ret = (codes) ? encode::length_limited_huffman(counts, config.code_max_bits, true)
-                       : encode::huffman(counts, true);
+  const auto encode_codes = [&config, &use_zero_bits](std::span<const size_t> counts, h_tag tag) {
+    auto ret = encode::length_limited_huffman(counts, config.max_bitlen[tag], true);
     if (ret.words.size() == 1) {
-      if (!use_zero_bits(codes, ret.words[0])) {
-        ret.codewords[ret.words[0]].bitlen += 1;
-      }
+      if (!use_zero_bits(tag == h_tag::code, ret.words[0])) ret.code[ret.words[0]].bitlen += 1;
     }
     return ret;
   };
@@ -62,7 +65,7 @@ std::vector<uint8_t> doraemon_comp_core(
   const auto bits_table = [&max_elem](const encode::huffman_t& huff) {
     const size_t table_size = max_elem(huff.words) + 1;
     std::vector<uint8_t> bits(table_size, 0);
-    for (const auto w : huff.words) bits[w] = huff.codewords[w].bitlen;
+    for (const auto w : huff.words) bits[w] = huff.code[w].bitlen;
     return bits;
   };
 
@@ -70,7 +73,7 @@ std::vector<uint8_t> doraemon_comp_core(
     const auto bits = bits_table(huff);
     if (bits.empty()) return encode::huffman_t();
 
-    const size_t max_bit_size = huff.codewords[huff.words.back()].bitlen;
+    const size_t max_bit_size = huff.code[huff.words.back()].bitlen;
     std::vector<size_t> counts(3 + max_bit_size, 0);
     for (size_t i = 0; i < bits.size(); ) {
       if (bits[i] != 0) {
@@ -85,7 +88,7 @@ std::vector<uint8_t> doraemon_comp_core(
         while (l >= 0x01) counts[0] += 1, l -= std::min<size_t>(l, 0x01);
       }
     }
-    return encode_codes(counts, false);
+    return encode_codes(counts, h_tag::bits);
   };
 
   const auto lz_ofs = [&config] {
@@ -107,7 +110,7 @@ std::vector<uint8_t> doraemon_comp_core(
     lz_helper lz_helper(input);
     for (size_t i = 0; i < input.size(); ++i) {
       encode::lz::find_all(i, lz_ofs, lz_min_len, ret[i], [&](size_t max_ofs) {
-        return lz_helper.find_closest(i, max_ofs, lz_min_len, lz_max_len);
+        return lz_helper.find(i, max_ofs, lz_min_len);
       });
       lz_helper.add_element(i);
     }
@@ -125,89 +128,77 @@ std::vector<uint8_t> doraemon_comp_core(
       // [Todo] Find a reasonable initialization.
       std::vector<size_t> ret(0x100 + lz_lens.size(), 18);
       const auto h = encode::huffman(utility::freq_u8(std::span(input).subspan(begin, size)), true);
-      for (const auto w : h.words) ret[w] = h.codewords[w].bitlen;
+      for (const auto w : h.words) ret[w] = h.code[w].bitlen;
       return ret;
     }();
-    std::vector<vrange> curr_lz_ofs(lz_ofs.begin(), lz_ofs.end());
-    for (auto& v : curr_lz_ofs) v.bitlen += 4;
+    std::vector<vrange> curr_ofs(lz_ofs.begin(), lz_ofs.end());
+    for (auto& v : curr_ofs) v.bitlen += 4;
 
-    using command_type = sssp_solver<tag>::vertex_type;
+    using node_type = solver<tag>::node;
     size_t best_cost = std::numeric_limits<size_t>::max();
-    std::vector<command_type> best_commands;
+    std::vector<node_type> best_commands;
     encodes best_enc;
 
     for (bool updated = true; updated; ) {
-      sssp_solver<tag> dp(size);
+      solver<tag> dp(size);
 
       const auto shift_lz = [&](const encode::lz_data& p) -> encode::lz_data {
         return {p.ofs - begin, p.len}; // Note: can be negative
       };
 
-      for (size_t i = 0; i < size; ++i) {
-        dp.update(i, 1, 1, [&](size_t) { return code_cost[input[begin + i]]; }, {uncomp, 0});
-        dp.update_lz_matrix(i, curr_lz_ofs, lz_lens,
-          [&](size_t oi) { return shift_lz(lz_memo[begin + i][oi]); },
+      for (size_t i = size; i-- > 0; ) {
+        dp.update_matrix(i, curr_ofs, lz_lens,
           [&](size_t li) { return code_cost[lz_lens[li] + huff_offset]; },
+          [&](size_t oi) { return shift_lz(lz_memo[begin + i][oi]); },
           [&](size_t oi, size_t) -> tag { return {lz, oi}; }
         );
+        dp.update(i, 1, code_cost[input[begin + i]], {uncomp, 0});
       }
 
-      struct Counter {
+      struct counter_t {
         std::array<size_t, 0x100 + lz_lens.size()> code = {};
         std::array<size_t, lz_ofs_max_bits + 1> lz_ofs = {};
       } counter;
 
-      const auto commands = [&]{
-        std::vector<command_type> ret;
-        size_t adr = size;
-        while (adr > 0) {
-          auto cmd = dp[adr];
-          adr -= cmd.len;
-          switch (cmd.type.tag) {
-          case uncomp: {
-            counter.code[input[begin + adr]] += 1;
-          } break;
-          case lz: {
-            counter.code[cmd.len + huff_offset] += 1;
-            counter.lz_ofs[cmd.type.oi] += 1;
-          } break;
-          default: assert(0);
-          }
+      const auto commands = [&] {
+        std::vector<node_type> ret;
+        size_t adr = 0;
+        while (adr < size) {
+          node_type cmd = dp[adr];
+          const auto [tag, oi] = cmd.type;
+          if (tag == uncomp) counter.code[input[begin + adr]] += 1;
+          else counter.code[cmd.len + huff_offset] += 1, counter.lz_ofs[oi] += 1;
+          adr += cmd.len;
           ret.emplace_back(cmd);
         }
-        assert(adr == 0);
-        std::reverse(ret.begin(), ret.end());
+        assert(adr == size);
         return ret;
       }();
 
-      const auto calc_cost = [&](const encodes& enc, std::span<const command_type>, const Counter& counter) -> size_t {
+      const auto calc_cost = [&](const encodes& enc, std::span<const node_type>, const counter_t& counter) -> size_t {
         size_t ret = 0;
-        for (const auto& w : enc.code.words) {
-          ret += counter.code[w] * enc.code.codewords[w].bitlen;
-        }
-        for (const auto& w : enc.lz_ofs.words) {
-          ret += counter.lz_ofs[w] * (enc.lz_ofs.codewords[w].bitlen + lz_ofs[w].bitlen);
-        };
+        for (const auto& w : enc.code.words) ret += counter.code[w] * enc.code.code[w].bitlen;
+        for (const auto& w : enc.ofs.words) ret += counter.lz_ofs[w] * (enc.ofs.code[w].bitlen + lz_ofs[w].bitlen);
         return ret;
       };
 
       const auto update_costs = [&](const encodes& enc) {
-        const auto penalty = [&](const encode::huffman_t& huff, size_t penalty = 9) {
+        const auto penalty = [&](const encode::huffman_t& huff, size_t penalty = 0) {
           size_t longest_bitlen = 0;
-          for (const auto w : huff.words) longest_bitlen = std::max<size_t>(longest_bitlen, huff.codewords[w].bitlen);
+          for (const auto w : huff.words) longest_bitlen = std::max<size_t>(longest_bitlen, huff.code[w].bitlen);
           return longest_bitlen + penalty;
         };
-        code_cost.assign(code_cost.size(), penalty(enc.code));
-        for (const auto w : enc.code.words) code_cost[w] = enc.code.codewords[w].bitlen;
+        code_cost.assign(code_cost.size(), penalty(enc.code, 1));
+        for (const auto w : enc.code.words) code_cost[w] = enc.code.code[w].bitlen;
 
-        const size_t c = penalty(enc.lz_ofs);
-        for (auto& v : curr_lz_ofs) v.bitlen = c;
-        for (const auto w : enc.lz_ofs.words) curr_lz_ofs[w].bitlen = enc.lz_ofs.codewords[w].bitlen + lz_ofs[w].bitlen;
+        const size_t c = penalty(enc.ofs);
+        for (auto& v : curr_ofs) v.bitlen = c;
+        for (const auto w : enc.ofs.words) curr_ofs[w].bitlen = enc.ofs.code[w].bitlen + lz_ofs[w].bitlen;
       };
 
       const encodes enc {
-        .code = encode_codes(counter.code, true),
-        .lz_ofs = encode_codes(counter.lz_ofs, false),
+        .code = encode_codes(counter.code, h_tag::code),
+        .ofs = encode_codes(counter.lz_ofs, h_tag::lz_ofs),
         .bits = encode_table(enc.code)
       };
 
@@ -222,8 +213,7 @@ std::vector<uint8_t> doraemon_comp_core(
       }
     }
 
-    const auto write_huff_bits = [&](
-        const encode::huffman_t& huff, const size_t s, const size_t t, const size_t lim) {
+    const auto write_huff_bits = [&](const encode::huffman_t& huff, const size_t s, const size_t t, const size_t lim) {
       auto bits = bits_table(huff);
       if (bits.size() > lim) std::runtime_error("This algorithm cannot compress the given data.");
       if (!config.allow_empty) {
@@ -288,7 +278,7 @@ std::vector<uint8_t> doraemon_comp_core(
         const size_t max_len = min_len + (1 << b) - 1;
         while (l >= min_len) {
           const size_t t = std::min<size_t>(l, max_len);
-          ret.write<bnh>(enc.bits.codewords[z_code]);
+          ret.write<bnh>(enc.bits.code[z_code]);
           ret.write<bnh>({b, t - min_len});
           l -= t;
         }
@@ -305,11 +295,11 @@ std::vector<uint8_t> doraemon_comp_core(
           l = write_zeros(l, 0, 0, 0x01);
           assert(l == 0);
         } else {
-          if (table[i] > config.code_max_bits) {
+          if (table[i] > config.max_bitlen[h_tag::code]) {
             // this should not happen.
             throw std::logic_error("This algorithm cannot compress the given data.");
           }
-          ret.write<bnh>(enc.bits.codewords[table[i] + 2]);
+          ret.write<bnh>(enc.bits.code[table[i] + 2]);
           i += 1;
         }
       }
@@ -318,21 +308,21 @@ std::vector<uint8_t> doraemon_comp_core(
     ret.write<bnh>({16, best_commands.size()});
     write_huff_bits(best_enc.bits, 5, 3, 0x13);
     write_table(best_enc);
-    write_huff_bits(best_enc.lz_ofs, 4, -1, 0x0e);
+    write_huff_bits(best_enc.ofs, 4, -1, 0x0e);
 
     size_t adr = 0;
     for (const auto& cmd : best_commands) {
-      switch (cmd.type.tag) {
+      const auto [tag, oi] = cmd.type;
+      switch (tag) {
       case uncomp: {
-        ret.write<bnh>(best_enc.code.codewords[input[begin + adr]]);
+        ret.write<bnh>(best_enc.code.code[input[begin + adr]]);
       } break;
       case lz: {
-        ret.write<bnh>(best_enc.code.codewords[cmd.len + huff_offset]);
-        const size_t oi = cmd.type.oi;
+        ret.write<bnh>(best_enc.code.code[cmd.len + huff_offset]);
         const auto& o = lz_ofs[oi];
-        const size_t d = adr - cmd.lz_ofs;
+        const size_t d = adr - cmd.lz_ofs();
         assert(o.min <= d && d <= o.max);
-        ret.write<bnh>(best_enc.lz_ofs.codewords[oi]);
+        ret.write<bnh>(best_enc.ofs.code[oi]);
         ret.write<bnh>({o.bitlen, d - o.min});
       } break;
       default: assert(0);
@@ -355,11 +345,13 @@ std::vector<uint8_t> doraemon_comp(std::span<const uint8_t> input) {
 
   lha_config config;
   config.header_size = header_size + 2;
-  config.code_max_bits = 0x10;
-  config.lz_ofs_bits = 0x0d;
   config.command_limit = 0x8000;
   config.use_old_encoding = true;
   config.allow_empty = true;
+  config.lz_ofs_bits = 0x0d;
+  config.max_bitlen[h_tag::code] = 0x10;
+  config.max_bitlen[h_tag::lz_ofs] = 0x10;
+  config.max_bitlen[h_tag::bits] = 0x10;
 
   auto ret = doraemon_comp_core(input, config, [](bool codes, size_t word) {
     return !codes || (word == 0);
@@ -398,11 +390,13 @@ std::vector<uint8_t> olivias_mystery_comp(std::span<const uint8_t> input) {
 
   lha_config config;
   config.header_size = 0;
+  config.command_limit = 0x8000;
   config.use_old_encoding = true;
   config.allow_empty = true;
   config.lz_ofs_bits = 0x0d;
-  config.code_max_bits = 0x10;
-  config.command_limit = 0x8000;
+  config.max_bitlen[h_tag::code] = 0x10;
+  config.max_bitlen[h_tag::lz_ofs] = 0x10;
+  config.max_bitlen[h_tag::bits] = 0x10;
   auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
     return true;
   });
@@ -414,6 +408,7 @@ std::vector<uint8_t> shima_kousaku_comp(std::span<const uint8_t> input) {
 
   lha_config config;
   config.header_size = 2;
+  config.command_limit = 0x8000;
   config.use_old_encoding = true;
   config.allow_empty = true;
 
@@ -421,8 +416,9 @@ std::vector<uint8_t> shima_kousaku_comp(std::span<const uint8_t> input) {
 
   // Caution: The decompressor seems have a bug.
   //          It may not work if some codeword has more than 12 bits.
-  config.code_max_bits = 0x0c;
-  config.command_limit = 0x8000;
+  config.max_bitlen[h_tag::code] = 0x0c;
+  config.max_bitlen[h_tag::lz_ofs] = 0x10;
+  config.max_bitlen[h_tag::bits] = 0x10;
 
   auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
     return true;
@@ -436,15 +432,18 @@ std::vector<uint8_t> yatterman_comp(std::span<const uint8_t> input) {
 
   lha_config config;
   config.header_size = 2;
+  config.command_limit = 0x8000;
   config.use_old_encoding = false;
   config.allow_empty = true;
 
   config.lz_ofs_bits = 0x0e;
 
   // Caution: The decompressor seems have a bug.
-  //          It may not work if some codeword has more than 13 bits. (cf. $80:b407, $80:b40a)
-  config.code_max_bits = 0x0d;
-  config.command_limit = 0x8000;
+  // - It may not work if some codeword has more than 13 bits. (cf. $80:B407, $80:B40A)
+  // - It may not work if some (lz-offset) codeword has more than 8 bits. (cf. $80:B4BE)
+  config.max_bitlen[h_tag::code] = 0x0d;
+  config.max_bitlen[h_tag::lz_ofs] = 0x08;
+  config.max_bitlen[h_tag::bits] = 0x0f;
 
   auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
     return false;
@@ -460,20 +459,21 @@ std::vector<uint8_t> time_cop_comp(std::span<const uint8_t> input) {
 
   lha_config config;
   config.header_size = 6;
+  config.command_limit = 0x7fff;
+  assert(config.command_limit <= 0x7fff);
   config.use_old_encoding = false;
   config.allow_empty = false;
 
   config.lz_ofs_bits = 0x0d;
-  config.code_max_bits = 0x10;
-  config.command_limit = 0x7fff;
-  assert(config.command_limit <= 0x7fff);
+  config.max_bitlen[h_tag::code] = 0x10;
+  config.max_bitlen[h_tag::lz_ofs] = 0x10;
+  config.max_bitlen[h_tag::bits] = 0x10;
 
   auto ret = doraemon_comp_core(input, config, [](bool, size_t) {
     return false;
   });
 
   // The data should be aligned to an even address if it crosses banks.
-  if (ret.size() & 1) ret.push_back(0);
   write16(ret, 0, input.size() >> 0);
   write16(ret, 2, input.size() >> 16); // unknown
   write16(ret, 4, utility::crc16(input));

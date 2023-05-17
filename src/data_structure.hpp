@@ -73,6 +73,8 @@ public:
     return std::make_pair(std::move(lcp), std::move(isa));
   }
 
+  constexpr size_t size() const { return sa.size(); }
+
   index_type operator [] (size_t i) const {
     return sa[i];
   }
@@ -94,14 +96,21 @@ requires monoid<T>
 class segment_tree {
 public:
   using value_type = typename T::value_type;
+  static constexpr value_type iden = T::iden();
 
   segment_tree() = default;
   segment_tree(const size_t n)
       : n(n), n2(n == 0 ? 0 : std::bit_ceil(n)), tree(2 * n2, T::iden()) {}
 
   segment_tree(std::span<const value_type> arr) : segment_tree(arr.size()) {
+    init([&](size_t i) { return arr[i]; });
+  }
+
+  template <typename Func>
+  requires std::convertible_to<std::invoke_result_t<Func, size_t>, value_type>
+  void init(Func&& func) {
     if (n == 0) return;
-    for (size_t i = 0; i < n; ++i) tree[n2 + i] = arr[i];
+    for (size_t i = 0; i < n; ++i) tree[n2 + i] = func(i);
     for (size_t i = n2 - 1; i > 0; --i) tree[i] = T::op(tree[2 * i], tree[2 * i + 1]);
   }
 
@@ -158,6 +167,10 @@ public:
     k += n2;
     tree[k] = v;
     for (k >>= 1; k > 0; k >>= 1) tree[k] = T::op(tree[2 * k], tree[2 * k + 1]);
+  }
+
+  void reset(size_t k) {
+    return update(k, T::iden());
   }
 
   value_type fold(size_t lo, size_t hi) const {

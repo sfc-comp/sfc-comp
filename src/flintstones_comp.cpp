@@ -27,41 +27,41 @@ std::vector<uint8_t> flintstones_comp(std::span<const uint8_t> input) {
     lzl
   };
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(9 + 0x3f);
 
   std::array<size_t, dists_s.size()> res_lz_ds = {};
   std::array<size_t, dists_l.size()> res_lz_dl = {};
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), uncomp);
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
 
-    const auto res_lzs = lz_helper.find(i, 0x40, 2);
-    dp.update_lz(i, 2, 4, res_lzs, Constant<9>(), lzs);
+    dp.update(i, 1, 9, uncomp);
 
-    const auto res_lzm = lz_helper.find(i, 0x1000, 3);
-    dp.update_lz(i, 3, 8, res_lzm, Constant<18>(), lzm);
+    dp.update(i, 2, 4, lz_helper.find(i, 0x40, 2), c0, 9, lzs);
+    dp.update(i, 3, 8, lz_helper.find(i, 0x1000, 3), c0, 18, lzm);
 
-    for (size_t k = 0; k < dists_s.size(); ++k) res_lz_ds[k] = encode::lz_dist(input, i, dists_s[k], res_lz_ds[k]);
+    for (size_t k = 0; k < dists_s.size(); ++k) res_lz_ds[k] = encode::lz_dist_r(input, i, dists_s[k], res_lz_ds[k]);
     const size_t ks = std::max_element(res_lz_ds.begin(), res_lz_ds.end()) - res_lz_ds.begin();
-    dp.update_lz(i, 5, 12, {ks, res_lz_ds[ks]}, Constant<13>(), lzds);
+    dp.update(i, 5, 12, {ks, res_lz_ds[ks]}, c0, 13, lzds);
 
-    for (size_t k = 0; k < dists_l.size(); ++k) res_lz_dl[k] = encode::lz_dist(input, i, dists_l[k], res_lz_dl[k]);
+    for (size_t k = 0; k < dists_l.size(); ++k) res_lz_dl[k] = encode::lz_dist_r(input, i, dists_l[k], res_lz_dl[k]);
     const size_t kl = std::max_element(res_lz_dl.begin(), res_lz_dl.end()) - res_lz_dl.begin();
-    dp.update_lz(i, 9, 9 + 0x3f, {kl, res_lz_dl[kl]}, Constant<18>(), lzdl);
+    dp.update(i, 9, 9 + 0x3f, {kl, res_lz_dl[kl]}, c0, 18, lzdl);
 
     auto res_lzl = lz_helper.find_closest(i, 0x4000, 4, 0x43);
     if ((i - res_lzl.ofs) > 0x3e00 && res_lzl.len == 0x43) res_lzl.len -= 1;
-    dp.update_lz(i, 4, 4 + 0x3f, res_lzl, Constant<27>(), lzl);
+    dp.update(i, 4, 4 + 0x3f, res_lzl, c0, 27, lzl);
 
-    lz_helper.add_element(i);
+    c0.update(i);
   }
 
   using namespace data_type;
   writer_b8_h ret(3);
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
-    const size_t d = adr - cmd.lz_ofs;
+  for (const auto& cmd : dp.optimal_path()) {
+    const size_t d = adr - cmd.lz_ofs();
     switch (cmd.type) {
     case uncomp: {
       ret.write<b1, d8>(false, input[adr]);
@@ -74,12 +74,12 @@ std::vector<uint8_t> flintstones_comp(std::span<const uint8_t> input) {
       ret.write<b1, d8>(((d - 1) >> 8) & 1, (d - 1) & 0x00ff);
     } break;
     case lzds: {
-      const size_t k = cmd.val();
+      const size_t k = cmd.arg;
       ret.write<b1, d8>(true, 0xf0 | (cmd.len - 5));
       ret.write<bnh>({4, k});
     } break;
     case lzdl: {
-      const size_t k = cmd.val();
+      const size_t k = cmd.arg;
       ret.write<b1, d8>(true, 0xf8 | k >> 3);
       ret.write<b1, d8>((k >> 2) & 1, (k & 0x03) << 6 | (cmd.len - 9));
     } break;

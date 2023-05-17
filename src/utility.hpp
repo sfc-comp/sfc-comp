@@ -106,6 +106,10 @@ inline uint16_t read16(std::span<const uint8_t> input, size_t i) {
   return input[i] | (input[i + 1] << 8);
 }
 
+inline uint32_t read24(std::span<const uint8_t> input, size_t i) {
+  return input[i] | (input[i + 1] << 8) | (input[i + 2] << 16);
+}
+
 inline uint32_t read32(std::span<const uint8_t> input, size_t i) {
   return read16(input, i) | read16(input, i + 2) << 16;
 }

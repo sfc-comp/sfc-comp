@@ -54,44 +54,45 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
   std::vector<size_t> lens(longest_lz_len); std::iota(lens.begin(), lens.end(), 1);
   std::vector<size_t> dists(longest_lz_dist); std::iota(dists.begin(), dists.end(), 1);
 
-  const size_t phase_total = pre_sizes.size();
-  for (size_t phase = 0; phase < phase_total; ++phase) {
-    uncomp_helper u_helper(input.size(), 1);
-    sssp_solver<tag> dp(input.size());
+  const size_t iter_total = pre_sizes.size();
+  for (size_t iter = 0; iter < iter_total; ++iter) {
+    solver<tag> dp(input.size());
+    auto c0 = dp.c<0>(max_len);
+    auto c1 = dp.c<1>(0x100);
 
     std::vector<size_t> res_lz(dists.size());
-    for (size_t i = 0; i < input.size(); ++i) {
-      u_helper.update(i, dp[i].cost);
-      const auto u1 = u_helper.find(i + 1, 0x01, 0x0f);
-      dp.update_u(i + 1, u1.len, uncomp, u1.cost + 1);
-      const auto u2 = u_helper.find(i + 1, 0x10, 0x100);
-      dp.update_u(i + 1, u2.len, uncompl, u2.cost + 2);
-      for (size_t k = 0; k < dists.size(); ++k) {
-        res_lz[k] = encode::lz_dist(input, i, dists[k], res_lz[k]);
-      }
-      size_t best_len = 0;
+    for (size_t i = input.size(); i-- > 0; ) {
+      dp.update(i, 0x10, 0x100, c1, 2, uncompl);
+      dp.update(i, 0x01, 0x0f, c1, 1, uncomp);
+
+      dp.update(i, 3, max_len, lz_memo[i], c0, 3, lz);
+      dp.update(i, lens, lz_memo[i], constant<2>(), lzpl);
+
       if (dists.size() > 0) {
+        for (size_t k = 0; k < dists.size(); ++k) {
+          res_lz[k] = encode::lz_dist_r(input, i, dists[k], res_lz[k]);
+        }
         const size_t best_k = std::max_element(res_lz.begin(), res_lz.end()) - res_lz.begin();
-        best_len = res_lz[best_k];
-        dp.update_lz_table(i, lens, {best_k, best_len}, Constant<1>(), lzpp);
-        dp.update_lz(i, 2, max_len, {best_k, best_len}, Constant<2>(), lzpo);
+        const size_t best_len = res_lz[best_k];
+        dp.update(i, lens, {best_k, best_len}, constant<1>(), lzpp);
+        dp.update(i, 2, max_len, {best_k, best_len}, c0, 2, lzpo);
       }
-      dp.update_lz_table(i, lens, lz_memo[i], Constant<2>(), lzpl);
-      dp.update_lz(i, 3, max_len, lz_memo[i], Constant<3>(), lz);
+
+      c0.update(i); c1.update(i);
     }
 
     const auto len_map = inverse_map<max_len + 1>(lens);
-    if (phase + 1 < phase_total) {
+    if (iter + 1 < iter_total) {
       std::vector<size_t> dist_count(max_dist + 1);
       std::vector<size_t> len_count(max_len + 1);
-      for (const auto& cmd : dp.commands()) {
+      for (const auto& cmd : dp.optimal_path()) {
         if (cmd.type == lzpl) {
           len_count[cmd.len] += 1;
         } else if (cmd.type == lzpo) {
-          dist_count[dists[cmd.val()]] += 1;
+          dist_count[dists[cmd.arg]] += 1;
         } else if (cmd.type == lzpp) {
           len_count[cmd.len] += 1;
-          dist_count[dists[cmd.val()]] += 1;
+          dist_count[dists[cmd.arg]] += 1;
         }
       }
       const auto update = [](std::vector<size_t>& vals, size_t nsize, std::span<const size_t> counts) {
@@ -100,19 +101,18 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
         vals.resize(nsize);
         std::sort(vals.begin(), vals.end());
       };
-      update(lens, pre_sizes[phase + 1].len, len_count);
-      update(dists, pre_sizes[phase + 1].dist, dist_count);
+      update(lens, pre_sizes[iter + 1].len, len_count);
+      update(dists, pre_sizes[iter + 1].dist, dist_count);
     } else {
       using namespace data_type;
-      writer ret;
-      for (size_t i = 0; i < 0x21; ++i) ret.write<d8>(0);
+      writer ret(0x21);
 
       size_t adr = 0;
-      for (const auto cmd : dp.commands()) {
-        const size_t d = adr - cmd.lz_ofs;
+      for (const auto& cmd : dp.optimal_path()) {
+        const size_t d = adr - cmd.lz_ofs();
         switch (cmd.type) {
-        case lzpp: ret.write<d8>((cmd.val() << 4) | len_map[cmd.len]); break;
-        case lzpo: ret.write<d8, d8>((cmd.val() << 4) | 0x0f, cmd.len & 0xff); break;
+        case lzpp: ret.write<d8>((cmd.arg << 4) | len_map[cmd.len]); break;
+        case lzpo: ret.write<d8, d8>((cmd.arg << 4) | 0x0f, cmd.len & 0xff); break;
         case uncomp: ret.write<d8, d8n>(0xe0 | (cmd.len - 1), {cmd.len, &input[adr]}); break;
         case uncompl: ret.write<d8, d8, d8n>(0xef, cmd.len & 0xff, {cmd.len, &input[adr]}); break;
         case lzpl: ret.write<d8, d8>(0xf0 | len_map[cmd.len], d - 1); break;
@@ -129,7 +129,7 @@ std::vector<uint8_t> heberekes_popoon_comp(std::span<const uint8_t> input) {
       return ret.out;
     }
   }
-  throw std::logic_error("phase_total == 0");
+  throw std::logic_error("iter_total == 0");
 }
 
 } // namespace sfc_comp

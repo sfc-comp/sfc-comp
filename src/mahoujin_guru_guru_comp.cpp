@@ -15,22 +15,20 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
     return vrange((1 << k) + 1, std::min(255, 2 << k), 2 * k + 1, 0);
   });
 
-  sssp_solver<tag> dp(input.size());
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(rle_lens.back().max);
 
   size_t rlen = 0;
-  for (size_t i = 0; i < input.size(); ++i) {
-    rlen = encode::run_length(input, i, rlen);
+  for (size_t i = input.size(); i-- > 0; ) {
+    rlen = encode::run_length_r(input, i, rlen);
     if (input[i] == 0) {
-      dp.update(i, 1, 1, Constant<2>(), {uncomp0, 0});
-      const auto cost = dp[i].cost;
-      for (size_t k = 0; k < rle_lens.size(); ++k) {
-        dp.update(i, rle_lens[k].min, rle_lens[k].max, rlen,
-                  Constant<3>(), {rle0, k}, cost + rle_lens[k].bitlen);
-      }
+      dp.update(i, 1, 2, {uncomp0, 0});
+      dp.update(i, rle_lens, rlen, c0, 3, [&](size_t li) -> tag { return {rle0, li}; });
     } else {
-      dp.update(i, 1, 1, Constant<9>(), {uncomp, 0});
+      dp.update(i, 1, 9, {uncomp, 0});
     }
-    if (i >= 2 && input[i] == input[i - 2]) dp.update(i, 1, 1, Constant<3>(), {prev2, 0});
+    if (i >= 2 && input[i] == input[i - 2]) dp.update(i, 1, 3, {prev2, 0});
+    c0.update(i);
   }
 
   using namespace data_type;
@@ -38,8 +36,9 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
   writer raw;
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
       ret.write<b1>(false);
       raw.write<d8>(input[adr]);
@@ -48,12 +47,11 @@ std::vector<uint8_t> mahoujin_guru_guru_comp(std::span<const uint8_t> input) {
       ret.write<b1, b1>(true, false);
     } break;
     case rle0: {
-      const auto k = cmd.type.li;
       ret.write<b1, b1, b1>(true, true, false);
-      ret.write<bnh>({k, low_bits_mask(k)});
+      ret.write<bnh>({li, low_bits_mask(li)});
       ret.write<b1>(false);
       const size_t l = cmd.len - (rle_lens[0].min - 1);
-      ret.write<bnh>({k, l ^ (1 << k)});
+      ret.write<bnh>({li, l ^ (1 << li)});
     } break;
     case prev2: {
       ret.write<b1, b1, b1>(true, true, true);

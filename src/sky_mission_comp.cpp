@@ -27,17 +27,17 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
     {0x0015, 15, 0b1000000'00000000 + 1}  // 1000000________
   }, 0x0113);
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size()); auto c0 = dp.c<0>(len_tab.back().max);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, {uncomp, 0, 0});
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 1,
       [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      1
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    lz_helper.add_element(i);
+    c0.update(i);
   }
 
   using namespace data_type;
@@ -47,8 +47,9 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
   if (!mixed) ret.write<d16>(0);
 
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
       ret.write<b1>(false);
       if (mixed) {
@@ -58,11 +59,11 @@ std::vector<uint8_t> sky_mission_comp_core(std::span<const uint8_t> input, const
       }
     } break;
     case lz: {
-      const auto& l = len_tab[cmd.type.li];
-      const auto& o = ofs_tab[cmd.type.oi];
+      const auto& l = len_tab[li];
+      const auto& o = ofs_tab[oi];
       ret.write<b1>(true);
       ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
-      ret.write<bnh>({o.bitlen, o.val + ((adr - cmd.lz_ofs) - o.min)});
+      ret.write<bnh>({o.bitlen, o.val + ((adr - cmd.lz_ofs()) - o.min)});
     } break;
     default: assert(0);
     }

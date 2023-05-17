@@ -24,32 +24,29 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
                     : vrange((1 << (k - 1)) + min_len, (1 << k) + (min_len - 1), 3 + (k - 1), k << (k - 1));
   });
 
-  lz_helper lz_helper(input);
-  uncomp_helper u_helper(input.size(), 8);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(len_tab.back().max);
+  auto c8 = dp.c<8>(ulen_tab.back().max);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    u_helper.update(i, dp[i].cost);
-    for (size_t k = 0; k < ulen_tab.size(); ++k) {
-      const auto u = u_helper.find(i + 1, ulen_tab[k].min, ulen_tab[k].max);
-      dp.update_u(i + 1, u.len, {uncomp, 0, k}, u.cost + 4 + ulen_tab[k].bitlen);
-    }
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, ulen_tab, c8, 4, [&](size_t li) -> tag { return {uncomp, 0, li}; });
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 0,
       [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      0
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    lz_helper.add_element(i);
+    c0.update(i); c8.update(i);
   }
 
   using namespace data_type;
   writer_b8_h ret(4);
   writer raw;
   size_t adr = 0, counter = 0;
-  for (const auto cmd : dp.commands()) {
-    const size_t d = adr - cmd.lz_ofs;
-    const size_t li = cmd.type.li;
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    const size_t d = adr - cmd.lz_ofs();
+    switch (tag) {
     case uncomp: {
       const auto& l = ulen_tab[li];
       ret.write<bnh, bnh>({4, 0}, {l.bitlen, l.val + (cmd.len - l.min)});
@@ -57,7 +54,7 @@ std::vector<uint8_t> oscar_comp(std::span<const uint8_t> input) {
     } break;
     case lz: {
       const auto& l = len_tab[li];
-      const auto& o = ofs_tab[cmd.type.oi];
+      const auto& o = ofs_tab[oi];
       ret.write<bnh>({o.bitlen, o.val + (d - o.min)});
       ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
     } break;

@@ -17,11 +17,11 @@ std::vector<uint8_t> gokinjo_boukentai_comp_1(std::span<const uint8_t> input, co
   writer_b8_h ret(header_size);
 
   for (const auto w : huff.words) {
-    const auto c = huff.codewords[w];
+    const auto c = huff.code[w];
     const size_t r_zero = std::min<size_t>(std::countr_zero(c.val), c.bitlen);
     ret.write<bnh, b1, bnh>({r_zero, low_bits_mask(r_zero)}, false, {8, w});
   }
-  for (const auto v : input) ret.write<bnh>(huff.codewords[v]);
+  for (const auto v : input) ret.write<bnh>(huff.code[v]);
   return ret.out;
 }
 

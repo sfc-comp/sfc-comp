@@ -11,30 +11,30 @@ std::vector<uint8_t> super_robot_wars_comp_core(
     std::span<const uint8_t> input, const size_t lz_max_len, const size_t header_size, const size_t skipped_size) {
   enum tag { uncomp, lzs, lzl, lzll };
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size(), skipped_size);
-
+  if (lz_max_len < 0x100) throw std::logic_error("lz_max_len should be >= 0x100.");
   if (skipped_size > input.size()) {
     throw std::logic_error("skipped_size exceeds the input size.");
   }
-  for (size_t i = 0; i < skipped_size; ++i) lz_helper.add_element(i);
 
-  for (size_t i = skipped_size; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lzs = lz_helper.find(i, 0x100, 2);
-    dp.update_lz(i, 2, 5, res_lzs, Constant<12>(), lzs);
-    auto res_lzl = lz_helper.find(i, 0x2000, 3);
-    dp.update_lz(i, 3, 9, res_lzl, Constant<18>(), lzl);
-    dp.update_lz(i, 10, lz_max_len, res_lzl, Constant<26>(), lzll);
-    lz_helper.add_element(i);
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size()); auto c0 = dp.c<0>(lz_max_len);
+
+  for (size_t i = input.size(); i-- > skipped_size; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, uncomp);
+    dp.update(i, 2, 5, lz_helper.find(i, 0x100, 2), c0, 12, lzs);
+    const auto res_lzl = lz_helper.find(i, 0x2000, 3);
+    dp.update(i, 3, 9, res_lzl, c0, 18, lzl);
+    dp.update(i, 10, lz_max_len, res_lzl, c0, 26, lzll);
+    c0.update(i);
   }
 
   using namespace data_type;
   writer_b8_h ret(header_size); ret.write<d8n>({skipped_size, &input[0]});
 
   size_t adr = skipped_size;
-  for (const auto cmd : dp.commands(adr)) {
-    size_t d = adr - cmd.lz_ofs;
+  for (const auto& cmd : dp.optimal_path(adr)) {
+    const size_t d = adr - cmd.lz_ofs();
     switch (cmd.type) {
     case uncomp: ret.write<b1, d8>(true, input[adr]); break;
     case lzs: ret.write<bnh, d8>({4, cmd.len - 2}, 0x100 - d); break;
@@ -46,7 +46,7 @@ std::vector<uint8_t> super_robot_wars_comp_core(
   }
   ret.write<b1, b1, d24b>(false, true, 0);
   assert(adr == input.size());
-  assert(dp.optimal_cost() + 2 + 3 * 8 + (header_size + skipped_size) * 8 == ret.bit_length());
+  assert(dp.optimal_cost(skipped_size) + 2 + 3 * 8 + (header_size + skipped_size) * 8 == ret.bit_length());
   return ret.out;
 }
 

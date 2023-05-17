@@ -20,35 +20,35 @@ std::vector<uint8_t> lzss(
 
   enum tag { uncomp, lz };
   std::vector<uint8_t> input(in.size() + pad);
-  std::copy(in.begin(), in.end(), input.begin() + pad);
+  std::ranges::copy(in, input.begin() + pad);
 
   init(input);
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size(), pad);
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size()); auto c0 = dp.template c<0>(lz_max_len);
 
-  for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
-  for (size_t i = pad; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), uncomp);
+  for (size_t i = input.size(); i-- > pad; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, uncomp);
     auto res_lz = lz_helper.find(i, lz_max_ofs, lz_min_len);
-    dp.update_lz(i, lz_min_len, lz_max_len, res_lz, Constant<17>(), lz);
-    lz_helper.add_element(i);
+    dp.update(i, lz_min_len, lz_max_len, res_lz, c0, 17, lz);
+    c0.update(i);
   }
 
   using namespace data_type;
   Writer ret(header_size);
 
   size_t adr = pad;
-  for (const auto cmd : dp.commands(pad)) {
+  for (const auto& cmd : dp.optimal_path(pad)) {
     switch (cmd.type) {
     case uncomp: ret.template write<b1, d8>(uncomp_b, input[adr]); break;
-    case lz: ret.template write<b1, d16>(!uncomp_b, lz_enc(adr, cmd.lz_ofs, cmd.len)); break;
+    case lz: ret.template write<b1, d16>(!uncomp_b, lz_enc(adr, cmd.lz_ofs(), cmd.len)); break;
     default: assert(0);
     }
     adr += cmd.len;
   }
-  assert(dp.optimal_cost() + header_size * 8 == ret.bit_length());
-  assert(adr - pad == in.size());
+  assert(dp.optimal_cost(pad) + header_size * 8 == ret.bit_length());
+  assert(adr == input.size());
   return ret.out;
 }
 

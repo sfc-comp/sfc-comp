@@ -23,20 +23,22 @@ std::vector<uint8_t> rob_northen_comp_2_core(
     {0x0009, 11, 0b11100000001,  0b00011111111}
   }, 0x00ff);
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(len_tab.back().max);
+  auto c32_4 = dp.c<32, 4>(72);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), {uncomp, 0, 0});
-    dp.update_k<4>(i, 12, 72, Linear<8, 9>(), {uncompl, 0, 0});
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, {uncomp, 0, 0});
+    dp.update(i, 12, 12 + 4 * 0x0f, c32_4, 9, {uncompl, 0, 0});
     const auto res_lz2 = lz_helper.find(i, 0x100, 2);
-    dp.update_lz(i, 2, 2, res_lz2, Constant<11>(), {lz2, 0, 0});
-    dp.update_lz_matrix(i, ofs_tab, len_tab,
+    dp.update(i, 2, 2, res_lz2, c0, 11, {lz2, 0, 0});
+    dp.update_matrix(i, ofs_tab, len_tab, c0, 1,
       [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, len_tab.front().min); },
-      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; },
-      1
+      [&](size_t oi, size_t li) -> tag { return {lz, oi, li}; }
     );
-    lz_helper.add_element(i);
+    c0.update(i); c32_4.update(i);
   }
 
   using namespace data_type;
@@ -44,20 +46,21 @@ std::vector<uint8_t> rob_northen_comp_2_core(
   ret.write<b1, b1>(false, false);
 
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
-    const size_t d = adr - cmd.lz_ofs;
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path()) {
+    const auto [tag, oi, li] = cmd.type;
+    const size_t d = adr - cmd.lz_ofs();
+    switch (tag) {
     case uncomp: {
       ret.write<b1, d8>(false, input[adr]);
     } break;
     case uncompl: {
-      ret.write<bnh, d8n>({9, 0x170 + (cmd.len - 12) / 4}, {cmd.len, &input[adr]});
+      ret.write<b1, bnh, bnh, d8n>(true, {4, 0b0111}, {4, (cmd.len - 12) / 4}, {cmd.len, &input[adr]});
     } break;
     case lz2: {
-      ret.write<b1, bnh, d8>(true, {2, 2}, d - 1);
+      ret.write<b1, bnh, d8>(true, {2, 0b10}, d - 1);
     } break;
     case lz: {
-      const auto& l = len_tab[cmd.type.li];
+      const auto& l = len_tab[li];
       const size_t ld = cmd.len - l.min;
       const auto lval = masked_add(l.val, ld, l.mask);
       ret.write<b1>(true);
@@ -66,7 +69,7 @@ std::vector<uint8_t> rob_northen_comp_2_core(
       } else {
         ret.write<bnh, d8>({l.bitlen - 8, l.val >> 8}, lval & 0xff);
       }
-      const auto& o = ofs_tab[cmd.type.oi];
+      const auto& o = ofs_tab[oi];
       const auto od = d - o.min;
       ret.write<bnh>({o.bitlen - 8, masked_add(o.val, od >> 8, o.mask)});
       ret.write<d8>(od & 0xff);
@@ -75,7 +78,7 @@ std::vector<uint8_t> rob_northen_comp_2_core(
     }
     adr += cmd.len;
   }
-  ret.write<bnh, d8, b1>({4, 0x0f}, 0, false);
+  ret.write<b1, bnh, d8, b1>(true, {3, 0b111}, 0, false);
   assert(header_size * 8 + 2 + dp.optimal_cost() + 4 + 8 + 1 == ret.bit_length());
   return ret.out;
 }

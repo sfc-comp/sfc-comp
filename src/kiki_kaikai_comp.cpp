@@ -28,23 +28,29 @@ std::vector<uint8_t> wild_guns_comp_2(std::span<const uint8_t> input) {
   check_size(input.size(), 1, 0x10000);
 
   enum tag { uncomp, rle, inc, dec };
-  sssp_solver<tag> dp(input.size() / 2 * 2);
+  solver<tag> dp(input.size() / 2 * 2);
+  auto c0_2 = dp.c<0, 2>(0x82); auto c2_2 = dp.c<2, 2>(0x80);
 
-  encode::rle_data rlen16 = {0, 0};
-  for (size_t i = 0; i + 1 < input.size(); i += 2) {
-    dp.update_k<2>(i, 2, 0x80, Linear<1, 1>(), uncomp);
-    rlen16 = encode::run_length16_delta(input, i, rlen16);
-    if (rlen16.v == 0x0001) dp.update_k<2>(i, 4, 0x82, rlen16.len, Constant<3>(), inc);
-    else if (rlen16.v == 0x0000) dp.update_k<2>(i, 4, 0x82, rlen16.len, Constant<3>(), rle);
-    else if (rlen16.v == 0xffff) dp.update_k<2>(i, 4, 0x82, rlen16.len, Constant<3>(), dec);
+  size_t rlen16 = 0;
+  for (size_t i = input.size() / 2 * 2; i > 0; ) {
+    i -= 2;
+    dp.update(i, 2, 0x80, c2_2, 1, uncomp);
+    rlen16 = encode::run_length16_delta_r(input, i, rlen16);
+    if (rlen16 >= 4) {
+      const uint16_t delta = read16(input, i + 2) - read16(input, i);
+      if (delta == 0x0001) dp.update(i, 4, 0x82, rlen16, c0_2, 3, inc);
+      else if (delta == 0x0000) dp.update(i, 4, 0x82, rlen16, c0_2, 3, rle);
+      else if (delta == 0xffff) dp.update(i, 4, 0x82, rlen16, c0_2, 3, dec);
+    }
+    c0_2.update(i); c2_2.update(i);
   }
 
   using namespace data_type;
-  writer ret; ret.write<d8, d16>(0, 0);
+  writer ret(3);
   if (input.size() & 1) ret.write<d8>(input.back());
 
   size_t adr = 0;
-  for (const auto& cmd : dp.commands()) {
+  for (const auto& cmd : dp.optimal_path()) {
     switch (cmd.type) {
     case uncomp: ret.write<d8, d8n>(0x00 | (cmd.len / 2 - 1), {cmd.len, &input[adr]}); break;
     case rle: ret.write<d8, d16>(0x40 | (cmd.len / 2 - 2), read16(input, adr)); break;
@@ -66,7 +72,7 @@ std::vector<uint8_t> wild_guns_comp_2(std::span<const uint8_t> input) {
 std::vector<uint8_t> wild_guns_comp(std::span<const uint8_t> input) {
   auto best = kiki_kaikai_comp(input);
 
-  if (auto res = wild_guns_comp_2(input); res.size() < best.size()) {
+  if (auto res = wild_guns_comp_2(input); best.empty() || res.size() < best.size()) {
     best = std::move(res);
   }
 

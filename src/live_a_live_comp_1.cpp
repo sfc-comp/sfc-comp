@@ -16,84 +16,85 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
     lzl, lzs, lz8
   };
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(0x113); auto c1 = dp.c<1>(0xf0);
+  auto c0_2 = dp.c<0, 2>(0x204); auto c1_2 = dp.c<1, 2>(0x206);
+  auto c0_3 = dp.c<0, 3>(0x303); auto c1_3 = dp.c<1, 3>(0x306);
+  auto c1_4 = dp.c<1, 4>(0x404);
 
   size_t rlen8 = 0, rlen16 = 0, rlen24 = 0;
-  encode::rle_data c16[2] = {{}, {}}, c24[3] = {{}, {}, {}}, c32[4] = {{}, {}, {}, {}};
-  encode::rle_data rlen8i = {}, rlen16i[2] = {{}, {}};
+  size_t rlen8d = 0; std::array<size_t, 2> rlen16d = {};
+  std::array<size_t, 2> c16 = {};
+  std::array<size_t, 3> c24 = {};
+  std::array<size_t, 4> c32 = {};
   std::array<size_t, 16> lz8s = {};
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 0xf0, Linear<1, 1>(), uncomp);
 
-    rlen8 = encode::run_length(input, i, rlen8);
+  if (input.size() > 0) lz_helper.reset(input.size() - 1);
+  for (size_t i = input.size(); i-- > 0; ) {
+    if (i > 0) lz_helper.reset(i - 1);
+    dp.update(i, 1, 0xf0, c1, 1, uncomp);
+
+    rlen8 = encode::run_length_r(input, i, rlen8);
     if (!(input[i] & 0xf0)) {
-      dp.update(i, 3, 0x12, rlen8, Constant<2>(), rle8z);
-      dp.update(i, 0x13, 0x103, rlen8, Constant<3>(), rle8);
+      dp.update(i, 3, 0x12, rlen8, c0, 2, rle8z);
+      dp.update(i, 0x13, 0x103, rlen8, c0, 3, rle8);
     } else {
-      dp.update(i, 4, 0x103, rlen8, Constant<3>(), rle8);
+      dp.update(i, 4, 0x103, rlen8, c0, 3, rle8);
     }
 
-    if (i + 1 < input.size()) {
-      rlen16 = encode::run_length16(input, i, rlen16);
-      if (!((input[i] | input[i + 1]) & 0xf0)) {
-        dp.update_k<2>(i, 4, 0x202, rlen16, Constant<3>(), rle16z);
+    rlen16 = encode::run_length16_r(input, i, rlen16);
+    if (rlen16 >= 2) {
+      if (((input[i] | input[i + 1]) & 0xf0) == 0) {
+        dp.update(i, 4, 0x202, rlen16, c0_2, 3, rle16z);
       } else {
-        dp.update_k<2>(i, 4, 0x202, rlen16, Constant<4>(), rle16);
+        dp.update(i, 4, 0x202, rlen16, c0_2, 4, rle16);
       }
     }
 
-    rlen24 = encode::run_length24(input, i, rlen24);
-    dp.update_k<3>(i, 6, 0x0303, rlen24, Constant<5>(), rle24);
+    rlen24 = encode::run_length24_r(input, i, rlen24);
+    dp.update(i, 6, 0x303, rlen24, c0_3, 5, rle24);
 
-    size_t rem2 = i % 2;
-    c16[rem2] = encode::common_lo16_hint(input, i, c16[rem2].len);
-    dp.update_k<2>(i, 8, 0x206, c16[rem2].len, LinearQ<1, 6, 2>(), common_lo16);
+    c16[i % 2] = encode::common_lo16_r(input, i, c16[i % 2]);
+    dp.update(i, 8, 0x206, c16[i % 2], c1_2, 3, common_lo16);
 
-    size_t rem3 = i % 3;
-    c24[rem3] = encode::common_lo24_16_hint(input, i, c24[rem3].len);
-    dp.update_k<3>(i, 9, 0x306, c24[rem3].len, LinearQ<1, 12, 3>(), common_lo24);
+    c24[i % 3] = encode::common_lo24_16_r(input, i, c24[i % 3]);
+    dp.update(i, 9, 0x306, c24[i % 3], c1_3, 4, common_lo24);
 
-    size_t rem4 = i % 4;
-    c32[rem4] = encode::common_lo32_24_hint(input, i, c32[rem4].len);
-    dp.update_k<4>(i, 8, 0x404, c32[rem4].len, LinearQ<1, 20, 4>(), common_lo32);
+    c32[i % 4] = encode::common_lo32_24_r(input, i, c32[i % 4]);
+    dp.update(i, 8, 0x404, c32[i % 4], c1_4, 5, common_lo32);
 
-    if (i + 1 < input.size()) {
-      rlen8i = encode::run_length_delta(input, i, rlen8i);
-      size_t delta = rlen8i.v;
+    rlen8d = encode::run_length_delta_r(input, i, rlen8d);
+    if (rlen8d >= 2) {
+      const uint8_t delta = input[i + 1] - input[i];
       if (delta == 1 || delta == 0xff) {
-        dp.update(i, 4, 0x103, rlen8i.len, Constant<3>(), (delta == 1) ? inc8 : dec8);
+        dp.update(i, 4, 0x103, rlen8d, c0, 3, (delta == 1) ? inc8 : dec8);
       } else {
-        dp.update(i, 5, 0x104, rlen8i.len, Constant<4>(), add8);
+        dp.update(i, 5, 0x104, rlen8d, c0, 4, add8);
       }
     }
-
-    if (i + 3 < input.size()) {
-      rlen16i[rem2] = encode::run_length16_delta(input, i, rlen16i[rem2]);
-      size_t delta = rlen16i[rem2].v;
+    rlen16d[i % 2] = encode::run_length16_delta_r(input, i, rlen16d[i % 2]);
+    if (rlen16d[i % 2] >= 4) {
+      const uint16_t delta = read16(input, i + 2) - read16(input, i);
       if (((delta + 0x80) & 0xffff) < 0x100) {
-        dp.update_k<2>(i, 6, 0x204, rlen16i[rem2].len, Constant<5>(), add16);
+        dp.update(i, 6, 0x204, rlen16d[i % 2], c0_2, 5, add16);
       }
     }
+    dp.update(i, 4, 0x13, lz_helper.find(i, 0x1000, 4), c0, 3, lzl);
+    dp.update(i, 0x14, 0x113, lz_helper.find(i, 0x100, 0x14), c0, 3, lzs);
 
-    auto res_lzl = lz_helper.find(i, 0x1000, 4);
-    dp.update_lz(i, 4, 0x13, res_lzl, Constant<3>(), lzl);
-
-    auto res_lzs = lz_helper.find(i, 0x100, 0x14);
-    dp.update_lz(i, 0x14, 0x113, res_lzs, Constant<3>(), lzs);
-
-    for (size_t k = 0; k < 0x10; ++k) lz8s[k] = encode::lz_dist(input, i, 8 * (k + 1), lz8s[k]);
+    for (size_t k = 0; k < 0x10; ++k) lz8s[k] = encode::lz_dist_r(input, i, 8 * (k + 1), lz8s[k]);
     const size_t best_k = std::max_element(lz8s.begin(), lz8s.end()) - lz8s.begin();
-    dp.update_lz(i, 3, 0x12, {i - 8 * (best_k + 1), lz8s[best_k]}, Constant<2>(), lz8);
+    dp.update(i, 3, 0x12, {i - 8 * (best_k + 1), lz8s[best_k]}, c0, 2, lz8);
 
-    // offset should be >= 2.
-    if (i >= 1) lz_helper.add_element(i - 1);
+    c0.update(i); c1.update(i); c0_2.update(i); c1_2.update(i);
+    c0_3.update(i); c1_3.update(i); c1_4.update(i);
   }
 
   using namespace data_type;
   writer ret; ret.write<d8>(1);
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
+  for (const auto& cmd : dp.optimal_path()) {
     switch (cmd.type) {
     case uncomp: {
       ret.write<d8, d8n>(cmd.len - 1, {cmd.len, &input[adr]});
@@ -137,21 +138,20 @@ std::vector<uint8_t> live_a_live_comp_1(std::span<const uint8_t> input) {
       ret.write<d8, d8, d8, d8>(0xfa, cmd.len - 5, input[adr], input[adr + 1] - input[adr]);
     } break;
     case add16: {
-      ret.write<d8, d8, d16, d8>(
-        0xfb, (cmd.len - 6) >> 1,
+      ret.write<d8, d8, d16, d8>(0xfb, (cmd.len - 6) >> 1,
         read16(input, adr), input[adr + 2] - input[adr]
       );
     } break;
     case lzl: {
-      size_t d = adr - cmd.lz_ofs; assert(d >= 2);
+      const size_t d = adr - cmd.lz_ofs(); assert(d >= 2);
       ret.write<d8, d16>(0xfc, (d - 1) | (cmd.len - 4) << 12);
     } break;
     case lzs: {
-      size_t d = adr - cmd.lz_ofs; assert(d >= 2);
+      const size_t d = adr - cmd.lz_ofs(); assert(d >= 2);
       ret.write<d8, d8, d8>(0xfd, d - 1, cmd.len - 20);
     } break;
     case lz8: {
-      size_t d = adr - cmd.lz_ofs;
+      const size_t d = adr - cmd.lz_ofs();
       assert(!(d & 7));
       ret.write<d8, d8>(0xfe, (d - 8) << 1 | (cmd.len - 3));
     } break;

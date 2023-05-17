@@ -39,33 +39,20 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
     {0x0089, 20, 0b1111111111101'0000000},
   }, 0x00ff);
 
-  static constexpr auto ofs_tab = to_vranges({
-    {0x0001, 0, 0} // dynamically changed
-  }, 0x0fff);
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(lz_len_tab.back().max);
+  auto c8 = dp.c<8>(uncomp_len_tab.back().max);
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size(), skipped_size);
-
-  for (size_t i = 0; i < skipped_size; ++i) lz_helper.add_element(i);
-
-  for (size_t i = skipped_size; i < input.size(); ++i) {
-    const auto cost = dp[i].cost;
-
-    for (size_t k = 0; k < uncomp_len_tab.size(); ++k) {
-      const size_t min_len = uncomp_len_tab[k].min;
-      if (i + min_len > input.size()) break;
-      const size_t max_len = uncomp_len_tab[k].max;
-      const size_t len_bitsize = uncomp_len_tab[k].bitlen;
-      const size_t total_cost = cost + len_bitsize;
-      dp.update(i, min_len, max_len, Linear<8, 0>(), {uncomp, 0, k}, total_cost);
-    }
+  for (size_t i = input.size(); i-- > skipped_size; ) {
+    lz_helper.reset(i);
+    dp.update(i, uncomp_len_tab, c8, 0, [&](size_t li) -> tag { return {uncomp, 0, li}; });
     const size_t ofs_bitsize = std::min<size_t>(12, 1 + ilog2(i));
-    dp.update_lz_matrix(i, ofs_tab, lz_len_tab,
-      [&](size_t oi) { return lz_helper.find(i, ofs_tab[oi].max, lz_len_tab.front().min); },
-      [&](size_t, size_t li) -> tag { return {lz, ofs_bitsize, li}; },
-      1 + ofs_bitsize
+    const auto res_lz = lz_helper.find(i, 0xfff, lz_len_tab.front().min);
+    dp.update(i, lz_len_tab, res_lz, c0, 1 + ofs_bitsize,
+      [&](size_t li) -> tag { return {lz, ofs_bitsize, li}; }
     );
-    lz_helper.add_element(i);
+    c0.update(i); c8.update(i);
   }
 
   using namespace data_type;
@@ -73,19 +60,20 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   writer raws; raws.write<d8n>({skipped_size, &input[0]});
 
   size_t adr = skipped_size;
-  for (const auto& cmd : dp.commands(skipped_size)) {
-    switch (cmd.type.tag) {
+  for (const auto& cmd : dp.optimal_path(skipped_size)) {
+    const auto [tag, oi, li] = cmd.type;
+    switch (tag) {
     case uncomp: {
-      const auto& l = uncomp_len_tab[cmd.type.li];
+      const auto& l = uncomp_len_tab[li];
       ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
       raws.write<d8n>({cmd.len, &input[adr]});
     } break;
     case lz: {
-      const size_t d = adr - cmd.lz_ofs;
-      const auto& l = lz_len_tab[cmd.type.li];
+      const size_t d = adr - cmd.lz_ofs();
+      const auto& l = lz_len_tab[li];
       ret.write<b1>(true);
-      assert(d < (size_t(1) << cmd.type.oi));
-      ret.write<bnh>({cmd.type.oi, d});
+      assert(d < (size_t(1) << oi));
+      ret.write<bnh>({oi, d});
       ret.write<bnh>({l.bitlen, l.val + (cmd.len - l.min)});
     } break;
     default: assert(0);
@@ -94,7 +82,7 @@ std::vector<uint8_t> soul_and_sword_comp(std::span<const uint8_t> input) {
   }
   write16(ret.out, 0, input.size());
   write16(ret.out, 2, ret.size() - 4);
-  assert(dp.optimal_cost() + 8 * (4 + skipped_size) == raws.size() * 8 + ret.bit_length());
+  assert(dp.optimal_cost(skipped_size) + 8 * (4 + skipped_size) == raws.size() * 8 + ret.bit_length());
   ret.extend(raws);
 
   return ret.out;

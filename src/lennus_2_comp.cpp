@@ -23,32 +23,33 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
   std::vector<uint8_t> best;
 
   for (size_t comp_type = 0x5059; comp_type <= 0x5159; comp_type += 0x100) {
-    lz_helper lz_helper(input);
-    sssp_solver<tag> dp(input.size(), pad);
-    for (size_t i = 0; i < pad; ++i) lz_helper.add_element(i);
+    lz_helper lz_helper(input, true);
+    solver<tag> dp(input.size());
+    auto c0 = dp.c<0>(lz_lens.back());
 
-    for (size_t i = pad; i < input.size(); ++i) {
-      dp.update(i, 1, 1, Constant<9>(), uncomp);
+    for (size_t i = input.size(); i-- > pad; ) {
+      lz_helper.reset(i);
+      dp.update(i, 1, 9, uncomp);
       if (comp_type == 0x5059) {
         const auto res_lz = lz_helper.find(i, 0x1000, lz_lens.front());
-        dp.update_lz_table(i, lz_lens, res_lz, Constant<17>(), lz);
+        dp.update(i, lz_lens, res_lz, constant<17>(), lz);
       } else {
         const auto res_lzs = lz_helper.find(i, 0x7f, 2);
-        dp.update_lz(i, 2, 2, res_lzs, Constant<9>(), lz2);
+        dp.update(i, 2, 2, res_lzs, c0, 9, lz2);
         if (i + 1 < input.size() && read16(input, i - 0x800) == read16(input, i)) {
-          dp.update(i, 2, 2, Constant<9>(), lz2_0);
+          dp.update(i, 2, 9, lz2_0);
         }
         const auto res_lz = lz_helper.find(i, 0x800, lz_lens.front());
-        dp.update_lz_table(i, lz_lens, res_lz, Constant<17>(), lz);
+        dp.update(i, lz_lens, res_lz, constant<17>(), lz);
       }
-      lz_helper.add_element(i);
+      c0.update(i);
     }
 
     using namespace data_type;
     writer_b8_h ret(8);
     size_t adr = pad;
-    for (const auto& cmd : dp.commands(pad)) {
-      const size_t d = adr - cmd.lz_ofs;
+    for (const auto& cmd : dp.optimal_path(pad)) {
+      const size_t d = adr - cmd.lz_ofs();
       switch (cmd.type) {
       case uncomp: ret.write<b1, d8>(false, input[adr]); break;
       case lz2_0: ret.write<b1, d8>(true, 0x80 | 0); break;
@@ -68,7 +69,7 @@ std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t> in) {
     write24(ret.out, 2, in.size());
     write24(ret.out, 5, ret.size() - 8);
     assert(adr == input.size());
-    assert(dp.optimal_cost() + 8 * 8 == ret.bit_length());
+    assert(dp.optimal_cost(pad) + 8 * 8 == ret.bit_length());
     if (best.empty() || ret.size() < best.size()) best = std::move(ret.out);
   }
   return best;

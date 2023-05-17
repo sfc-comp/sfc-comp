@@ -203,25 +203,26 @@ std::vector<uint8_t> gun_hazard_comp_4(std::span<const uint8_t> input, const uin
 
   enum tag { uncomp, lzs, lzl, lzll };
 
-  lz_helper lz_helper(input);
-  sssp_solver<tag> dp(input.size());
+  lz_helper lz_helper(input, true);
+  solver<tag> dp(input.size());
+  auto c0 = dp.c<0>(256);
 
-  for (size_t i = 0; i < input.size(); ++i) {
-    dp.update(i, 1, 1, Constant<9>(), uncomp);
-    auto res_lzs = lz_helper.find(i, 0xff, 3);
-    dp.update_lz(i, 3, 6, res_lzs, Constant<12>(), lzs);
-    auto res_lzl = lz_helper.find(i, 0x1fff, 3);
-    dp.update_lz(i, 3, 9, res_lzl, Constant<18>(), lzl);
-    dp.update_lz(i, 1, 256, res_lzl, Constant<26>(), lzll);
-    lz_helper.add_element(i);
+  for (size_t i = input.size(); i-- > 0; ) {
+    lz_helper.reset(i);
+    dp.update(i, 1, 9, uncomp);
+    dp.update(i, 3, 6, lz_helper.find(i, 0xff, 3), c0, 12, lzs);
+    const auto res_lzl = lz_helper.find(i, 0x1fff, 3);
+    dp.update(i, 3, 9, res_lzl, c0, 18, lzl);
+    dp.update(i, 1, 256, res_lzl, c0, 26, lzll);
+    c0.update(i);
   }
 
   using namespace data_type;
   writer_b8_l ret(3);
 
   size_t adr = 0;
-  for (const auto cmd : dp.commands()) {
-    size_t d = adr - cmd.lz_ofs;
+  for (const auto& cmd : dp.optimal_path()) {
+    const size_t d = adr - cmd.lz_ofs();
     switch (cmd.type) {
     case uncomp: ret.write<b1, d8>(true, input[adr]); break;
     case lzs: ret.write<bnh, d8>({4, cmd.len - 3}, d); break;
