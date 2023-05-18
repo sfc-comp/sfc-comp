@@ -134,7 +134,7 @@ $ ./bench <input-dir>
 | pac_in_time_comp                         |    7 | 575B | 30B3 | 7804 | 2022 | 30EF | 6082 | 1553 |  1C6FF | 0.7240 | B8CA1666 |
 | papuwa_comp                              |    5 | 5CD1 | 33DD | 785A | 220B | 369C | 66B8 | 1967 |  1E1D3 | 0.1096 | 502D0E93 |
 | picross_np_comp                          |    5 | 5F6B | 375C | 7FC7 | 25DD | 385A | 6A12 | 19F4 |  1F8D0 | 0.0477 | E01DA751 |
-| pokemon_gold_comp                        |    4 | 59C3 | 32E8 | 7781 | 2739 | 3761 | 660D | 17AA |  1E081 | 0.3306 | 644CACF9 |
+| pokemon_gold_comp                        |    4 | 59C3 | 32E8 | 7781 | 2739 | 3761 | 660D | 17AA |  1E081 | 0.3263 | 4C92967B |
 | popful_mail_comp                         |    6 | 5DE1 | 35B1 | 785A | 235D | 37C6 | 6714 | 1965 |  1E78E | 0.1073 | 25068780 |
 | power_piggs_comp                         |    5 | 5E86 | 383C | 7F2E | 271D | 3847 | 69D5 | 18E5 |  1F813 | 0.0495 | 744ACC3A |
 | rareware_comp                            |   29 | 56CD | 31E6 | 7789 | 21FD | 3397 | 6289 | 165E |  1CEE0 | 0.3259 | 8FB6BF30 |

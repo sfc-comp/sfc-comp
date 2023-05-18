@@ -12,7 +12,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t> in) {
 
   static constexpr size_t pad = 0x12;
   std::vector<uint8_t> input(in.size() + pad, 0x20);
-  std::copy(in.begin(), in.end(), input.begin() + pad);
+  std::ranges::copy(in, input.begin() + pad);
 
   lz_helper lz_helper(input);
   std::vector<std::array<encode::lz_data, 2>> lz_memo(input.size());

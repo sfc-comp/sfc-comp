@@ -32,7 +32,7 @@ std::vector<uint8_t> royal_conquest_comp(std::span<const uint8_t> in) {
   static constexpr size_t pad = lz_max_len;
 
   std::vector<uint8_t> input(in.size() + pad, 0);
-  std::copy(in.begin(), in.end(), input.begin() + pad);
+  std::ranges::copy(in, input.begin() + pad);
 
   const auto lz_memo = [&] {
     std::vector<std::array<encode::lz_data, lz_ofs_tab.size()>> ret(input.size());

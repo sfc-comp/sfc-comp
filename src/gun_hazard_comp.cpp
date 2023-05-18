@@ -16,12 +16,12 @@ std::vector<uint8_t> gun_hazard_comp_1(std::span<const uint8_t> input, const uin
   const auto indexed_256 = snes4bpp::to_indexed256_8_1(input);
   for (size_t i = 0; i < indexed_256.size(); ) {
     const auto v = indexed_256[i];
-    ret.write<b4>(v);
+    ret.write<h4>(v);
     size_t len = encode::run_length(indexed_256, i, 0);
     i += len;
     for (--len; len > 0; ) {
       size_t l = std::min<size_t>(0x10, len);
-      ret.write<b4, b4>(v, l - 1),
+      ret.write<h4, h4>(v, l - 1),
       len -= l;
     }
   }
@@ -261,7 +261,7 @@ std::vector<uint8_t> gun_hazard_comp_core(
   const bool maybe_4bpp = (input.size() % 32 == 0);
 
   std::vector<uint8_t> best(input.size() + 3);
-  std::copy(input.begin(), input.end(), best.begin() + 3);
+  std::ranges::copy(input, best.begin() + 3);
   best[0] = header_val | 0x00;
   write16(best, 1, input.size());
 

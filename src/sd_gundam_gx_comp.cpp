@@ -18,11 +18,45 @@ struct shannon_fano {
 };
 
 shannon_fano shannon_fano_encode(std::span<const size_t> counts, bool add_header_cost = false) {
-  std::vector<size_t> words, sorted_words;
+  using offset_array = std::array<size_t, 8>;
+
+  struct sf_data {
+    sf_data(size_t prefix_len) : prefix_len(prefix_len), bits(1 << prefix_len) {}
+    size_t cost = std::numeric_limits<size_t>::max();
+    size_t prefix_len;
+    std::vector<size_t> bits;
+    offset_array offsets;
+    size_t header_cost;
+  };
+
+  const auto words_encoding_cost = [&counts](std::span<const size_t> words) {
+    static constexpr auto encode_costs = std::to_array<size_t>({
+      2, 3, 3, 6, 6, 6, 6, 6,
+      6, 6, 6, 6, 6, 6, 6, 6,
+      6, 6, 6
+    });
+    size_t prev_word = counts.size();
+    size_t ret = 0;
+    for (size_t j = 0; j < words.size(); ++j) {
+      size_t word = words[j];
+      if (word <= prev_word || word >= prev_word + 0x14) ret += 11;
+      else ret += encode_costs[word - prev_word - 1];
+      prev_word = word;
+    }
+    return ret;
+  };
+
+  const auto bucket_sort = [&](std::span<const size_t> words, const offset_array& offsets,
+      std::span<const size_t> bits, std::span<size_t> dest) {
+    offset_array ofs; std::ranges::copy(offsets, ofs.begin());
+    for (const auto w : words) dest[ofs[bits[w] - 1]++] = w;
+  };
+
+  std::vector<size_t> words, ordered_words;
   for (size_t i = 0; i < counts.size(); ++i) {
     if (counts[i] <= 0) continue;
     words.push_back(i);
-    sorted_words.push_back(i);
+    ordered_words.push_back(i);
   }
   if (words.size() == 0) return shannon_fano();
 
@@ -34,21 +68,10 @@ shannon_fano shannon_fano_encode(std::span<const size_t> counts, bool add_header
   for (size_t i = 0; i < cumu.size(); ++i) cumu[i] = counts[words[i]];
   for (size_t i = cumu.size() - 1; i > 0; --i) cumu[i - 1] += cumu[i];
 
-  struct sf_data {
-    sf_data(size_t prefix_len) : prefix_len(prefix_len), bits(1 << prefix_len) {}
-
-    size_t cost = std::numeric_limits<size_t>::max();
-    size_t prefix_len;
-
-    std::vector<size_t> bits;
-    std::array<size_t, 8> offsets;
-    size_t header_cost;
-  };
-
-  size_t temp_offsets[8] = {};
-  size_t temp_bits[8] = {};
-  std::vector<size_t> temp_words(words.size());
-  std::vector<size_t> temp_word_bits(counts.size());
+  offset_array curr_offsets = {};
+  std::array<size_t, 8> curr_bits;
+  std::vector<size_t> curr_words(words.size());
+  std::vector<size_t> word_bits(counts.size());
 
   std::function<sf_data(size_t, size_t, size_t, size_t, size_t)> solve =
       [&](size_t now, size_t min_bit, size_t num_words, size_t bit_size, size_t cost) {
@@ -59,58 +82,36 @@ shannon_fano shannon_fano_encode(std::span<const size_t> counts, bool add_header
 
     for (size_t b = bit_size; b <= 8; ++b) {
       const size_t count = 1 << b;
-      temp_offsets[b - 1] = num_words;
+      curr_offsets[b - 1] = num_words;
 
       size_t least_num_words = num_words + count * (size - now);
       if (least_num_words >= words.size()) {
         if (cost >= ret.cost) break;
-
-        static constexpr auto encode_costs = std::to_array<size_t>({
-          2, 3, 3, 6, 6, 6, 6, 6,
-          6, 6, 6, 6, 6, 6, 6, 6,
-          6, 6, 6
-        });
         size_t encode_cost = cost;
-
         if (add_header_cost) {
-          // bucket sort
-          size_t offsets[8] = {};
-          std::copy(temp_offsets, temp_offsets + 8, offsets);
-          for (size_t j = num_words; j < words.size(); ++j) temp_word_bits[words[j]] = b;
-          for (size_t j = 0; j < sorted_words.size(); ++j) {
-            size_t word = sorted_words[j];
-            temp_words[offsets[temp_word_bits[word] - 1]++] = word;
-          }
-
-          size_t prev_word = counts.size();
-          for (size_t j = 0; j < temp_words.size(); ++j) {
-            size_t word = temp_words[j];
-            if (word <= prev_word || word >= prev_word + 0x14) encode_cost += 11;
-            else encode_cost += encode_costs[word - prev_word - 1];
-            prev_word = word;
-          }
+          for (size_t j = num_words; j < words.size(); ++j) word_bits[words[j]] = b;
+          bucket_sort(ordered_words, curr_offsets, word_bits, curr_words);
+          encode_cost += words_encoding_cost(curr_words);
         }
-
         if (encode_cost < ret.cost) {
           ret.cost = encode_cost;
           ret.header_cost = encode_cost - cost;
-          for (size_t i = now; i < size; ++i) temp_bits[i] = b;
-          std::copy(temp_bits, temp_bits + size, ret.bits.begin());
-          std::copy(temp_offsets, temp_offsets + 8, ret.offsets.begin());
+          std::fill_n(curr_bits.begin() + now, size - now, b);
+          std::copy_n(curr_bits.begin(), size, ret.bits.begin());
+          std::ranges::copy(curr_offsets, ret.offsets.begin());
         }
         break;
       }
 
       for (size_t i = now; i < size - 1; ++i) {
-        const size_t curr_num_words = num_words + count * (i - now);
-        const size_t next_num_words = curr_num_words + count;
-        const size_t ncost = cost + cumu[next_num_words];
+        const size_t curr = num_words + count * (i - now), next = curr + count;
+        const size_t ncost = cost + cumu[next];
         if (ncost >= ret.cost) break;
-        temp_bits[i] = b;
+        curr_bits[i] = b;
         if (add_header_cost) {
-          for (size_t j = curr_num_words; j < next_num_words; ++j) temp_word_bits[words[j]] = b;
+          for (size_t j = curr; j < next; ++j) word_bits[words[j]] = b;
         }
-        auto res = solve(i + 1, min_bit, next_num_words, b + 1, ncost);
+        auto res = solve(i + 1, min_bit, next, b + 1, ncost);
         if (res.cost < ret.cost) ret = std::move(res);
       }
       cost += cumu[num_words];
@@ -119,41 +120,30 @@ shannon_fano shannon_fano_encode(std::span<const size_t> counts, bool add_header
     return ret;
   };
 
-  const sf_data best_4 = solve(0, 2, 0, 1, 3 * cumu[0] + 4 * 3);
-  const sf_data best_8 = solve(0, 3, 0, 1, 4 * cumu[0] + 8 * 3);
+  sf_data best_4 = solve(0, 2, 0, 1, 3 * cumu[0] + 4 * 3);
+  sf_data best_8 = solve(0, 3, 0, 1, 4 * cumu[0] + 8 * 3);
   const sf_data best = std::move((best_4.cost < best_8.cost) ? best_4 : best_8);
 
-  std::vector<encode::codeword> codewords(counts.size(), {-1, 0});
-
-  // bucket sort
-  std::copy(best.offsets.begin(), best.offsets.end(), temp_offsets);
-  size_t word_pos = 0;
+  size_t curr = 0;
   for (const auto b : best.bits) {
-    size_t next_word_pos = std::min(words.size(), word_pos + (1 << b));
-    for (size_t j = word_pos; j < next_word_pos; ++j) temp_word_bits[words[j]] = b;
-    word_pos = next_word_pos;
+    size_t next = std::min(words.size(), curr + (1 << b));
+    for (size_t j = curr; j < next; ++j) word_bits[words[j]] = b;
+    curr = next;
   }
-  for (size_t j = 0; j < sorted_words.size(); ++j) {
-    size_t w = sorted_words[j];
-    temp_words[temp_offsets[temp_word_bits[w] - 1]++] = w;
-  }
+  bucket_sort(ordered_words, best.offsets, word_bits, curr_words);
 
-  word_pos = 0;
+  std::vector<encode::codeword> codewords(counts.size(), {-1, 0});
+  curr = 0;
   for (size_t i = 0; i < best.bits.size(); ++i) {
     size_t b = best.bits[i];
-    size_t next_word_pos = std::min(words.size(), word_pos + (1 << b));
-    ptrdiff_t bit_size = best.prefix_len + b;
-    for (size_t j = word_pos; j < next_word_pos; ++j) {
-      codewords[temp_words[j]] = {bit_size, (i << b) | (j - word_pos)};
-    }
-    word_pos = next_word_pos;
+    size_t next = std::min(words.size(), curr + (1 << b));
+    ptrdiff_t bitlen = best.prefix_len + b;
+    for (size_t j = curr; j < next; ++j) codewords[curr_words[j]] = {bitlen, (i << b) | (j - curr)};
+    curr = next;
   }
-
-  shannon_fano ret;
-  ret.codewords = std::move(codewords);
-  ret.bits = std::move(best.bits);
-  ret.words = std::move(temp_words);
-  return ret;
+  return shannon_fano { .words = std::move(curr_words),
+                        .codewords = std::move(codewords),
+                        .bits = std::move(best.bits) };
 }
 
 } // namespace
@@ -242,7 +232,7 @@ std::vector<uint8_t> sd_gundam_gx_comp_core(std::span<const uint8_t> input, cons
 
     bool updated = false;
     for (size_t trial = 0; trial < 2; ++trial) {
-      bool add_header_cost = (trial == 0) ? false : true;
+      const bool add_header_cost = (trial == 0) ? false : true;
       auto sf = shannon_fano_encode(code_counts, add_header_cost);
 
       using namespace data_type;

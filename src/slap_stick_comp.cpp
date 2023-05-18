@@ -12,9 +12,8 @@ std::vector<uint8_t> slap_stick_comp(std::span<const uint8_t> in) {
 
   static constexpr size_t pad = 0x11;
 
-  std::vector<uint8_t> input(in.size() + pad);
-  std::copy(in.begin(), in.end(), input.begin() + pad);
-  for (size_t i = 0; i < pad; ++i) input[i] = 0x20;
+  std::vector<uint8_t> input(in.size() + pad, 0x20);
+  std::ranges::copy(in, input.begin() + pad);
 
   lz_helper lz_helper(input, true);
   solver<tag> dp(input.size()); auto c0 = dp.c<0>(0x11);

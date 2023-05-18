@@ -8,10 +8,13 @@ namespace sfc_comp {
 std::vector<uint8_t> hal_comp(std::span<const uint8_t> input) {
   check_size(input.size(), 0, 0x10000);
 
-  enum tag {
-    uncomp, rle, rle16, inc, lz, lzh, lzv,
-    uncompl, rlel, rle16l, incl, lzl, lzhl, lzvl
+  enum method {
+    uncomp = 0, rle = 1, rle16 = 2, inc = 3,
+    lz = 4, lzh = 5, lzv = 6
   };
+  using tag = tag_l<method>;
+  static constexpr auto lens = to_vranges({{0x0001, 1, 0}, {0x0021, 2, 0}}, 0x0400);
+  static constexpr auto lens2 = to_vranges({{0x0002, 1, 0}, {0x0042, 2, 0}}, 0x0800);
 
   lz_helper_kirby lz_helper(input, true);
   solver<tag> dp(input.size());
@@ -23,28 +26,16 @@ std::vector<uint8_t> hal_comp(std::span<const uint8_t> input) {
   for (size_t i = input.size(); i-- > 0; ) {
     lz_helper.reset(i);
 
-    dp.update(i, 1, 0x20, c1, 1, uncomp);
-    dp.update(i, 0x21, 0x400, c1, 2, uncompl);
-
+    dp.update(i, lens, c1, 0, [&](size_t li) -> tag { return {uncomp, li}; });
     rlen = encode::run_length_r(input, i, rlen);
-    dp.update(i, 1, 0x20, rlen, c0, 2, rle);
-    dp.update(i, 0x21, 0x400, rlen, c0, 3, rlel);
+    dp.update(i, lens, rlen, c0, 1, [&](size_t li) -> tag { return {rle, li}; });
     rlen16 = encode::run_length16_r(input, i, rlen16);
-    dp.update(i, 2, 0x40, rlen16, c0_2, 3, rle16);
-    dp.update(i, 0x42, 0x800, rlen16, c0_2, 4, rle16l);
+    dp.update(i, lens2, rlen16, c0_2, 2, [&](size_t li) -> tag { return {rle16, li}; });
     rleni = encode::run_length_r(input, i, rleni, 1);
-    dp.update(i, 1, 0x20, rleni, c0, 2, inc);
-    dp.update(i, 0x21, 0x400, rleni, c0, 3, incl);
-
-    const auto res_lz = lz_helper.find(i, 0x10000, 3);
-    dp.update(i, 1, 0x20, res_lz, c0, 3, lz);
-    dp.update(i, 0x21, 0x400, res_lz, c0, 4, lzl);
-    const auto res_lzh = lz_helper.find_h(i, 0x10000, 3);
-    dp.update(i, 1, 0x20, res_lzh, c0, 3, lzh);
-    dp.update(i, 0x21, 0x400, res_lzh, c0, 4, lzhl);
-    const auto res_lzv = lz_helper.find_v(i, 0x10000, 3);
-    dp.update(i, 1, 0x20, res_lzv, c0, 3, lzv);
-    dp.update(i, 0x21, 0x400, res_lzv, c0, 4, lzvl);
+    dp.update(i, lens, rleni, c0, 1, [&](size_t li) -> tag { return {inc, li}; });
+    dp.update(i, lens, lz_helper.find(i, 0x10000, 3), c0, 2, [&](size_t li) -> tag { return {lz, li}; });
+    dp.update(i, lens, lz_helper.find_h(i, 0x10000, 3), c0, 2, [&](size_t li) -> tag { return {lzh, li}; });
+    dp.update(i, lens, lz_helper.find_v(i, 0x10000, 3), c0, 2, [&](size_t li) -> tag { return {lzv, li}; });
 
     c0.update(i); c0_2.update(i); c1.update(i);
   }
@@ -53,22 +44,19 @@ std::vector<uint8_t> hal_comp(std::span<const uint8_t> input) {
   writer ret;
   size_t adr = 0;
   for (const auto& cmd : dp.optimal_path()) {
-    switch (cmd.type) {
-    case uncomp: ret.write<d8, d8n>(0x00 + cmd.len - 1, {cmd.len, &input[adr]}); break;
-    case rle: ret.write<d8, d8>(0x20 + cmd.len - 1, input[adr]); break;
-    case rle16: ret.write<d8, d8, d8>(0x40 + (cmd.len >> 1) - 1, input[adr], input[adr + 1]); break;
-    case inc: ret.write<d8, d8>(0x60 + cmd.len - 1, input[adr]); break;
-    case lz: ret.write<d8, d16b>(0x80 + cmd.len - 1, cmd.lz_ofs()); break;
-    case lzh: ret.write<d8, d16b>(0xa0 + cmd.len - 1, cmd.lz_ofs()); break;
-    case lzv: ret.write<d8, d16b>(0xc0 + cmd.len - 1, cmd.lz_ofs()); break;
-
-    case uncompl: ret.write<d16b, d8n>(0xe000 + cmd.len - 1, {cmd.len, &input[adr]}); break;
-    case rlel: ret.write<d16b, d8>(0xe400 + cmd.len - 1, input[adr]); break;
-    case rle16l: ret.write<d16b, d8, d8>(0xe800 + (cmd.len >> 1) - 1, input[adr], input[adr + 1]); break;
-    case incl: ret.write<d16b, d8>(0xec00 + cmd.len - 1, input[adr]); break;
-    case lzl: ret.write<d16b, d16b>(0xf000 + cmd.len - 1, cmd.lz_ofs()); break;
-    case lzhl: ret.write<d16b, d16b>(0xf400 + cmd.len - 1, cmd.lz_ofs()); break;
-    case lzvl: ret.write<d16b, d16b>(0xf800 + cmd.len - 1, cmd.lz_ofs()); break;
+    const auto [tag, li] = cmd.type;
+    size_t l = cmd.len;
+    if (tag == rle16) l >>= 1;
+    if (li == 0) ret.write<d8>(tag << 5 | (l - 1));
+    else ret.write<d16b>(0xe000 | (tag << 10) | (l - 1));
+    switch (tag) {
+    case uncomp: ret.write<d8n>({cmd.len, &input[adr]}); break;
+    case rle: ret.write<d8>(input[adr]); break;
+    case rle16: ret.write<d8, d8>(input[adr], input[adr + 1]); break;
+    case inc: ret.write<d8>(input[adr]); break;
+    case lz:
+    case lzh:
+    case lzv: ret.write<d16b>(cmd.lz_ofs()); break;
     default: assert(0);
     }
     adr += cmd.len;
@@ -76,7 +64,6 @@ std::vector<uint8_t> hal_comp(std::span<const uint8_t> input) {
   assert(dp.optimal_cost() == ret.size());
   assert(adr == input.size());
   ret.write<d8>(0xff);
-
   return ret.out;
 }
 

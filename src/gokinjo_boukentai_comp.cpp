@@ -120,7 +120,7 @@ std::vector<uint8_t> gokinjo_boukentai_comp(std::span<const uint8_t> input) {
     }
   }
 
-  std::copy(file_header.begin(), file_header.end(), best.begin());
+  std::ranges::copy(file_header, best.begin());
   best[6] = comp_type;
   write16(best, 7, input.size());
 
@@ -130,7 +130,7 @@ std::vector<uint8_t> gokinjo_boukentai_comp(std::span<const uint8_t> input) {
 std::vector<uint8_t> bounty_sword_comp(std::span<const uint8_t> input) {
   static constexpr size_t header_size = 20;
   auto best = gokinjo_boukentai_comp_1(input, header_size);
-  std::copy(file_header.begin(), file_header.end(), best.begin());
+  std::ranges::copy(file_header, best.begin());
   write16(best, 16, input.size());
   return best;
 }

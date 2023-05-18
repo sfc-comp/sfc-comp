@@ -277,75 +277,62 @@ public:
   using signed_index_type = std::make_signed_t<index_type>;
 
 private:
-  std::vector<int16_t> hflip_appended(std::span<const uint8_t> input) const {
-    std::vector<int16_t> ret(2 * n + 1);
+  std::vector<int16_t> hvflip_appended(std::span<const uint8_t> input) const {
+    std::vector<int16_t> ret(3 * n + 2);
     for (size_t i = 0; i < n; ++i) ret[i] = input[i];
     ret[n] = -1;
     for (size_t i = 0; i < n; ++i) ret[i + n + 1] = bit_reversed[input[i]];
-    return ret;
-  }
-
-  std::vector<int16_t> vflip_appended(std::span<const uint8_t> input) const {
-    std::vector<int16_t> ret(2 * n + 1);
-    for (size_t i = 0; i < n; ++i) ret[i] = input[i];
-    ret[n] = -1;
-    for (size_t i = 0; i < n; ++i) ret[i + n + 1] = input[n - 1 - i];
+    ret[2 * n + 1] = -1;
+    for (size_t i = 0; i < n; ++i) ret[i + 2 * n + 2] = input[n - 1 - i];
     return ret;
   }
 
 public:
   lz_helper_kirby(std::span<const uint8_t> input, bool updated = false) : n(input.size()) {
-    const auto in_h = hflip_appended(input);
-    const auto sa_h = suffix_array<int16_t>(in_h);
-    const auto [lcp_h, rank_h] = sa_h.lcp_rank();
-    this->rank_h = std::move(rank_h);
-    this->lcp_h = decltype(this->lcp_h)(lcp_h);
-    seg = decltype(seg)(rank_h.size());
-    seg_h = decltype(seg_h)(rank_h.size());
+    const auto in = hvflip_appended(input);
+    const auto sa = suffix_array<int16_t>(in);
+    const auto [lcp, rank] = sa.lcp_rank();
+    this->rank = std::move(rank);
+    this->lcp = decltype(this->lcp)(lcp);
+    seg = decltype(seg)(rank.size());
+    seg_h = decltype(seg_h)(rank.size());
+    seg_v = decltype(seg_v)(rank.size());
     if (updated) {
-      seg.init([&](size_t i) { return sa_h[i] < n ? sa_h[i] : seg.iden; });
-      seg_h.init([&](size_t i) { return sa_h[i] >= n + 1 ? sa_h[i] - (n + 1) : seg_h.iden; });
-    }
-    const auto in_v = vflip_appended(input);
-    const auto sa_v = suffix_array<int16_t>(in_v);
-    const auto [lcp_v, rank_v] = sa_v.lcp_rank();
-    this->rank_v = std::move(rank_v);
-    this->lcp_v = decltype(this->lcp_v)(lcp_v);
-    seg_v = decltype(seg_v)(rank_v.size());
-    if (updated) {
-      seg_v.init([&](size_t i) { return sa_v[i] >= n + 1 ? n + (n - sa_v[i]) : seg_v.iden; });
+      seg.init([&](size_t i) { return sa[i] < n ? sa[i] : seg.iden; });
+      seg_h.init([&](size_t i) { return n + 1 <= sa[i] && sa[i] < 2 * n + 1 ? sa[i] - (n + 1) : seg_h.iden; });
+      seg_v.init([&](size_t i) { return sa[i] >= 2 * n + 2 ? (3 * n + 1) - sa[i] : seg_v.iden; });
     }
   }
 
 public:
   encode::lz_data find(size_t pos, size_t max_dist, size_t min_len) const {
-    return encode::lz::find(pos, rank_h[pos], max_dist, min_len, lcp_h.nodes(), seg.nodes());
+    return encode::lz::find(pos, rank[pos], max_dist, min_len, lcp.nodes(), seg.nodes());
   }
 
   encode::lz_data find_h(size_t pos, size_t max_dist, size_t min_len) const {
-    return encode::lz::find(pos, rank_h[pos], max_dist, min_len, lcp_h.nodes(), seg_h.nodes());
+    return encode::lz::find(pos, rank[pos], max_dist, min_len, lcp.nodes(), seg_h.nodes());
   }
 
   encode::lz_data find_v(size_t pos, size_t max_dist, size_t min_len) const {
-    return encode::lz::find(pos, rank_v[pos], max_dist, min_len, lcp_v.nodes(), seg_v.nodes());
+    return encode::lz::find(pos, rank[pos], max_dist, min_len, lcp.nodes(), seg_v.nodes());
   }
 
   void add_element(size_t i) {
-    seg.update(rank_h[i], i);
-    seg_h.update(rank_h[i + n + 1], i);
-    seg_v.update(rank_v[2 * n - i], i);
+    seg.update(rank[i], i);
+    seg_h.update(rank[i + n + 1], i);
+    seg_v.update(rank[3 * n + 1 - i], i);
   }
 
   void reset(size_t i) {
-    seg.reset(rank_h[i]);
-    seg_h.reset(rank_h[i + n + 1]);
-    seg_v.reset(rank_v[2 * n - i]);
+    seg.reset(rank[i]);
+    seg_h.reset(rank[i + n + 1]);
+    seg_v.reset(rank[3 * n + 1 - i]);
   }
 
 private:
   const size_t n;
-  std::vector<index_type> rank_h, rank_v;
-  segment_tree<range_min<index_type>> lcp_h, lcp_v;
+  std::vector<index_type> rank;
+  segment_tree<range_min<index_type>> lcp;
   segment_tree<range_max<signed_index_type>> seg, seg_h, seg_v;
 };
 

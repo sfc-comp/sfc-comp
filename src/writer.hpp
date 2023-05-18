@@ -182,38 +182,25 @@ struct none {
 
 };
 
-struct b1 {
-  b1(bool b) : b(b) {}
-  bool b;
-};
-
-struct b4 {
-  b4(uint8_t x) : x(x & 0x0f) {}
+struct h4 {
+  h4(uint8_t x) : x(x & 0x0f) {}
   uint8_t x;
 };
 
-struct bnh {
-  bnh(size_t n, size_t x) : n(n), v(x) {}
-  bnh(const encode::codeword& c) : n(c.bitlen), v(c.val) {}
-  size_t n, v;
+struct h8b {
+  h8b(uint8_t x) : x(x) {}
+  uint8_t x;
 };
 
-struct bnl {
-  bnl(size_t n, size_t x) : n(n), v(x) {}
-  bnl(const encode::codeword& c) : n(c.bitlen), v(c.val) {}
-  size_t n, v;
-};
-
-struct b8hn {
-  b8hn(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
-  b8hn(std::span<const uint8_t> v) : v(v) {}
+struct h8bn {
+  h8bn(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
+  h8bn(std::span<const uint8_t> v) : v(v) {}
   std::span<const uint8_t> v;
 };
 
-struct b8ln {
-  b8ln(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
-  b8ln(std::span<const uint8_t> v) : v(v) {}
-  std::span<const uint8_t> v;
+struct h16b {
+  h16b(uint16_t x) : x(x) {}
+  uint16_t x;
 };
 
 } // namespace data_type
@@ -244,7 +231,7 @@ class writer_b4 : public writer {
     }
   }
 
-  void write_(const data_type::b4& d) {
+  void write_(const data_type::h4& d) {
     write<data_type::none>({});
     --nibble;
     if constexpr (LowNibbleFirst) {
@@ -254,18 +241,18 @@ class writer_b4 : public writer {
     }
   }
 
-  void write_(const data_type::d8& d) {
-    write<data_type::b4>(d.x >> 4);
-    write<data_type::b4>(d.x & 0x0f);
+  void write_(const data_type::h8b& d) {
+    write<data_type::h4>(d.x >> 4);
+    write<data_type::h4>(d.x >> 0);
   }
 
-  void write_(const data_type::d16b& d) {
-    write<data_type::d8>(d.x >> 8);
-    write<data_type::d8>(d.x >> 0);
+  void write_(const data_type::h16b& d) {
+    write<data_type::h8b>(d.x >> 8);
+    write<data_type::h8b>(d.x >> 0);
   }
 
-  void write_(const data_type::d8n& d) {
-    for (const auto v : d.v) write<data_type::d8>(v);
+  void write_(const data_type::h8bn& d) {
+    for (const auto v : d.v) write<data_type::h8b>(v);
   }
 
  public:
@@ -275,6 +262,39 @@ class writer_b4 : public writer {
 
 using writer_b4_l = writer_b4<true>;
 using writer_b4_h = writer_b4<false>;
+
+namespace data_type {
+
+struct b1 {
+  b1(bool b) : b(b) {}
+  bool b;
+};
+
+struct bnh {
+  bnh(size_t n, size_t x) : n(n), v(x) {}
+  bnh(const encode::codeword& c) : n(c.bitlen), v(c.val) {}
+  size_t n, v;
+};
+
+struct bnl {
+  bnl(size_t n, size_t x) : n(n), v(x) {}
+  bnl(const encode::codeword& c) : n(c.bitlen), v(c.val) {}
+  size_t n, v;
+};
+
+struct b8hn {
+  b8hn(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
+  b8hn(std::span<const uint8_t> v) : v(v) {}
+  std::span<const uint8_t> v;
+};
+
+struct b8ln {
+  b8ln(size_t n, const uint8_t* p) : v(std::span(p, n)) {}
+  b8ln(std::span<const uint8_t> v) : v(v) {}
+  std::span<const uint8_t> v;
+};
+
+} // namespace data_type
 
 template <size_t BlockBytes, bool LSBFirst, bool PreRead>
 class bitstream_writer : public writer {

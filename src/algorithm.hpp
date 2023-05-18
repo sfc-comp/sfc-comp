@@ -64,7 +64,8 @@ struct linear {
 template <size_t C>
 struct constant : linear<0, C> {};
 
-template <size_t Numer, size_t Denom = 1, typename Compare = std::greater<size_t>, typename CostType = size_t>
+template <size_t Numer, size_t Denom = 1,
+  typename Compare = std::greater<size_t>, typename CostType = size_t>
 requires (Denom > 0)
 class cost_window {
  public:
@@ -86,7 +87,6 @@ class cost_window {
     size_t index;
   };
   static constexpr value iden = value(infinite_cost, nlen);
-  static constexpr size_t slope = Numer;
 
  public:
   cost_window() = default;
@@ -108,22 +108,13 @@ class cost_window {
   len_cost find(size_t i, size_t fr, size_t to) const {
     if ((fr += i) > n) return {nlen, infinite_cost};
     to = std::min(n, i + to);
-    if constexpr (Denom == 1) {
-      const size_t d = (to - fr) + 1;
-      fr &= mask; to = fr + d;
-      auto res = (to <= mask + 1) ? segs[0].fold(fr, to)
-                                  : std::min(segs[0].fold(fr, mask + 1), segs[0].fold(0, to & mask));
-      if (res.cost >= infinite_cost) return {nlen, infinite_cost};
-      return {res.index - i, res.cost - i * Numer};
-    } else {
-      const size_t d = (to - fr) / Denom + 1;
-      size_t r = fr % Denom; const auto& seg = segs[r];
-      fr = (fr / Denom) & mask; to = fr + d;
-      auto res = (to <= mask + 1) ? seg.fold(fr, to)
-                                  : std::min(seg.fold(fr, mask + 1), seg.fold(0, to & mask));
-      if (res.cost >= infinite_cost) return {nlen, infinite_cost};
-      return {res.index - i, res.cost - (res.index / Denom - (res.index - i) / Denom) * Numer};
-    }
+    const size_t d = (to - fr) / Denom + 1;
+    const auto& seg = segs[fr % Denom];
+    fr = (fr / Denom) & mask; to = fr + d;
+    const auto res = (to <= mask + 1) ? seg.fold(fr, to)
+                                      : std::min(seg.fold(fr, mask + 1), seg.fold(0, to & mask));
+    if (res.cost >= infinite_cost) return {nlen, infinite_cost};
+    return {res.index - i, res.cost - (res.index / Denom - (res.index - i) / Denom) * Numer};
   }
 
  private:
