@@ -223,6 +223,8 @@ class writer_b4 : public writer {
   }
 
  protected:
+  using writer::write_;
+
   void write_(const data_type::none&) {
     if (nibble == 0) {
       nibble_pos = out.size();

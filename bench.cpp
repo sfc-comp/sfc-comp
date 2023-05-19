@@ -80,6 +80,7 @@ void benchmark(const std::string& path) {
     P(koei_comp),
     P(konami_comp_1),
     P(konami_comp_2),
+    // P(konami_comp_2_r),
     P(legend_comp),
     P(lemmings_comp),
     P(lennus_2_comp),

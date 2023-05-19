@@ -7,8 +7,8 @@ namespace sfc_comp {
 
 namespace {
 
-std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool use_old_version) {
-  check_size(in.size(), 0, 0x10000);
+std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in,
+    const size_t version, const bool reorder) {
   enum tag { uncomp, rle0, rle0l, rle, lz, common16 };
   static constexpr size_t pad = 0x21;
   std::vector<uint8_t> input(in.size() + pad);
@@ -28,7 +28,7 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool us
     if (input[i] != 0) {
       dp.update(i, 2, 0x21, rlen, c0, 2, rle);
     } else {
-      if (use_old_version) {
+      if (version < 1) {
         dp.update(i, 2, 0x21, rlen, c0, 1, rle0);
       } else {
         dp.update(i, 2, 0x20, rlen, c0, 1, rle0);
@@ -58,7 +58,11 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool us
     }
     adr += cmd.len;
   }
-  write16(ret.out, 0, ret.size());
+  if (version < 1) {
+    write16(ret.out, 0, ret.size());
+  } else {
+    write16(ret.out, 0, ret.size() | (reorder ? 0x8000 : 0x0000));
+  }
   assert(dp.optimal_cost(pad) + 2 == ret.size());
   assert(adr - pad == in.size());
   return ret.out;
@@ -67,11 +71,26 @@ std::vector<uint8_t> konami_comp_core(std::span<const uint8_t> in, const bool us
 } // namespace
 
 std::vector<uint8_t> konami_comp_1(std::span<const uint8_t> input) {
-  return konami_comp_core(input, true);
+  check_size(input.size(), 0, 0x10000);
+  return konami_comp_core(input, 0, false);
 }
 
 std::vector<uint8_t> konami_comp_2(std::span<const uint8_t> input) {
-  return konami_comp_core(input, false);
+  check_size(input.size(), 0, 0x8000);
+  return konami_comp_core(input, 1, false);
+}
+
+std::vector<uint8_t> konami_comp_2_r(std::span<const uint8_t> input) {
+  check_divisibility(input.size(), 0x10);
+  check_size(input.size(), 0, 0x8000);
+  std::vector<uint8_t> reordered(input.size());
+  for (size_t i = 0; i < input.size(); i += 0x10) {
+    for (size_t j = 0; j < 8; ++j) {
+      reordered[i + j + 0] = input[i + 2 * j + 0];
+      reordered[i + j + 8] = input[i + 2 * j + 1];
+    }
+  }
+  return konami_comp_core(reordered, 1, true);
 }
 
 } // namespace sfc_comp

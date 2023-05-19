@@ -203,6 +203,7 @@ set(comp_ext_list
   koei_comp comp
   konami_comp_1 comp
   konami_comp_2 comp
+  konami_comp_2_r comp
   legend_comp comp
   lemmings_comp comp
   lennus_2_comp comp

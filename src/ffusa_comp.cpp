@@ -27,21 +27,18 @@ std::vector<uint8_t> ffusa_comp(std::span<const uint8_t> input) {
   }
 
   using namespace data_type;
-  writer ret(2); writer raw;
+  writer_b4_l ret(2); writer raw;
 
   size_t adr = 0;
   for (size_t curr = 0; adr < input.size(); curr ^= 1) {
     const auto& cmd = (curr == 0) ? dp0[adr] : dp1[adr];
     switch (cmd.type) {
     case uncomp: {
-      ret.write<d8>(cmd.len);
+      ret.write<h4>(cmd.len);
       raw.write<d8n>({cmd.len, &input[adr]});
     } break;
-    case lz_none: break;
-    case lz: {
-      ret[ret.size() - 1] |= (cmd.len - 2) << 4;
-      ret.write<d8>((adr - cmd.lz_ofs()) - 1);
-    } break;
+    case lz_none: ret.write<h4>(0); break;
+    case lz: ret.write<h4, d8>(cmd.len - 2, (adr - cmd.lz_ofs()) - 1); break;
     default: assert(0);
     }
     adr += cmd.len;

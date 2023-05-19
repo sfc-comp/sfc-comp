@@ -17,8 +17,8 @@ std::vector<uint8_t> fe3_comp(std::span<const uint8_t> input) {
 
   lz_helper_c lz_helper(input, true);
   solver<tag> dp(input.size());
-  auto c0 = dp.c<0>(0x400);
-  auto c1 = dp.c<1>(0x400);
+  auto c0 = dp.c<0>(lens.back().max);
+  auto c1 = dp.c<1>(lens.back().max);
 
   size_t rlen = 0, rlen16 = 0, rleni = 0;
   for (size_t i = input.size(); i-- > 0; ) {

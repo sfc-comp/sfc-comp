@@ -73,6 +73,7 @@ std::vector<uint8_t> knights_of_the_round_comp(std::span<const uint8_t>);
 std::vector<uint8_t> koei_comp(std::span<const uint8_t>);
 std::vector<uint8_t> konami_comp_1(std::span<const uint8_t>);
 std::vector<uint8_t> konami_comp_2(std::span<const uint8_t>);
+std::vector<uint8_t> konami_comp_2_r(std::span<const uint8_t>);
 std::vector<uint8_t> legend_comp(std::span<const uint8_t>);
 std::vector<uint8_t> lemmings_comp(std::span<const uint8_t>);
 std::vector<uint8_t> lennus_2_comp(std::span<const uint8_t>);
