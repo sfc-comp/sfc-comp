@@ -282,7 +282,7 @@ private:
     for (size_t i = 0; i < n; ++i) ret[i] = input[i];
     ret[n] = -1;
     for (size_t i = 0; i < n; ++i) ret[i + n + 1] = bit_reversed[input[i]];
-    ret[2 * n + 1] = -1;
+    ret[2 * n + 1] = -2;
     for (size_t i = 0; i < n; ++i) ret[i + 2 * n + 2] = input[n - 1 - i];
     return ret;
   }
