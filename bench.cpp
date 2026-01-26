@@ -25,7 +25,7 @@ void benchmark(const std::string& path) {
     using func_type = std::function<std::vector<uint8_t>(std::span<const uint8_t>)>;
     CompFunc(const char* name, func_type&& func) : name(name), func(func) {}
     const char* name;
-    const func_type& func;
+    const func_type func;
   };
 
 #define C(x) CompFunc(#x, x)
@@ -200,9 +200,7 @@ void benchmark(const std::string& path) {
   uint32_t total_hash = 0;
   size_t total_size_sum = 0;
 
-  const auto p_comps = comps.begin();
-  for (size_t c = 0; c < comps.size(); ++c) {
-    const auto& comp = p_comps[c];
+  for (const auto& comp : comps) {
     printf("| %-40s | ", comp.name);
 
     const auto beg = high_resolution_clock::now();
