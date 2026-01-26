@@ -1,9 +1,8 @@
 #include <chrono>
 #include <filesystem>
+#include <functional>
 
 #include "sfc_comp.hpp"
-
-#define P(x) std::pair(#x, x)
 
 void benchmark(const std::string& path) {
   // Ref
@@ -22,138 +21,149 @@ void benchmark(const std::string& path) {
 
   using namespace sfc_comp;
 
-  const auto comps = {
-    P(action_pachio_comp),
-    P(addams_family_comp),
-    P(asameshimae_nyanko_comp),
-    // P(asameshimae_nyanko_4bpp_comp),
-    P(assault_suits_valken_comp),
-    P(bahamut_lagoon_comp),
-    P(bahamut_lagoon_comp_fast),
-    P(battle_cross_comp),
-    P(battletech_comp),
-    P(bokujou_monogatari_comp),
-    P(bounty_sword_comp),
-    P(brandish_comp),
-    P(cannon_fodder_comp),
-    P(cb_chara_wars_comp),
-    P(chrono_trigger_comp),
-    P(chrono_trigger_comp_fast),
-    P(danzarb_comp),
-    // P(dekitate_high_school_comp_1),
-    // P(dekitate_high_school_comp_2),
-    P(der_langrisser_comp),
-    P(derby_stallion_2_comp),
-    P(diet_comp),
-    P(dokapon_comp),
-    P(doom_comp_1),
-    P(doom_comp_2),
-    P(doraemon_comp),
-    P(dq12_comp),
-    P(dq5_comp_2),
-    P(dq6_comp),
-    P(dragon_knight_4_comp),
-    // P(dragon_knight_4_4bpp_comp),
-    P(estpolis_biography_comp),
-    P(famicom_tantei_club_part_ii_comp),
-    P(fe3_comp),
-    P(fe4_comp),
-    P(ff5_comp),
-    P(ff6_comp),
-    P(ffusa_comp),
-    P(final_stretch_comp),
-    P(flintstones_comp),
-    P(front_mission_comp_2),
-    P(gionbana_comp),
-    P(gokinjo_boukentai_comp),
-    P(gun_hazard_comp),
-    P(hal_comp),
-    P(hanjuku_hero_comp),
-    P(heberekes_popoon_comp),
-    P(ihatovo_monogatari_comp),
-    P(jurassic_park_comp),
-    P(kamen_rider_sd_comp),
-    // P(keiba_eight_special_2_comp),
-    // P(keirin_ou_comp),
-    P(kiki_kaikai_comp),
-    P(knights_of_the_round_comp),
-    P(koei_comp),
-    P(konami_comp_1),
-    P(konami_comp_2),
-    // P(konami_comp_2_r),
-    P(legend_comp),
-    P(lemmings_comp),
-    P(lennus_2_comp),
-    P(live_a_live_comp_1),
-    P(love_quest_comp),
-    P(madara2_comp),
-    P(mahoujin_guru_guru_comp),
-    P(maka_maka_comp),
-    P(marios_super_picross_comp),
-    P(marvelous_comp),
-    P(mujintou_monogatari_comp),
-    P(nba_jam_comp),
-    P(odekake_lester_comp),
-    P(olivias_mystery_comp),
-    P(oscar_comp),
-    P(pac_in_time_comp),
-    P(papuwa_comp),
-    P(picross_np_comp),
-    P(pokemon_gold_comp),
-    P(popful_mail_comp),
-    P(power_piggs_comp),
-    P(rareware_comp),
-    P(rayearth_comp),
-    P(riddick_bowe_boxing_comp),
-    P(rob_northen_comp_1),
-    P(rob_northen_comp_2),
-    P(royal_conquest_comp),
-    P(rs3_comp_1),
-    P(sailor_moon_comp_1),
-    P(sansara_naga2_comp),
-    P(sd_gundam_gnext_comp),
-    P(sd_gundam_gx_comp),
-    P(sd_gundam_x_comp),
-    P(seiken_densetsu_2_comp),
-    P(shadowrun_comp),
-    P(shima_kousaku_comp),
-    P(shin_megami_tensei2_comp),
-    P(sky_mission_comp),
-    P(slap_stick_comp),
-    P(slayers_comp),
-    P(smash_tv_comp),
-    P(smurfs_comp),
-    P(soccer_kid_comp),
-    P(sotsugyou_bangai_hen_comp),
-    P(soul_and_sword_comp),
-    P(spirou_comp),
-    P(stargate_comp),
-    P(super_4wd_the_baja_comp),
-    P(super_bomberman_5_comp),
-    P(super_donkey_kong_comp),
-    // P(super_dunk_star_comp),
-    P(super_jinsei_game_comp),
-    P(super_loopz_comp),
-    P(super_mario_rpg_comp),
-    P(super_robot_wars_comp),
-    P(super_soukoban_comp),
-    P(syndicate_comp),
-    P(tactics_ogre_comp_1),
-    P(tactics_ogre_comp_2),
-    P(tales_of_phantasia_comp),
-    P(tamolympic_comp),
-    P(tenchi_souzou_comp),
-    P(tenchi_wo_kurau_comp),
-    P(time_cop_comp),
-    P(vortex_comp),
-    P(wild_guns_comp),
-    P(wizardry5_comp_1),
-    P(wizardry5_comp_2),
-    P(wizardry6_comp),
-    P(yatterman_comp),
-    P(zelda_comp_1),
-    P(zelda_comp_2)
+  struct CompFunc {
+    using func_type = std::function<std::vector<uint8_t>(std::span<const uint8_t>)>;
+    CompFunc(const char* name, func_type&& func) : name(name), func(func) {}
+    const char* name;
+    const func_type& func;
   };
+
+#define C(x) CompFunc(#x, x)
+  const auto comps = std::vector<CompFunc>({
+    C(action_pachio_comp),
+    C(addams_family_comp),
+    C(asameshimae_nyanko_comp),
+    // C(asameshimae_nyanko_4bpp_comp),
+    C(assault_suits_valken_comp),
+    C(asuka_kenzan_comp_1),
+    C(asuka_kenzan_comp_2),
+    C(bahamut_lagoon_comp),
+    C(bahamut_lagoon_comp_fast),
+    C(battle_cross_comp),
+    C(battletech_comp),
+    C(bokujou_monogatari_comp),
+    C(bounty_sword_comp),
+    C(brandish_comp),
+    C(cannon_fodder_comp),
+    C(cb_chara_wars_comp),
+    C(chrono_trigger_comp),
+    C(chrono_trigger_comp_fast),
+    C(danzarb_comp),
+    // C(dekitate_high_school_comp_1),
+    // C(dekitate_high_school_comp_2),
+    C(der_langrisser_comp),
+    C(derby_stallion_2_comp),
+    C(diet_comp),
+    C(dokapon_comp),
+    C(doom_comp_1),
+    C(doom_comp_2),
+    C(doraemon_comp),
+    C(dq12_comp),
+    C(dq5_comp_2),
+    C(dq6_comp),
+    C(dragon_knight_4_comp),
+    // C(dragon_knight_4_4bpp_comp),
+    C(estpolis_biography_comp),
+    C(famicom_tantei_club_part_ii_comp),
+    C(fe3_comp),
+    C(fe4_comp),
+    C(ff5_comp),
+    C(ff6_comp),
+    C(ffusa_comp),
+    C(final_stretch_comp),
+    C(flintstones_comp),
+    C(front_mission_comp_2),
+    C(gionbana_comp),
+    C(gokinjo_boukentai_comp),
+    C(gun_hazard_comp),
+    C(hal_comp),
+    C(hanjuku_hero_comp),
+    C(heberekes_popoon_comp),
+    C(ihatovo_monogatari_comp),
+    C(jurassic_park_comp),
+    C(kamen_rider_sd_comp),
+    // C(keiba_eight_special_2_comp),
+    // C(keirin_ou_comp),
+    C(kiki_kaikai_comp),
+    C(knights_of_the_round_comp),
+    C(koei_comp),
+    C(konami_comp_1),
+    C(konami_comp_2),
+    // C(konami_comp_2_r),
+    C(legend_comp),
+    C(lemmings_comp),
+    C(lennus_2_comp),
+    C(live_a_live_comp_1),
+    C(love_quest_comp),
+    C(madara2_comp),
+    C(mahoujin_guru_guru_comp),
+    C(maka_maka_comp),
+    C(marios_super_picross_comp),
+    C(marvelous_comp),
+    C(mujintou_monogatari_comp),
+    C(nba_jam_comp),
+    C(odekake_lester_comp),
+    C(olivias_mystery_comp),
+    C(oscar_comp),
+    C(pac_in_time_comp),
+    C(papuwa_comp),
+    C(picross_np_comp),
+    C(pokemon_gold_comp),
+    C(popful_mail_comp),
+    C(power_piggs_comp),
+    C(rareware_comp),
+    C(rayearth_comp),
+    C(riddick_bowe_boxing_comp),
+    C(rob_northen_comp_1),
+    C(rob_northen_comp_2),
+    C(royal_conquest_comp),
+    C(rs3_comp_1),
+    C(sailor_moon_comp_1),
+    C(sansara_naga2_comp),
+    C(sd_gundam_gnext_comp),
+    C(sd_gundam_gx_comp),
+    C(sd_gundam_x_comp),
+    C(seiken_densetsu_2_comp),
+    C(shadowrun_comp),
+    C(shima_kousaku_comp),
+    C(shin_megami_tensei2_comp),
+    C(sky_mission_comp),
+    C(slap_stick_comp),
+    C(slayers_comp),
+    C(smash_tv_comp),
+    C(smurfs_comp),
+    C(soccer_kid_comp),
+    C(sotsugyou_bangai_hen_comp),
+    C(soul_and_sword_comp),
+    C(spirou_comp),
+    C(stargate_comp),
+    C(super_4wd_the_baja_comp),
+    C(super_bomberman_5_comp),
+    C(super_donkey_kong_comp),
+    // C(super_dunk_star_comp),
+    C(super_jinsei_game_comp),
+    C(super_loopz_comp),
+    C(super_mario_rpg_comp),
+    C(super_robot_wars_comp),
+    C(super_soukoban_comp),
+    C(syndicate_comp),
+    C(tactics_ogre_comp_1),
+    C(tactics_ogre_comp_2),
+    C(tales_of_phantasia_comp),
+    C(tamolympic_comp),
+    C(tenchi_souzou_comp),
+    C(tenchi_wo_kurau_comp),
+    C(time_cop_comp),
+    C(vortex_comp),
+    C(wild_guns_comp),
+    C(wizardry5_comp_1),
+    C(wizardry5_comp_2),
+    C(wizardry6_comp),
+    C(yatterman_comp),
+    C(zelda_comp_1),
+    C(zelda_comp_2)
+  });
+#undef C
 
   using namespace std::chrono;
 
@@ -161,8 +171,7 @@ void benchmark(const std::string& path) {
   std::vector<std::string> paths;
   std::vector<size_t> orders;
 
-  {
-    printf("| Compression |");
+  [&] {
     for (const auto& p : std::filesystem::recursive_directory_iterator(path)) {
       if (p.is_directory()) continue;
       const std::string path = p.path().string();
@@ -173,15 +182,12 @@ void benchmark(const std::string& path) {
     std::sort(orders.begin(), orders.end(), [&paths](const size_t a, const size_t b) {
       return paths[a] < paths[b];
     });
+    printf("| Compression |");
     for (const auto& i : orders) printf(" %s |", paths[i].c_str());
     puts(" Total Size | Running Time | Hash |");
-
     printf("|");
-    for (size_t i = 0; i < inputs.size() + 4; ++i) {
-      printf(" :--- |");
-    }
+    for (size_t i = 0; i < inputs.size() + 4; ++i) printf(" :--- |");
     puts("");
-
     size_t s = 0;
     printf("| %-40s |", "**uncompressed**");
     for (const size_t i : orders) {
@@ -189,7 +195,7 @@ void benchmark(const std::string& path) {
       s += inputs[i].size();
     }
     printf(" %6zX | ------ | -------- |\n", s);
-  }
+  }();
 
   uint32_t total_hash = 0;
   size_t total_size_sum = 0;
@@ -197,7 +203,7 @@ void benchmark(const std::string& path) {
   const auto p_comps = comps.begin();
   for (size_t c = 0; c < comps.size(); ++c) {
     const auto& comp = p_comps[c];
-    printf("| %-40s | ", comp.first);
+    printf("| %-40s | ", comp.name);
 
     const auto beg = high_resolution_clock::now();
     size_t total_size = 0;
@@ -205,7 +211,7 @@ void benchmark(const std::string& path) {
     uint32_t h = 0;
     for (const size_t i : orders) {
       try {
-        const auto res = (comp.second)(inputs[i]);
+        const auto res = comp.func(inputs[i]);
         const auto sz = res.size();
         h ^= hash(res);
         total_size += sz;
@@ -216,15 +222,12 @@ void benchmark(const std::string& path) {
     }
     total_hash ^= h;
     total_size_sum += total_size;
-
     const auto end = high_resolution_clock::now();
     printf("%6zX | %.4f | %08X |\n", total_size,
             duration_cast<nanoseconds>(end - beg).count() / 1e9, h);
   }
   printf("%zX : %08X\n", total_size_sum, total_hash);
 }
-
-#undef P
 
 int main(int argc, char** argv) {
   using namespace std::chrono;

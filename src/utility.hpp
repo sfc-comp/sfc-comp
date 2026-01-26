@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
+#include <algorithm>
 #include <numeric>
 #include <stdexcept>
 #include <string>

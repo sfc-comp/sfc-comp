@@ -380,6 +380,10 @@ template <bool LSBFirst> using writer_b8 = bitstream_writer<1, LSBFirst, false>;
 using writer_b8_l = writer_b8<true>;
 using writer_b8_h = writer_b8<false>;
 
+template <bool LSBFirst> using writer_b8_pre = bitstream_writer<1, LSBFirst, true>;
+using writer_b8_pre_l = writer_b8_pre<true>;
+using writer_b8_pre_h = writer_b8_pre<false>;
+
 template <bool LSBFirst> using writer_b16 = bitstream_writer<2, LSBFirst, false>;
 using writer_b16_l = writer_b16<true>;
 using writer_b16_h = writer_b16<false>;

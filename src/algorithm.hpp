@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <limits>
+#include <stdexcept>
 
 #include <span>
 

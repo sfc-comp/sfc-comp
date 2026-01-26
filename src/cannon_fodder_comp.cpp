@@ -76,7 +76,7 @@ std::vector<uint8_t> cannon_fodder_comp(std::span<const uint8_t> input) {
     }
     return ret;
   }();
-  const size_t oi_limit = std::min(max_oi, std::bit_width(input.size()));
+  const size_t oi_limit = std::min<size_t>(max_oi, std::bit_width(input.size()));
 
   using solver_type = solver<tag>;
   std::array<std::array<solver_type, max_oi + 1>, max_li + 1> dp;

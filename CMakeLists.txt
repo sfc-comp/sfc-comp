@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(SFCComp
-  VERSION 0.3.0
+  VERSION 0.3.1
   LANGUAGES CXX)
 
 set(PRODUCT_NAME "SFC Compress")
@@ -46,6 +46,8 @@ set(sfc_comp_src
   src/action_pachio_comp.cpp
   src/addams_family_comp.cpp
   src/asameshimae_nyanko_comp.cpp
+  src/asuka_kenzan_comp_1.cpp
+  src/asuka_kenzan_comp_2.cpp
   src/bokujou_monogatari_comp.cpp
   src/cannon_fodder_comp.cpp
   src/cb_chara_wars_comp.cpp
@@ -151,6 +153,8 @@ set(comp_ext_list
   asameshimae_nyanko_comp comp
   asameshimae_nyanko_4bpp_comp comp
   assault_suits_valken_comp comp
+  asuka_kenzan_comp_1 comp
+  asuka_kenzan_comp_2 comp
   bahamut_lagoon_comp comp
   bahamut_lagoon_comp_fast comp
   battle_cross_comp comp

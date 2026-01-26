@@ -21,6 +21,8 @@ std::vector<uint8_t> addams_family_comp(std::span<const uint8_t>);
 std::vector<uint8_t> asameshimae_nyanko_comp(std::span<const uint8_t>);
 std::vector<uint8_t> asameshimae_nyanko_4bpp_comp(std::span<const uint8_t>);
 std::vector<uint8_t> assault_suits_valken_comp(std::span<const uint8_t>);
+std::vector<uint8_t> asuka_kenzan_comp_1(std::span<const uint8_t>);
+std::vector<uint8_t> asuka_kenzan_comp_2(std::span<const uint8_t>);
 std::vector<uint8_t> bahamut_lagoon_comp(std::span<const uint8_t>);
 std::vector<uint8_t> bahamut_lagoon_comp_fast(std::span<const uint8_t>);
 std::vector<uint8_t> battle_cross_comp(std::span<const uint8_t>);
